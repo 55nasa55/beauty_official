@@ -1,35 +1,58 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle2, Package, MapPin, CreditCard, Loader2, Receipt } from 'lucide-react';
+import { CheckCircle2, Package, MapPin, CreditCard, Loader2, Receipt, Truck } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+
+type OrderItem = {
+  id: string;
+  product_id: string | null;
+  variant_id: string | null;
+  product_name: string;
+  variant_name: string | null;
+  quantity: number;
+  price: number;
+};
 
 type Order = {
   id: string;
+  order_number: string;
+  user_id: string | null;
   stripe_session_id: string;
+  stripe_payment_intent: string | null;
   status: string;
+  payment_status: string;
+  shipping_status: string;
+  tracking_number: string | null;
   total_amount: number;
   tax_amount: number;
   currency: string;
-  customer_email?: string;
-  customer_name?: string;
+  customer_email: string | null;
+  customer_name: string | null;
   shipping_address: any;
-  billing_address?: any;
-  items: any[];
+  billing_address: any;
   created_at: string;
+};
+
+type ProductVariant = {
+  images: string[];
+  sku: string | null;
 };
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const sessionId = searchParams.get('session_id');
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [variantDetails, setVariantDetails] = useState<Record<string, ProductVariant>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState('Processing your order...');
+  const [statusMessage, setStatusMessage] = useState('Loading your order...');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!sessionId) {
@@ -38,119 +61,123 @@ export default function SuccessPage() {
       return;
     }
 
-    createAndFetchOrder();
+    fetchOrderWithRetry();
   }, [sessionId]);
-
-  const createAndFetchOrder = async () => {
-    if (!sessionId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      setStatusMessage('Creating your order...');
-
-      console.log('[Success Page] Creating order for session:', sessionId);
-
-      // Step 1: Create the order immediately via API
-      const createResponse = await fetch('/api/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sessionId }),
-      });
-
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json();
-        console.error('[Success Page] Error creating order:', errorData);
-
-        // If order creation failed, still try to fetch it (might exist from webhook)
-        if (errorData.error === 'Order already exists' || errorData.orderId) {
-          console.log('[Success Page] Order already exists, fetching...');
-          setStatusMessage('Loading your order...');
-        } else {
-          throw new Error(errorData.error || 'Failed to create order');
-        }
-      } else {
-        const createData = await createResponse.json();
-        console.log('[Success Page] Order created:', createData);
-        setStatusMessage('Loading your order details...');
-      }
-
-      // Step 2: Fetch the order from Supabase with exponential backoff
-      await fetchOrderWithRetry();
-    } catch (err: any) {
-      console.error('[Success Page] Error in createAndFetchOrder:', err);
-      setError(err.message || 'Failed to process order');
-      setLoading(false);
-    }
-  };
 
   const fetchOrderWithRetry = async () => {
     if (!sessionId) return;
 
-    const maxRetries = 10;
-    const baseDelay = 500; // Start with 500ms
-    let attempt = 0;
+    const maxRetries = 8;
+    const baseDelay = 500;
 
-    const tryFetch = async (): Promise<boolean> => {
-      attempt++;
-      console.log(`[Success Page] Fetch attempt ${attempt}/${maxRetries}`);
-
+    const attemptFetch = async (attempt: number): Promise<boolean> => {
       try {
-        const { data, error: fetchError } = await supabase
+        console.log(`[Success] Fetch attempt ${attempt}/${maxRetries} for session:`, sessionId);
+        setRetryCount(attempt);
+
+        // Fetch order by order_number
+        const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select('*')
-          .eq('stripe_session_id', sessionId)
+          .eq('order_number', sessionId)
           .maybeSingle();
 
-        if (fetchError) {
-          console.error('[Success Page] Error fetching order:', fetchError);
-          throw fetchError;
+        if (orderError) {
+          console.error('[Success] Error fetching order:', orderError);
+          throw orderError;
         }
 
-        if (data) {
-          console.log('[Success Page] Order found:', (data as any).id);
-          setOrder(data as any);
+        if (orderData) {
+          console.log('[Success] Order found:', (orderData as any).order_number);
+          setOrder(orderData as any);
+
+          // Fetch order items
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', (orderData as any).id);
+
+          if (itemsError) {
+            console.error('[Success] Error fetching order items:', itemsError);
+          } else {
+            console.log('[Success] Order items found:', itemsData?.length || 0);
+            setOrderItems((itemsData as any) || []);
+
+            // Fetch variant details for images and SKU
+            if (itemsData && itemsData.length > 0) {
+              await fetchVariantDetails(itemsData as any);
+            }
+          }
+
           setLoading(false);
           return true;
         }
 
         // Order not found yet
         if (attempt >= maxRetries) {
-          console.error('[Success Page] Order not found after max retries');
+          console.error('[Success] Order not found after max retries');
           throw new Error(
-            'Order is being processed. Please check your email for confirmation or contact support with your payment confirmation.'
+            'Your order is still being processed. Please check your email for confirmation or contact support if you need assistance.'
           );
         }
 
-        // Calculate exponential backoff delay
-        const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000); // Max 5 seconds
-        console.log(`[Success Page] Order not found, retrying in ${delay}ms...`);
+        // Calculate exponential backoff
+        const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
+        console.log(`[Success] Order not found, retrying in ${delay}ms...`);
         setStatusMessage(`Waiting for order to sync... (${attempt}/${maxRetries})`);
 
         await new Promise((resolve) => setTimeout(resolve, delay));
-        return await tryFetch();
+        return await attemptFetch(attempt + 1);
       } catch (err: any) {
         if (attempt >= maxRetries) {
           throw err;
         }
 
         const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
-        console.log(`[Success Page] Error, retrying in ${delay}ms...`, err);
+        console.log(`[Success] Error, retrying in ${delay}ms...`, err);
         setStatusMessage(`Retrying... (${attempt}/${maxRetries})`);
 
         await new Promise((resolve) => setTimeout(resolve, delay));
-        return await tryFetch();
+        return await attemptFetch(attempt + 1);
       }
     };
 
     try {
-      await tryFetch();
+      setLoading(true);
+      setError(null);
+      await attemptFetch(1);
     } catch (err: any) {
-      console.error('[Success Page] Failed to fetch order:', err);
+      console.error('[Success] Failed to fetch order:', err);
       setError(err.message || 'Failed to load order details');
       setLoading(false);
+    }
+  };
+
+  const fetchVariantDetails = async (items: OrderItem[]) => {
+    const variantIds = items
+      .map((item) => item.variant_id)
+      .filter((id): id is string => id !== null);
+
+    if (variantIds.length === 0) return;
+
+    try {
+      const { data: variants, error } = await supabase
+        .from('product_variants')
+        .select('id, images, sku')
+        .in('id', variantIds);
+
+      if (!error && variants) {
+        const detailsMap: Record<string, ProductVariant> = {};
+        variants.forEach((variant: any) => {
+          detailsMap[variant.id] = {
+            images: variant.images || [],
+            sku: variant.sku,
+          };
+        });
+        setVariantDetails(detailsMap);
+      }
+    } catch (err) {
+      console.error('[Success] Error fetching variant details:', err);
     }
   };
 
@@ -171,14 +198,36 @@ export default function SuccessPage() {
     });
   };
 
+  const getItemImage = (item: OrderItem): string => {
+    if (item.variant_id && variantDetails[item.variant_id]) {
+      const images = variantDetails[item.variant_id].images;
+      if (images && images.length > 0) {
+        return images[0];
+      }
+    }
+    return '/placeholder-product.jpg';
+  };
+
+  const getItemSKU = (item: OrderItem): string | null => {
+    if (item.variant_id && variantDetails[item.variant_id]) {
+      return variantDetails[item.variant_id].sku;
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-4">
           <Loader2 className="w-16 h-16 animate-spin mx-auto mb-6 text-gray-600" />
           <h2 className="text-2xl font-semibold mb-3 text-gray-900">{statusMessage}</h2>
-          <p className="text-gray-600">
-            This usually takes just a few seconds. Please don't close this page.
+          {retryCount > 0 && (
+            <p className="text-gray-600 mb-2">
+              This usually takes just a few seconds. Please don't close this page.
+            </p>
+          )}
+          <p className="text-sm text-gray-500">
+            Processing your payment and creating your order...
           </p>
         </div>
       </div>
@@ -199,7 +248,8 @@ export default function SuccessPage() {
               onClick={() => {
                 setLoading(true);
                 setError(null);
-                createAndFetchOrder();
+                setRetryCount(0);
+                fetchOrderWithRetry();
               }}
               className="w-full bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
             >
@@ -217,10 +267,10 @@ export default function SuccessPage() {
               <p className="text-sm text-blue-800">
                 <strong>Session ID:</strong>
                 <br />
-                <code className="text-xs">{sessionId}</code>
+                <code className="text-xs break-all">{sessionId}</code>
               </p>
               <p className="text-xs text-blue-700 mt-2">
-                Save this ID for customer support if needed.
+                Please save this ID and contact support at support@goodlooks.com if you need assistance.
               </p>
             </div>
           )}
@@ -237,68 +287,103 @@ export default function SuccessPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Success Header */}
           <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-8 sm:px-8 sm:py-10 text-center">
             <CheckCircle2 className="w-16 h-16 text-white mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-white mb-2">Order Confirmed!</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Payment Successful!</h1>
             <p className="text-green-50 text-lg">
-              {order.customer_name ? `Thank you, ${order.customer_name}!` : 'Thank you for your purchase'}
+              {order.customer_name ? `Thank you, ${order.customer_name}!` : 'Thank you for your purchase!'}
             </p>
             {order.customer_email && (
               <p className="text-green-50 text-sm mt-2">
-                A confirmation email has been sent to {order.customer_email}
+                Confirmation email sent to {order.customer_email}
               </p>
             )}
           </div>
 
           <div className="px-6 py-6 sm:px-8">
+            {/* Order Summary */}
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-4 pb-4 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-4 border-b gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Order Number</p>
-                  <p className="text-lg font-semibold">{order.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-lg font-semibold">{order.order_number.slice(0, 12).toUpperCase()}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Date</p>
+                <div className="sm:text-right">
+                  <p className="text-sm text-gray-500">Order Date</p>
                   <p className="text-lg font-semibold">{formatDate(order.created_at)}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-sm">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                  order.status === 'paid'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {order.status === 'paid' ? 'Paid' : 'Processing'}
+              <div className="flex flex-wrap gap-2">
+                <span
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                    order.payment_status === 'paid'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                >
+                  Payment: {order.payment_status}
+                </span>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Shipping: {order.shipping_status}
                 </span>
               </div>
             </div>
 
+            {/* Order Items */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Package className="w-5 h-5 text-gray-600" />
                 <h2 className="text-xl font-semibold">Order Items</h2>
               </div>
               <div className="space-y-4">
-                {Array.isArray(order.items) && order.items.map((item: any, index: number) => (
-                  <div key={index} className="flex justify-between items-start py-4 border-b last:border-b-0">
-                    <div className="flex-1">
-                      <p className="font-medium">{item.product_name}</p>
-                      {item.variant_name && (
-                        <p className="text-sm text-gray-500">{item.variant_name}</p>
-                      )}
-                      <p className="text-sm text-gray-500 mt-1">Qty: {item.quantity}</p>
+                {orderItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex gap-4 py-4 border-b last:border-b-0"
+                  >
+                    {/* Product Image */}
+                    <div className="relative w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                      <Image
+                        src={getItemImage(item)}
+                        alt={item.product_name}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
-                    <p className="font-semibold">
-                      {formatCurrency(item.price, order.currency)}
-                    </p>
+
+                    {/* Product Details */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900">{item.product_name}</h3>
+                      {item.variant_name && (
+                        <p className="text-sm text-gray-500 mt-1">{item.variant_name}</p>
+                      )}
+                      {getItemSKU(item) && (
+                        <p className="text-xs text-gray-400 mt-1">SKU: {getItemSKU(item)}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2">
+                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(item.price, order.currency)} each
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Item Total */}
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        {formatCurrency(item.price * item.quantity, order.currency)}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Order Totals */}
             <div className="mb-8">
               <div className="space-y-2 py-4 border-t border-b">
                 <div className="flex justify-between text-sm">
@@ -316,7 +401,9 @@ export default function SuccessPage() {
               </div>
             </div>
 
+            {/* Addresses and Tracking */}
             <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Shipping Address */}
               {order.shipping_address && (
                 <div>
                   <div className="flex items-center gap-2 mb-4">
@@ -332,13 +419,15 @@ export default function SuccessPage() {
                       <p className="text-gray-600">{order.shipping_address.line2}</p>
                     )}
                     <p className="text-gray-600">
-                      {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}
+                      {order.shipping_address.city}, {order.shipping_address.state}{' '}
+                      {order.shipping_address.postal_code}
                     </p>
                     <p className="text-gray-600">{order.shipping_address.country}</p>
                   </div>
                 </div>
               )}
 
+              {/* Billing Address */}
               {order.billing_address && (
                 <div>
                   <div className="flex items-center gap-2 mb-4">
@@ -351,7 +440,8 @@ export default function SuccessPage() {
                       <p className="text-gray-600">{order.billing_address.line2}</p>
                     )}
                     <p className="text-gray-600">
-                      {order.billing_address.city}, {order.billing_address.state} {order.billing_address.postal_code}
+                      {order.billing_address.city}, {order.billing_address.state}{' '}
+                      {order.billing_address.postal_code}
                     </p>
                     <p className="text-gray-600">{order.billing_address.country}</p>
                   </div>
@@ -359,6 +449,22 @@ export default function SuccessPage() {
               )}
             </div>
 
+            {/* Tracking Number */}
+            {order.tracking_number && (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Truck className="w-5 h-5 text-gray-600" />
+                  <h2 className="text-xl font-semibold">Tracking Information</h2>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Tracking Number:</strong> {order.tracking_number}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Information */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Receipt className="w-5 h-5 text-gray-600" />
@@ -378,13 +484,16 @@ export default function SuccessPage() {
               </div>
             </div>
 
+            {/* Next Steps */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-800">
-                <strong>What's next?</strong> You'll receive an email confirmation shortly.
-                Your order will be processed and shipped within 2-3 business days.
+                <strong>What's next?</strong> Your order is being prepared for shipment. You'll
+                receive a shipping confirmation email with tracking information within 2-3 business
+                days.
               </p>
             </div>
 
+            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 href="/"
