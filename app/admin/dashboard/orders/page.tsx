@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
 import { ShoppingBag, Package, CreditCard, MapPin, Eye } from 'lucide-react';
 
 interface Order {
@@ -30,73 +29,9 @@ export default function OrdersManagementPage() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const showNewOrderToast = useCallback(
-    (order: Order) => {
-      toast({
-        title: 'New Order Received',
-        description: `Order #${order.id.slice(0, 8)} - $${order.total_amount.toFixed(2)}`,
-      });
-    },
-    [toast]
-  );
-
   useEffect(() => {
     fetchOrders();
-
-    const channel = supabase
-      .channel('orders-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
-        },
-        (payload) => {
-          const newOrder = payload.new as Order;
-          setOrders((currentOrders) => [newOrder, ...currentOrders]);
-          showNewOrderToast(newOrder);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-        },
-        (payload) => {
-          const updatedOrder = payload.new as Order;
-          setOrders((currentOrders) =>
-            currentOrders.map((order) =>
-              order.id === updatedOrder.id ? updatedOrder : order
-            )
-          );
-
-          setSelectedOrder((current) =>
-            current?.id === updatedOrder.id ? updatedOrder : current
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'orders',
-        },
-        (payload) => {
-          setOrders((currentOrders) =>
-            currentOrders.filter((order) => order.id !== (payload.old as any).id)
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [showNewOrderToast]);
+  }, []);
 
   async function fetchOrders() {
     const { data, error } = await supabase
@@ -200,13 +135,11 @@ export default function OrdersManagementPage() {
   }
 
   return (
-    <>
-      <Toaster />
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-light tracking-wide mb-2">Orders</h1>
-          <p className="text-gray-600">Manage customer orders and refunds</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-light tracking-wide mb-2">Orders</h1>
+        <p className="text-gray-600">Manage customer orders and refunds</p>
+      </div>
 
       <Card>
         <CardHeader>
@@ -373,7 +306,6 @@ export default function OrdersManagementPage() {
           )}
         </DialogContent>
       </Dialog>
-      </div>
-    </>
+    </div>
   );
 }
