@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        console.log('[Webhook] Processing checkout.session.completed:', session.id);
+
         const lineItems = await stripe.checkout.sessions.listLineItems(
           session.id,
           { expand: ['data.price.product'] }
@@ -97,22 +99,35 @@ export async function POST(req: NextRequest) {
           tax_details: sessionWithDetails.total_details?.breakdown || null,
         };
 
-        const { error: insertError } = await (supabase as any).from('orders').insert(orderData);
+        // Check if order already exists (might have been created by /api/create-order)
+        const { data: existingOrder } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('stripe_session_id', session.id)
+          .maybeSingle();
 
-        if (insertError) {
-          console.error('Error inserting order:', insertError);
-          return NextResponse.json(
-            { error: 'Failed to create order' },
-            { status: 500 }
-          );
+        if (existingOrder) {
+          console.log('[Webhook] Order already exists:', (existingOrder as any).id, '- skipping creation');
+        } else {
+          const { error: insertError } = await (supabase as any).from('orders').insert(orderData);
+
+          if (insertError) {
+            console.error('[Webhook] Error inserting order:', insertError);
+            return NextResponse.json(
+              { error: 'Failed to create order' },
+              { status: 500 }
+            );
+          }
+
+          console.log('[Webhook] Order created for session:', session.id, 'with status:', orderData.status);
         }
-
-        console.log('Order created for session:', session.id, 'with status:', orderData.status);
         break;
       }
 
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
+
+        console.log('[Webhook] Processing payment_intent.succeeded:', paymentIntent.id);
 
         const { error: updateError } = await (supabase as any)
           .from('orders')
@@ -120,15 +135,17 @@ export async function POST(req: NextRequest) {
           .eq('stripe_payment_intent', paymentIntent.id);
 
         if (updateError) {
-          console.error('Error updating order status to paid:', updateError);
+          console.error('[Webhook] Error updating order status to paid:', updateError);
         } else {
-          console.log('Order updated to paid for payment intent:', paymentIntent.id);
+          console.log('[Webhook] Order updated to paid for payment intent:', paymentIntent.id);
         }
         break;
       }
 
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
+
+        console.log('[Webhook] Processing charge.refunded:', charge.id);
 
         const { error: refundError } = await (supabase as any)
           .from('orders')
@@ -139,15 +156,15 @@ export async function POST(req: NextRequest) {
           .eq('stripe_payment_intent', charge.payment_intent as string);
 
         if (refundError) {
-          console.error('Error updating order status to refunded:', refundError);
+          console.error('[Webhook] Error updating order status to refunded:', refundError);
         } else {
-          console.log('Order refunded for charge:', charge.id);
+          console.log('[Webhook] Order refunded for charge:', charge.id);
         }
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log('[Webhook] Unhandled event type:', event.type);
     }
 
     return NextResponse.json({ received: true });

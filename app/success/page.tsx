@@ -29,7 +29,7 @@ export default function SuccessPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('Processing your order...');
 
   useEffect(() => {
     if (!sessionId) {
@@ -38,38 +38,117 @@ export default function SuccessPage() {
       return;
     }
 
-    fetchOrder();
-  }, [sessionId, retryCount]);
+    createAndFetchOrder();
+  }, [sessionId]);
 
-  const fetchOrder = async () => {
+  const createAndFetchOrder = async () => {
     if (!sessionId) return;
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('stripe_session_id', sessionId)
-        .maybeSingle();
+      setLoading(true);
+      setError(null);
+      setStatusMessage('Creating your order...');
 
-      if (fetchError) {
-        console.error('Error fetching order:', fetchError);
-        throw fetchError;
-      }
+      console.log('[Success Page] Creating order for session:', sessionId);
 
-      if (!data) {
-        if (retryCount < 5) {
-          setTimeout(() => {
-            setRetryCount(retryCount + 1);
-          }, 2000);
-          return;
+      // Step 1: Create the order immediately via API
+      const createResponse = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        console.error('[Success Page] Error creating order:', errorData);
+
+        // If order creation failed, still try to fetch it (might exist from webhook)
+        if (errorData.error === 'Order already exists' || errorData.orderId) {
+          console.log('[Success Page] Order already exists, fetching...');
+          setStatusMessage('Loading your order...');
+        } else {
+          throw new Error(errorData.error || 'Failed to create order');
         }
-        throw new Error('Order not found. Please contact support with your payment confirmation.');
+      } else {
+        const createData = await createResponse.json();
+        console.log('[Success Page] Order created:', createData);
+        setStatusMessage('Loading your order details...');
       }
 
-      setOrder(data);
-      setLoading(false);
+      // Step 2: Fetch the order from Supabase with exponential backoff
+      await fetchOrderWithRetry();
     } catch (err: any) {
-      console.error('Error:', err);
+      console.error('[Success Page] Error in createAndFetchOrder:', err);
+      setError(err.message || 'Failed to process order');
+      setLoading(false);
+    }
+  };
+
+  const fetchOrderWithRetry = async () => {
+    if (!sessionId) return;
+
+    const maxRetries = 10;
+    const baseDelay = 500; // Start with 500ms
+    let attempt = 0;
+
+    const tryFetch = async (): Promise<boolean> => {
+      attempt++;
+      console.log(`[Success Page] Fetch attempt ${attempt}/${maxRetries}`);
+
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('stripe_session_id', sessionId)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.error('[Success Page] Error fetching order:', fetchError);
+          throw fetchError;
+        }
+
+        if (data) {
+          console.log('[Success Page] Order found:', (data as any).id);
+          setOrder(data as any);
+          setLoading(false);
+          return true;
+        }
+
+        // Order not found yet
+        if (attempt >= maxRetries) {
+          console.error('[Success Page] Order not found after max retries');
+          throw new Error(
+            'Order is being processed. Please check your email for confirmation or contact support with your payment confirmation.'
+          );
+        }
+
+        // Calculate exponential backoff delay
+        const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000); // Max 5 seconds
+        console.log(`[Success Page] Order not found, retrying in ${delay}ms...`);
+        setStatusMessage(`Waiting for order to sync... (${attempt}/${maxRetries})`);
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return await tryFetch();
+      } catch (err: any) {
+        if (attempt >= maxRetries) {
+          throw err;
+        }
+
+        const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
+        console.log(`[Success Page] Error, retrying in ${delay}ms...`, err);
+        setStatusMessage(`Retrying... (${attempt}/${maxRetries})`);
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return await tryFetch();
+      }
+    };
+
+    try {
+      await tryFetch();
+    } catch (err: any) {
+      console.error('[Success Page] Failed to fetch order:', err);
       setError(err.message || 'Failed to load order details');
       setLoading(false);
     }
@@ -95,16 +174,12 @@ export default function SuccessPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-gray-600" />
-          <p className="text-lg text-gray-600">
-            {retryCount > 0 ? 'Processing your order...' : 'Loading order details...'}
+        <div className="text-center max-w-md px-4">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-6 text-gray-600" />
+          <h2 className="text-2xl font-semibold mb-3 text-gray-900">{statusMessage}</h2>
+          <p className="text-gray-600">
+            This usually takes just a few seconds. Please don't close this page.
           </p>
-          {retryCount > 0 && (
-            <p className="text-sm text-gray-500 mt-2">
-              This may take a few moments
-            </p>
-          )}
         </div>
       </div>
     );
@@ -124,7 +199,7 @@ export default function SuccessPage() {
               onClick={() => {
                 setLoading(true);
                 setError(null);
-                setRetryCount(0);
+                createAndFetchOrder();
               }}
               className="w-full bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
             >
@@ -137,6 +212,18 @@ export default function SuccessPage() {
               Return to Home
             </Link>
           </div>
+          {sessionId && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Session ID:</strong>
+                <br />
+                <code className="text-xs">{sessionId}</code>
+              </p>
+              <p className="text-xs text-blue-700 mt-2">
+                Save this ID for customer support if needed.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -195,7 +282,7 @@ export default function SuccessPage() {
                 <h2 className="text-xl font-semibold">Order Items</h2>
               </div>
               <div className="space-y-4">
-                {order.items.map((item: any, index: number) => (
+                {Array.isArray(order.items) && order.items.map((item: any, index: number) => (
                   <div key={index} className="flex justify-between items-start py-4 border-b last:border-b-0">
                     <div className="flex-1">
                       <p className="font-medium">{item.product_name}</p>
