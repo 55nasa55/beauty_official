@@ -15,21 +15,35 @@ interface CollectionsPageProps {
 }
 
 async function getCollectionData(slug: string) {
-  const [categoriesResult, brandsResult, collectionsResult, productsResult] = await Promise.all([
-    supabase.from('categories').select('*').order('name'),
-    supabase.from('brands').select('*').order('name'),
-    supabase.from('collections').select('*').order('sort_order'),
-    supabase.from('products').select('*, brand:brands(*), variants:product_variants(*)'),
-  ]);
+  try {
+    const [categoriesResult, brandsResult, collectionsResult, productsResult] = await Promise.all([
+      supabase.from('categories').select('*').order('name'),
+      supabase.from('brands').select('*').order('name'),
+      supabase.from('collections').select('*').order('sort_order'),
+      supabase.from('products').select('*, brand:brands(*), variants:product_variants(*)'),
+    ]);
 
-  const categories: Category[] = categoriesResult.data || [];
-  const brands: Brand[] = brandsResult.data || [];
-  const collections: Collection[] = collectionsResult.data || [];
-  const allProducts: ProductWithVariants[] = (productsResult.data || []) as ProductWithVariants[];
+    if (categoriesResult.error) {
+      console.error('Error fetching categories:', categoriesResult.error);
+    }
+    if (brandsResult.error) {
+      console.error('Error fetching brands:', brandsResult.error);
+    }
+    if (collectionsResult.error) {
+      console.error('Error fetching collections:', collectionsResult.error);
+    }
+    if (productsResult.error) {
+      console.error('Error fetching products:', productsResult.error);
+    }
 
-  const category = categories.find((c) => c.slug === slug);
-  if (category) {
-    const categoryProducts = allProducts.filter((p) => p.category_id === category.id);
+    const categories: Category[] = Array.isArray(categoriesResult.data) ? categoriesResult.data : [];
+    const brands: Brand[] = Array.isArray(brandsResult.data) ? brandsResult.data : [];
+    const collections: Collection[] = Array.isArray(collectionsResult.data) ? collectionsResult.data : [];
+    const allProducts: ProductWithVariants[] = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
+
+    const category = categories.find((c) => c && c.slug === slug);
+    if (category) {
+      const categoryProducts = allProducts.filter((p) => p && p.category_id === category.id);
     return {
       categories,
       brands,
@@ -40,27 +54,28 @@ async function getCollectionData(slug: string) {
     };
   }
 
-  const collection = collections.find((c) => c.slug === slug);
-  if (collection) {
-    let collectionProducts: ProductWithVariants[] = [];
+    const collection = collections.find((c) => c && c.slug === slug);
+    if (collection) {
+      let collectionProducts: ProductWithVariants[] = [];
 
-    if (collection.product_ids && collection.product_ids.length > 0) {
-      const idProducts = allProducts.filter((p) => collection.product_ids.includes(p.id));
-      collectionProducts = [...idProducts];
-    }
+      if (collection.product_ids && Array.isArray(collection.product_ids) && collection.product_ids.length > 0) {
+        const idProducts = allProducts.filter((p) => p && collection.product_ids.includes(p.id));
+        collectionProducts = [...idProducts];
+      }
 
-    if (collection.product_tags && collection.product_tags.length > 0) {
-      const tagProducts = allProducts.filter(
-        (p) =>
-          p.tags &&
-          Array.isArray(p.tags) &&
-          p.tags.some((tag) => collection.product_tags.includes(tag))
-      );
+      if (collection.product_tags && Array.isArray(collection.product_tags) && collection.product_tags.length > 0) {
+        const tagProducts = allProducts.filter(
+          (p) =>
+            p &&
+            p.tags &&
+            Array.isArray(p.tags) &&
+            p.tags.some((tag) => collection.product_tags.includes(tag))
+        );
 
-      const existingIds = new Set(collectionProducts.map((p) => p.id));
-      const uniqueTagProducts = tagProducts.filter((p) => !existingIds.has(p.id));
-      collectionProducts = [...collectionProducts, ...uniqueTagProducts];
-    }
+        const existingIds = new Set(collectionProducts.map((p) => p.id));
+        const uniqueTagProducts = tagProducts.filter((p) => p && !existingIds.has(p.id));
+        collectionProducts = [...collectionProducts, ...uniqueTagProducts];
+      }
 
     return {
       categories,
@@ -72,29 +87,33 @@ async function getCollectionData(slug: string) {
     };
   }
 
-  const tagNormalized = slug.toLowerCase().replace(/-/g, '_');
-  const tagProducts = allProducts.filter((product) => {
-    if (!product.tags || !Array.isArray(product.tags)) return false;
-    return product.tags.some((t) => t.toLowerCase().replace(/-/g, '_') === tagNormalized);
-  });
+    const tagNormalized = slug.toLowerCase().replace(/-/g, '_');
+    const tagProducts = allProducts.filter((product) => {
+      if (!product || !product.tags || !Array.isArray(product.tags)) return false;
+      return product.tags.some((t) => t && typeof t === 'string' && t.toLowerCase().replace(/-/g, '_') === tagNormalized);
+    });
 
-  if (tagProducts.length === 0) {
+    if (tagProducts.length === 0) {
+      return null;
+    }
+
+    const titleFromTag = slug
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+
+    return {
+      categories,
+      brands,
+      collections,
+      products: tagProducts,
+      title: titleFromTag,
+      description: `Explore our ${titleFromTag.toLowerCase()} products`,
+    };
+  } catch (error) {
+    console.error('Error in getCollectionData:', error);
     return null;
   }
-
-  const titleFromTag = slug
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-  return {
-    categories,
-    brands,
-    collections,
-    products: tagProducts,
-    title: titleFromTag,
-    description: `Explore our ${titleFromTag.toLowerCase()} products`,
-  };
 }
 
 export default async function CollectionsPage({ params }: CollectionsPageProps) {

@@ -3,13 +3,18 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, X } from 'lucide-react';
+import { Search, X, Package, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { ProductWithVariants } from '@/lib/database.types';
+import { ProductWithVariants, Brand } from '@/lib/database.types';
+
+interface SearchResults {
+  products: ProductWithVariants[];
+  brands: Brand[];
+}
 
 export function SearchBar() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ProductWithVariants[]>([]);
+  const [results, setResults] = useState<SearchResults>({ products: [], brands: [] });
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -26,9 +31,9 @@ export function SearchBar() {
   }, []);
 
   useEffect(() => {
-    const searchProducts = async () => {
+    const searchAll = async () => {
       if (query.trim().length < 2) {
-        setResults([]);
+        setResults({ products: [], brands: [] });
         setIsOpen(false);
         return;
       }
@@ -39,67 +44,83 @@ export function SearchBar() {
       try {
         const searchTerm = query.trim().toLowerCase();
 
-        const { data, error } = await supabase
-          .from('products')
-          .select('*, brand:brands(*), variants:product_variants(*)')
-          .or(
-            `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`
-          )
-          .limit(8);
+        const [productsResult, brandsResult] = await Promise.all([
+          supabase
+            .from('products')
+            .select('*, brand:brands(*), variants:product_variants(*)')
+            .or(
+              `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`
+            )
+            .limit(6),
+          supabase
+            .from('brands')
+            .select('*')
+            .ilike('name', `%${searchTerm}%`)
+            .limit(4),
+        ]);
 
-        if (error) throw error;
+        if (productsResult.error) {
+          console.error('Error searching products:', productsResult.error);
+        }
+        if (brandsResult.error) {
+          console.error('Error searching brands:', brandsResult.error);
+        }
 
-        const productsWithVariants = data as ProductWithVariants[];
+        const products = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
+        const brands = Array.isArray(brandsResult.data) ? brandsResult.data as Brand[] : [];
 
-        const brandResults = await supabase
+        const brandProductResults = await supabase
           .from('brands')
-          .select('id, name')
+          .select('id')
           .ilike('name', `%${searchTerm}%`);
 
-        if (brandResults.data && brandResults.data.length > 0) {
-          const brandIds = brandResults.data.map((b: { id: string; name: string }) => b.id);
+        if (brandProductResults.data && Array.isArray(brandProductResults.data) && brandProductResults.data.length > 0) {
+          const brandIds = brandProductResults.data.map((b: { id: string }) => b.id);
           const { data: brandProducts } = await supabase
             .from('products')
             .select('*, brand:brands(*), variants:product_variants(*)')
             .in('brand_id', brandIds)
-            .limit(8);
+            .limit(6);
 
-          if (brandProducts) {
-            const existingIds = new Set(productsWithVariants.map((p) => p.id));
+          if (brandProducts && Array.isArray(brandProducts)) {
+            const existingIds = new Set(products.map((p) => p.id));
             const uniqueBrandProducts = (brandProducts as ProductWithVariants[]).filter(
-              (p) => !existingIds.has(p.id)
+              (p) => p && !existingIds.has(p.id)
             );
-            productsWithVariants.push(...uniqueBrandProducts.slice(0, 8 - productsWithVariants.length));
+            products.push(...uniqueBrandProducts.slice(0, 6 - products.length));
           }
         }
 
-        setResults(productsWithVariants.slice(0, 8));
+        setResults({
+          products: products.slice(0, 6),
+          brands: brands.slice(0, 4),
+        });
       } catch (error) {
         console.error('Search error:', error);
-        setResults([]);
+        setResults({ products: [], brands: [] });
       } finally {
         setIsLoading(false);
       }
     };
 
-    const debounceTimer = setTimeout(searchProducts, 300);
+    const debounceTimer = setTimeout(searchAll, 300);
     return () => clearTimeout(debounceTimer);
   }, [query]);
 
   const handleClear = () => {
     setQuery('');
-    setResults([]);
+    setResults({ products: [], brands: [] });
     setIsOpen(false);
   };
 
   const handleResultClick = () => {
     setIsOpen(false);
     setQuery('');
-    setResults([]);
+    setResults({ products: [], brands: [] });
   };
 
   const getProductPrice = (product: ProductWithVariants) => {
-    if (product.variants && product.variants.length > 0) {
+    if (product && product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
       const prices = product.variants.map((v) => Number(v.price));
       const minPrice = Math.min(...prices);
       const maxPrice = Math.max(...prices);
@@ -113,14 +134,16 @@ export function SearchBar() {
   };
 
   const getProductImage = (product: ProductWithVariants) => {
-    if (product.variants && product.variants.length > 0) {
+    if (product && product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
       const firstVariant = product.variants[0];
-      if (firstVariant.images && Array.isArray(firstVariant.images) && firstVariant.images.length > 0) {
+      if (firstVariant && firstVariant.images && Array.isArray(firstVariant.images) && firstVariant.images.length > 0) {
         return firstVariant.images[0];
       }
     }
     return '/placeholder-product.jpg';
   };
+
+  const hasResults = (results.products && results.products.length > 0) || (results.brands && results.brands.length > 0);
 
   return (
     <div ref={searchRef} className="relative w-full max-w-md">
@@ -130,7 +153,7 @@ export function SearchBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search products..."
+          placeholder="Search products and brands..."
           className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
         />
         {query && (
@@ -149,40 +172,82 @@ export function SearchBar() {
             <div className="p-8 text-center text-gray-500 text-sm">
               <div className="animate-pulse">Searching...</div>
             </div>
-          ) : results.length > 0 ? (
+          ) : hasResults ? (
             <div className="py-2">
-              {results.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/product/${product.slug}`}
-                  onClick={handleResultClick}
-                  className="flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="relative w-16 h-16 flex-shrink-0 bg-gray-100 rounded">
-                    <Image
-                      src={getProductImage(product)}
-                      alt={product.name}
-                      fill
-                      className="object-cover rounded"
-                    />
+              {results.brands && results.brands.length > 0 && (
+                <div className="mb-2">
+                  <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+                    <Building2 className="w-3 h-3" />
+                    Brands
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                      {product.name}
-                    </h4>
-                    <p className="text-xs text-gray-500 truncate">
-                      {product.brand?.name || product.category}
-                    </p>
-                    <p className="text-sm font-medium text-gray-900 mt-1">
-                      {getProductPrice(product)}
-                    </p>
+                  {results.brands.map((brand) => (
+                    <Link
+                      key={brand.id}
+                      href={`/brand/${brand.slug}`}
+                      onClick={handleResultClick}
+                      className="flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="relative w-16 h-16 flex-shrink-0 bg-gray-100 rounded">
+                        <Image
+                          src={brand.logo_url}
+                          alt={brand.name}
+                          fill
+                          className="object-cover rounded"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {brand.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 line-clamp-2">
+                          {brand.description}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {results.products && results.products.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+                    <Package className="w-3 h-3" />
+                    Products
                   </div>
-                </Link>
-              ))}
+                  {results.products.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.slug}`}
+                      onClick={handleResultClick}
+                      className="flex items-center gap-4 p-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="relative w-16 h-16 flex-shrink-0 bg-gray-100 rounded">
+                        <Image
+                          src={getProductImage(product)}
+                          alt={product.name}
+                          fill
+                          className="object-cover rounded"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {product.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 truncate">
+                          {product.brand?.name || product.category}
+                        </p>
+                        <p className="text-sm font-medium text-gray-900 mt-1">
+                          {getProductPrice(product)}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ) : query.trim().length >= 2 ? (
             <div className="p-8 text-center text-gray-500 text-sm">
-              No products found for "{query}"
+              No results found for "{query}"
             </div>
           ) : null}
         </div>
