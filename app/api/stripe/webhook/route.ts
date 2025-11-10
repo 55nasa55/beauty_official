@@ -77,6 +77,10 @@ export async function POST(req: NextRequest) {
 
         const taxAmount = (sessionWithDetails.total_details?.amount_tax || 0) / 100;
 
+        const customerEmail = sessionWithDetails.customer_details?.email || null;
+        const customerName = sessionWithDetails.customer_details?.name ||
+                            sessionWithDetails.shipping_details?.name || null;
+
         const orderData = {
           user_id: session.metadata?.user_id || null,
           stripe_session_id: session.id,
@@ -85,6 +89,8 @@ export async function POST(req: NextRequest) {
           total_amount: (session.amount_total || 0) / 100,
           tax_amount: taxAmount,
           currency: session.currency || 'usd',
+          customer_email: customerEmail,
+          customer_name: customerName,
           shipping_address: shippingAddress,
           billing_address: billingAddress,
           items: items,

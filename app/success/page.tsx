@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle2, Package, MapPin, CreditCard, Loader2 } from 'lucide-react';
+import { CheckCircle2, Package, MapPin, CreditCard, Loader2, Receipt } from 'lucide-react';
 import Link from 'next/link';
 
 type Order = {
@@ -13,7 +13,10 @@ type Order = {
   total_amount: number;
   tax_amount: number;
   currency: string;
+  customer_email?: string;
+  customer_name?: string;
   shipping_address: any;
+  billing_address?: any;
   items: any[];
   created_at: string;
 };
@@ -153,8 +156,13 @@ export default function SuccessPage() {
             <CheckCircle2 className="w-16 h-16 text-white mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-white mb-2">Order Confirmed!</h1>
             <p className="text-green-50 text-lg">
-              Thank you for your purchase
+              {order.customer_name ? `Thank you, ${order.customer_name}!` : 'Thank you for your purchase'}
             </p>
+            {order.customer_email && (
+              <p className="text-green-50 text-sm mt-2">
+                A confirmation email has been sent to {order.customer_email}
+              </p>
+            )}
           </div>
 
           <div className="px-6 py-6 sm:px-8">
@@ -221,38 +229,65 @@ export default function SuccessPage() {
               </div>
             </div>
 
-            {order.shipping_address && (
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="w-5 h-5 text-gray-600" />
-                  <h2 className="text-xl font-semibold">Shipping Address</h2>
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {order.shipping_address && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="w-5 h-5 text-gray-600" />
+                    <h2 className="text-xl font-semibold">Shipping Address</h2>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    {order.shipping_address.name && (
+                      <p className="font-medium mb-1">{order.shipping_address.name}</p>
+                    )}
+                    <p className="text-gray-600">{order.shipping_address.line1}</p>
+                    {order.shipping_address.line2 && (
+                      <p className="text-gray-600">{order.shipping_address.line2}</p>
+                    )}
+                    <p className="text-gray-600">
+                      {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}
+                    </p>
+                    <p className="text-gray-600">{order.shipping_address.country}</p>
+                  </div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  {order.shipping_address.name && (
-                    <p className="font-medium mb-1">{order.shipping_address.name}</p>
-                  )}
-                  <p className="text-gray-600">{order.shipping_address.line1}</p>
-                  {order.shipping_address.line2 && (
-                    <p className="text-gray-600">{order.shipping_address.line2}</p>
-                  )}
-                  <p className="text-gray-600">
-                    {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}
-                  </p>
-                  <p className="text-gray-600">{order.shipping_address.country}</p>
+              )}
+
+              {order.billing_address && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <CreditCard className="w-5 h-5 text-gray-600" />
+                    <h2 className="text-xl font-semibold">Billing Address</h2>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-600">{order.billing_address.line1}</p>
+                    {order.billing_address.line2 && (
+                      <p className="text-gray-600">{order.billing_address.line2}</p>
+                    )}
+                    <p className="text-gray-600">
+                      {order.billing_address.city}, {order.billing_address.state} {order.billing_address.postal_code}
+                    </p>
+                    <p className="text-gray-600">{order.billing_address.country}</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
-                <CreditCard className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-semibold">Payment Method</h2>
+                <Receipt className="w-5 h-5 text-gray-600" />
+                <h2 className="text-xl font-semibold">Payment Information</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-600">Paid via Stripe</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Payment ID: {order.stripe_session_id.slice(0, 20)}...
-                </p>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-600">Payment Method</span>
+                  <span className="font-medium">Credit Card (Stripe)</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Transaction ID</span>
+                  <span className="text-sm text-gray-500 font-mono">
+                    {order.stripe_session_id.slice(-12).toUpperCase()}
+                  </span>
+                </div>
               </div>
             </div>
 
