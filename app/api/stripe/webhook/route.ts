@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
           user_id: session.metadata?.user_id || null,
           stripe_session_id: session.id,
           stripe_payment_intent: session.payment_intent as string,
-          status: 'pending',
+          status: session.payment_status === 'paid' ? 'paid' : 'pending',
           total_amount: (session.amount_total || 0) / 100,
           tax_amount: taxAmount,
           currency: session.currency || 'usd',
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        console.log('Order created for session:', session.id);
+        console.log('Order created for session:', session.id, 'with status:', orderData.status);
         break;
       }
 
