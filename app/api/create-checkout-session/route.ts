@@ -57,13 +57,18 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const successUrl = process.env.NEXT_PUBLIC_SUCCESS_URL
+      ? `${process.env.NEXT_PUBLIC_SUCCESS_URL}?session_id={CHECKOUT_SESSION_ID}`
+      : `${req.headers.get('origin') || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
+
+    const cancelUrl = process.env.NEXT_PUBLIC_CANCEL_URL
+      || `${req.headers.get('origin') || 'http://localhost:3000'}/checkout/cancel`;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
-      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout/cancel`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       automatic_tax: {
         enabled: true,
       },
@@ -71,7 +76,6 @@ export async function POST(req: NextRequest) {
         allowed_countries: ['US', 'CA'],
       },
       billing_address_collection: 'required',
-      customer_email: undefined,
       metadata: {
         cart_items: JSON.stringify(cartItems),
       },

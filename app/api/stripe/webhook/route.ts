@@ -46,22 +46,52 @@ export async function POST(req: NextRequest) {
           quantity: item.quantity || 1,
           price: (item.amount_total || 0) / 100,
           price_id: item.price?.id,
+          product_id: (item.price?.product as any)?.metadata?.product_id,
+          variant_id: (item.price?.product as any)?.metadata?.variant_id,
         }));
 
-        const shippingAddress = (session as any).shipping_details?.address || null;
-        const billingAddress = (session as any).customer_details?.address || null;
+        const sessionWithDetails = session as any;
 
-        const { error: insertError } = await (supabase as any).from('orders').insert({
+        const shippingAddress = sessionWithDetails.shipping_details?.address
+          ? {
+              line1: sessionWithDetails.shipping_details.address.line1,
+              line2: sessionWithDetails.shipping_details.address.line2,
+              city: sessionWithDetails.shipping_details.address.city,
+              state: sessionWithDetails.shipping_details.address.state,
+              postal_code: sessionWithDetails.shipping_details.address.postal_code,
+              country: sessionWithDetails.shipping_details.address.country,
+              name: sessionWithDetails.shipping_details.name,
+            }
+          : null;
+
+        const billingAddress = sessionWithDetails.customer_details?.address
+          ? {
+              line1: sessionWithDetails.customer_details.address.line1,
+              line2: sessionWithDetails.customer_details.address.line2,
+              city: sessionWithDetails.customer_details.address.city,
+              state: sessionWithDetails.customer_details.address.state,
+              postal_code: sessionWithDetails.customer_details.address.postal_code,
+              country: sessionWithDetails.customer_details.address.country,
+            }
+          : null;
+
+        const taxAmount = (sessionWithDetails.total_details?.amount_tax || 0) / 100;
+
+        const orderData = {
           user_id: session.metadata?.user_id || null,
           stripe_session_id: session.id,
           stripe_payment_intent: session.payment_intent as string,
           status: 'pending',
           total_amount: (session.amount_total || 0) / 100,
+          tax_amount: taxAmount,
           currency: session.currency || 'usd',
           shipping_address: shippingAddress,
           billing_address: billingAddress,
           items: items,
-        });
+          tax_details: sessionWithDetails.total_details?.breakdown || null,
+        };
+
+        const { error: insertError } = await (supabase as any).from('orders').insert(orderData);
 
         if (insertError) {
           console.error('Error inserting order:', insertError);
