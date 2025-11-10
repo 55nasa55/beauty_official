@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Banner } from '@/lib/database.types';
@@ -29,6 +29,7 @@ const getBannerLink = (banner: Banner) => {
 
 export function BannerCarousel({ banners }: BannerCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     if (banners.length === 0) return;
@@ -50,51 +51,53 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length);
   };
 
+  const handleBannerClick = () => {
+    const currentBanner = banners[currentIndex];
+    const href = getBannerLink(currentBanner);
+
+    if (currentBanner.target_type === 'external') {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      router.push(href);
+    }
+  };
+
   if (banners.length === 0) return null;
 
   return (
     <div className="relative w-full h-[400px] md:h-[500px] overflow-hidden rounded-lg group">
       {banners.map((banner, index) => {
-        const href = getBannerLink(banner);
-        const className = `absolute inset-0 transition-opacity duration-500 ${
-          index === currentIndex ? 'opacity-100' : 'opacity-0'
-        }`;
+        const isActive = index === currentIndex;
 
-        const bannerContent = (
-          <>
-            <Image
-              src={banner.image_url}
-              alt={banner.title}
-              fill
-              className="object-cover"
-              priority={index === 0}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
-              <h2 className="text-3xl md:text-5xl font-light mb-3 tracking-wide">
-                {banner.title}
-              </h2>
-              <p className="text-lg md:text-xl text-white/90 max-w-2xl">
-                {banner.description}
-              </p>
-            </div>
-          </>
-        );
-
-        return banner.target_type === 'external' ? (
-          <a
+        return (
+          <div
             key={banner.id}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={className}
+            className={`absolute inset-0 transition-opacity duration-500 ${
+              isActive ? 'opacity-100 z-[1]' : 'opacity-0 z-0 pointer-events-none'
+            }`}
           >
-            {bannerContent}
-          </a>
-        ) : (
-          <Link key={banner.id} href={href} className={className}>
-            {bannerContent}
-          </Link>
+            <div
+              onClick={isActive ? handleBannerClick : undefined}
+              className={`relative w-full h-full ${isActive ? 'cursor-pointer' : ''}`}
+            >
+              <Image
+                src={banner.image_url}
+                alt={banner.title}
+                fill
+                className="object-cover"
+                priority={index === 0}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
+                <h2 className="text-3xl md:text-5xl font-light mb-3 tracking-wide">
+                  {banner.title}
+                </h2>
+                <p className="text-lg md:text-xl text-white/90 max-w-2xl">
+                  {banner.description}
+                </p>
+              </div>
+            </div>
+          </div>
         );
       })}
 
