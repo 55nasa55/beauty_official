@@ -49,7 +49,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                         <li key={category.id}>
                           <NavigationMenuLink asChild>
                             <Link
-                              href={`/category/${category.slug}`}
+                              href={`/collections/${category.slug}`}
                               className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-50"
                             >
                               <div className="text-sm font-medium leading-none">
@@ -85,7 +85,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                           <li key={collection.id}>
                             <NavigationMenuLink asChild>
                               <Link
-                                href={`/collection/${collection.slug}`}
+                                href={`/collections/${collection.slug}`}
                                 className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-50"
                               >
                                 <div className="text-sm font-medium leading-none">

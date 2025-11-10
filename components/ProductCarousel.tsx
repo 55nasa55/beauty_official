@@ -67,7 +67,7 @@ export function ProductCarousel({ title, products, viewMoreSlug }: ProductCarous
       {viewMoreSlug && (
         <div className="flex justify-center mt-6">
           <Link
-            href={`/products/${viewMoreSlug}`}
+            href={`/collections/${viewMoreSlug}`}
             className="px-8 py-3 border border-gray-300 rounded-full font-light tracking-wide hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
           >
             View More
