@@ -5,6 +5,9 @@ import { ProductCard } from '@/components/ProductCard';
 import { ProductWithVariants, Category, Brand, Collection } from '@/lib/database.types';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface ProductsPageProps {
   params: {
     tag: string;

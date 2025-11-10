@@ -6,6 +6,9 @@ import { ProductWithVariants, Category, Brand, Collection } from '@/lib/database
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getBrandData(slug: string) {
   const [categoriesResult, brandsResult, collectionsResult, brandResult] =
     await Promise.all([

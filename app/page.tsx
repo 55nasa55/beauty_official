@@ -1,9 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { BannerCarousel } from '@/components/BannerCarousel';
+import { DynamicBannerCarousel } from '@/components/DynamicBannerCarousel';
 import { ProductCarousel } from '@/components/ProductCarousel';
 import { ProductWithVariants, Category, Brand, Collection, Banner } from '@/lib/database.types';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function getHomePageData() {
   const [categoriesResult, brandsResult, collectionsResult, bannersResult, productsResult] =
@@ -107,7 +110,7 @@ export default async function Home() {
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-12">
-            <BannerCarousel banners={banners} />
+            <DynamicBannerCarousel initialBanners={banners} />
           </div>
 
           <div className="space-y-16">
