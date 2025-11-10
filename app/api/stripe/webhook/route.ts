@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/supabase';
 import Stripe from 'stripe';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(req: NextRequest) {
@@ -30,7 +28,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = createServerClient();
 
   try {
     switch (event.type) {
@@ -53,7 +51,7 @@ export async function POST(req: NextRequest) {
         const shippingAddress = (session as any).shipping_details?.address || null;
         const billingAddress = (session as any).customer_details?.address || null;
 
-        const { error: insertError } = await supabase.from('orders').insert({
+        const { error: insertError } = await (supabase as any).from('orders').insert({
           user_id: session.metadata?.user_id || null,
           stripe_session_id: session.id,
           stripe_payment_intent: session.payment_intent as string,
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
           .from('orders')
           .update({ status: 'paid' })
           .eq('stripe_payment_intent', paymentIntent.id);
@@ -96,7 +94,7 @@ export async function POST(req: NextRequest) {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
 
-        const { error: refundError } = await supabase
+        const { error: refundError } = await (supabase as any)
           .from('orders')
           .update({
             status: 'refunded',
