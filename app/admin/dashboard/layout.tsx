@@ -15,7 +15,8 @@ import {
   LogOut,
   Menu,
   X,
-  Image
+  Image,
+  Layout
 } from 'lucide-react';
 
 export default function AdminDashboardLayout({
@@ -62,6 +63,7 @@ export default function AdminDashboardLayout({
     { href: '/admin/dashboard/categories', label: 'Categories', icon: Tags },
     { href: '/admin/dashboard/brands', label: 'Brands', icon: Star },
     { href: '/admin/dashboard/collections', label: 'Collections', icon: Grid },
+    { href: '/admin/dashboard/banners', label: 'Banners', icon: Layout },
     { href: '/admin/dashboard/images', label: 'Images', icon: Image },
     { href: '/admin/dashboard/orders', label: 'Orders', icon: ShoppingBag },
   ];
