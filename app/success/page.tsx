@@ -98,8 +98,12 @@ export default function SuccessPage() {
         }
 
         if (orderData) {
-          console.log('[Success] ✓ Order found:', (orderData as any).order_number);
+          console.log('[Success] ✓ Order found (UUID):', (orderData as any).id);
+          console.log('[Success] ✓ Order number:', (orderData as any).order_number);
+
           setOrder(orderData as any);
+
+          console.log('[Success] Fetching order items using order.id (UUID):', (orderData as any).id);
 
           const { data: itemsData, error: itemsError } = await supabase
             .from('order_items')
@@ -112,12 +116,19 @@ export default function SuccessPage() {
           }
 
           console.log('[Success] ✓ Order items found:', itemsData?.length || 0);
+
+          if (!itemsData || itemsData.length === 0) {
+            console.warn('[Success] ⚠️ No order items found for order:', (orderData as any).id);
+          }
+
           setOrderItems((itemsData as any) || []);
 
           if (itemsData && itemsData.length > 0) {
+            console.log('[Success] Fetching variant details for', itemsData.length, 'items');
             await fetchVariantDetails(itemsData as any);
           }
 
+          console.log('[Success] ✓ Order load complete');
           setLoading(false);
           return true;
         }
