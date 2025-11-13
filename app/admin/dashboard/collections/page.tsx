@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,7 +65,6 @@ export default function CollectionsManagementPage() {
 
     try {
       if (editingCollection) {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('collections').update(collectionData).eq('id', editingCollection.id);
 
         if (error) throw error;
@@ -75,7 +74,6 @@ export default function CollectionsManagementPage() {
           description: 'Collection updated successfully',
         });
       } else {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('collections').insert([collectionData]);
 
         if (error) throw error;

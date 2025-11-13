@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,7 +63,6 @@ export default function BrandsManagementPage() {
 
     try{
       if (editingBrand) {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('brands').update(brandData).eq('id', editingBrand.id);
 
         if (error) throw error;
@@ -73,7 +72,6 @@ export default function BrandsManagementPage() {
           description: 'Brand updated successfully',
         });
       } else {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('brands').insert([brandData]);
 
         if (error) throw error;

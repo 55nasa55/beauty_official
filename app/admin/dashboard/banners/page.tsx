@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Plus, Edit2, Trash2, Eye, Copy, Check, X } from 'lucide-react';
 import Image from 'next/image';
 

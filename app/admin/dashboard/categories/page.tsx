@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,7 +53,6 @@ export default function CategoriesManagementPage() {
 
     try {
       if (editingCategory) {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('categories').update(formData).eq('id', editingCategory.id);
 
         if (error) throw error;
@@ -63,7 +62,6 @@ export default function CategoriesManagementPage() {
           description: 'Category updated successfully',
         });
       } else {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('categories').insert([formData]);
 
         if (error) throw error;

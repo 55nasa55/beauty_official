@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BrandCard } from '@/components/BrandCard';

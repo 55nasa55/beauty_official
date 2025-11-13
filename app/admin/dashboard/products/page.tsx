@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -153,7 +153,6 @@ export default function ProductsManagementPage() {
 
     try {
       if (editingProduct) {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('products').update(productData).eq('id', editingProduct.id);
 
         if (error) throw error;
@@ -163,7 +162,6 @@ export default function ProductsManagementPage() {
           description: 'Product updated successfully',
         });
       } else {
-        // @ts-expect-error - Supabase type compatibility
         const { error } = await supabase.from('products').insert([productData]);
 
         if (error) throw error;
