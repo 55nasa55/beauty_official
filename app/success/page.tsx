@@ -38,8 +38,13 @@ type Order = {
 };
 
 type ProductVariant = {
+  id: string;
   images: string[];
   sku: string | null;
+};
+
+type EnrichedOrderItem = OrderItem & {
+  variant?: ProductVariant;
 };
 
 export default function SuccessPage() {
@@ -47,155 +52,111 @@ export default function SuccessPage() {
   const sessionId = searchParams.get('session_id');
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [variantDetails, setVariantDetails] = useState<Record<string, ProductVariant>>({});
+  const [orderItems, setOrderItems] = useState<EnrichedOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState('Loading your order...');
-  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!sessionId) {
-      setError('No session ID provided');
+      setError('No session ID provided. Please check your order confirmation email.');
       setLoading(false);
       return;
     }
 
-    fetchOrderWithRetry();
+    fetchOrder();
   }, [sessionId]);
 
-  const fetchOrderWithRetry = async () => {
+  const fetchOrder = async () => {
     if (!sessionId) return;
-
-    const maxRetries = 5;
-    const baseDelay = 600;
-    const maxTotalTime = 5000;
-    const startTime = Date.now();
-
-    const attemptFetch = async (attempt: number): Promise<boolean> => {
-      try {
-        const elapsed = Date.now() - startTime;
-
-        if (elapsed > maxTotalTime) {
-          console.error('[Success] Timeout: Max wait time exceeded');
-          throw new Error(
-            'We are finalizing your order. Please refresh the page in a moment or contact support at support@goodlooks.com if this persists.'
-          );
-        }
-
-        console.log(`[Success] Fetch attempt ${attempt}/${maxRetries} for session:`, sessionId);
-        setRetryCount(attempt);
-
-        const { data: orderData, error: orderError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('order_number', sessionId)
-          .maybeSingle();
-
-        if (orderError) {
-          console.error('[Success] Error fetching order:', orderError);
-          throw orderError;
-        }
-
-        if (orderData) {
-          console.log('[Success] ✓ Order found (UUID):', (orderData as any).id);
-          console.log('[Success] ✓ Order number:', (orderData as any).order_number);
-
-          setOrder(orderData as any);
-
-          console.log('[Success] Fetching order items using order.id (UUID):', (orderData as any).id);
-
-          const { data: itemsData, error: itemsError } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', (orderData as any).id);
-
-          if (itemsError) {
-            console.error('[Success] ❌ Error fetching order items:', itemsError);
-            throw itemsError;
-          }
-
-          console.log('[Success] ✓ Order items found:', itemsData?.length || 0);
-
-          if (!itemsData || itemsData.length === 0) {
-            console.warn('[Success] ⚠️ No order items found for order:', (orderData as any).id);
-          }
-
-          setOrderItems((itemsData as any) || []);
-
-          if (itemsData && itemsData.length > 0) {
-            console.log('[Success] Fetching variant details for', itemsData.length, 'items');
-            await fetchVariantDetails(itemsData as any);
-          }
-
-          console.log('[Success] ✓ Order load complete');
-          setLoading(false);
-          return true;
-        }
-
-        if (attempt >= maxRetries || elapsed > maxTotalTime) {
-          console.error('[Success] Order not found after retries or timeout');
-          throw new Error(
-            'We are finalizing your order. Please refresh the page in a moment or contact support at support@goodlooks.com if this persists.'
-          );
-        }
-
-        const delay = Math.min(baseDelay * attempt, 1000);
-        console.log(`[Success] Order not found, retrying in ${delay}ms...`);
-        setStatusMessage(`Loading order details... (${attempt}/${maxRetries})`);
-
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return await attemptFetch(attempt + 1);
-      } catch (err: any) {
-        if (attempt >= maxRetries || (Date.now() - startTime) > maxTotalTime) {
-          throw err;
-        }
-
-        const delay = Math.min(baseDelay * attempt, 1000);
-        console.log(`[Success] Error, retrying in ${delay}ms...`, err);
-        setStatusMessage(`Retrying... (${attempt}/${maxRetries})`);
-
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return await attemptFetch(attempt + 1);
-      }
-    };
 
     try {
       setLoading(true);
       setError(null);
-      await attemptFetch(1);
+
+      console.log('[Success] Fetching order for session:', sessionId);
+
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('order_number', sessionId)
+        .maybeSingle();
+
+      if (orderError) {
+        console.error('[Success] Error fetching order:', orderError);
+        throw new Error('Failed to load order. Please try again.');
+      }
+
+      if (!orderData) {
+        console.error('[Success] Order not found for session:', sessionId);
+        throw new Error('Order not found. Your payment was successful, but we couldn\'t load the order details. Please contact support@goodlooks.com with your session ID.');
+      }
+
+      const order = orderData as Order;
+      console.log('[Success] ✓ Order found:', order.id);
+      setOrder(order);
+
+      console.log('[Success] Fetching order items for order:', order.id);
+
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', order.id);
+
+      if (itemsError) {
+        console.error('[Success] Error fetching order items:', itemsError);
+        throw new Error('Failed to load order items.');
+      }
+
+      console.log('[Success] ✓ Order items found:', itemsData?.length || 0);
+
+      if (!itemsData || itemsData.length === 0) {
+        console.warn('[Success] No order items found');
+        setOrderItems([]);
+        setLoading(false);
+        return;
+      }
+
+      const variantIds = itemsData
+        .map((item: any) => item.variant_id)
+        .filter((id): id is string => id !== null);
+
+      if (variantIds.length > 0) {
+        console.log('[Success] Fetching variant details for', variantIds.length, 'variants');
+
+        const { data: variantsData, error: variantsError } = await supabase
+          .from('product_variants')
+          .select('id, images, sku')
+          .in('id', variantIds);
+
+        if (variantsError) {
+          console.error('[Success] Error fetching variants:', variantsError);
+        } else {
+          console.log('[Success] ✓ Variants loaded:', variantsData?.length || 0);
+
+          const variantsMap = new Map<string, ProductVariant>();
+          (variantsData || []).forEach((v: any) => {
+            variantsMap.set(v.id, v);
+          });
+
+          const enrichedItems: EnrichedOrderItem[] = (itemsData as OrderItem[]).map((item) => ({
+            ...item,
+            variant: item.variant_id ? variantsMap.get(item.variant_id) : undefined,
+          }));
+
+          setOrderItems(enrichedItems);
+          console.log('[Success] ✓ Order load complete');
+          setLoading(false);
+          return;
+        }
+      }
+
+      setOrderItems(itemsData as OrderItem[]);
+      console.log('[Success] ✓ Order load complete (no variants)');
+      setLoading(false);
     } catch (err: any) {
       console.error('[Success] Failed to fetch order:', err);
-      setError(err.message || 'Failed to load order details');
+      setError(err.message || 'Failed to load order details. Please try refreshing the page.');
       setLoading(false);
-    }
-  };
-
-  const fetchVariantDetails = async (items: OrderItem[]) => {
-    const variantIds = items
-      .map((item) => item.variant_id)
-      .filter((id): id is string => id !== null);
-
-    if (variantIds.length === 0) return;
-
-    try {
-      const { data: variants, error } = await supabase
-        .from('product_variants')
-        .select('id, images, sku')
-        .in('id', variantIds);
-
-      if (!error && variants) {
-        const detailsMap: Record<string, ProductVariant> = {};
-        variants.forEach((variant: any) => {
-          detailsMap[variant.id] = {
-            images: variant.images || [],
-            sku: variant.sku,
-          };
-        });
-        setVariantDetails(detailsMap);
-      }
-    } catch (err) {
-      console.error('[Success] Error fetching variant details:', err);
     }
   };
 
@@ -216,21 +177,15 @@ export default function SuccessPage() {
     });
   };
 
-  const getItemImage = (item: OrderItem): string => {
-    if (item.variant_id && variantDetails[item.variant_id]) {
-      const images = variantDetails[item.variant_id].images;
-      if (images && images.length > 0) {
-        return images[0];
-      }
+  const getItemImage = (item: EnrichedOrderItem): string => {
+    if (item.variant?.images && item.variant.images.length > 0) {
+      return item.variant.images[0];
     }
     return '/placeholder-product.jpg';
   };
 
-  const getItemSKU = (item: OrderItem): string | null => {
-    if (item.variant_id && variantDetails[item.variant_id]) {
-      return variantDetails[item.variant_id].sku;
-    }
-    return null;
+  const getItemSKU = (item: EnrichedOrderItem): string | null => {
+    return item.variant?.sku || null;
   };
 
   if (loading) {
@@ -240,15 +195,10 @@ export default function SuccessPage() {
           <div className="mb-6">
             <Loader2 className="w-16 h-16 animate-spin mx-auto text-green-600" />
           </div>
-          <h2 className="text-2xl font-semibold mb-3 text-gray-900">{statusMessage}</h2>
-          <p className="text-gray-600 mb-2">
+          <h2 className="text-2xl font-semibold mb-3 text-gray-900">Loading Your Order</h2>
+          <p className="text-gray-600">
             Your payment was successful! Loading your order details...
           </p>
-          {retryCount > 2 && (
-            <p className="text-sm text-gray-500 mt-4">
-              This is taking longer than usual. Please wait a moment...
-            </p>
-          )}
         </div>
       </div>
     );
@@ -268,8 +218,7 @@ export default function SuccessPage() {
               onClick={() => {
                 setLoading(true);
                 setError(null);
-                setRetryCount(0);
-                fetchOrderWithRetry();
+                fetchOrder();
               }}
               className="w-full bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
             >
@@ -306,14 +255,13 @@ export default function SuccessPage() {
   const subtotal = order.total_amount - order.tax_amount;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Success Header */}
           <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-8 sm:px-8 sm:py-10 text-center">
             <CheckCircle2 className="w-16 h-16 text-white mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-white mb-2">Payment Successful!</h1>
-            <p className="text-green-50 text-lg">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Payment Successful!</h1>
+            <p className="text-green-50 text-base sm:text-lg">
               {order.customer_name ? `Thank you, ${order.customer_name}!` : 'Thank you for your purchase!'}
             </p>
             {order.customer_email && (
@@ -323,17 +271,16 @@ export default function SuccessPage() {
             )}
           </div>
 
-          <div className="px-6 py-6 sm:px-8">
-            {/* Order Summary */}
+          <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
             <div className="mb-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-4 border-b gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Order Number</p>
-                  <p className="text-lg font-semibold">{order.order_number.slice(0, 12).toUpperCase()}</p>
+                  <p className="text-base sm:text-lg font-semibold break-all">{order.order_number.slice(0, 16).toUpperCase()}</p>
                 </div>
                 <div className="sm:text-right">
                   <p className="text-sm text-gray-500">Order Date</p>
-                  <p className="text-lg font-semibold">{formatDate(order.created_at)}</p>
+                  <p className="text-base sm:text-lg font-semibold">{formatDate(order.created_at)}</p>
                 </div>
               </div>
 
@@ -353,57 +300,56 @@ export default function SuccessPage() {
               </div>
             </div>
 
-            {/* Order Items */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Package className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-semibold">Order Items</h2>
+                <h2 className="text-lg sm:text-xl font-semibold">Order Items</h2>
               </div>
               <div className="space-y-4">
-                {orderItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-4 py-4 border-b last:border-b-0"
-                  >
-                    {/* Product Image */}
-                    <div className="relative w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                      <Image
-                        src={getItemImage(item)}
-                        alt={item.product_name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                {orderItems.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-4">No items found</p>
+                ) : (
+                  orderItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex gap-3 sm:gap-4 py-4 border-b last:border-b-0"
+                    >
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                        <Image
+                          src={getItemImage(item)}
+                          alt={item.product_name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
 
-                    {/* Product Details */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900">{item.product_name}</h3>
-                      {item.variant_name && (
-                        <p className="text-sm text-gray-500 mt-1">{item.variant_name}</p>
-                      )}
-                      {getItemSKU(item) && (
-                        <p className="text-xs text-gray-400 mt-1">SKU: {getItemSKU(item)}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-2">
-                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatCurrency(item.price, order.currency)} each
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 text-sm sm:text-base">{item.product_name}</h3>
+                        {item.variant_name && (
+                          <p className="text-xs sm:text-sm text-gray-500 mt-1">{item.variant_name}</p>
+                        )}
+                        {getItemSKU(item) && (
+                          <p className="text-xs text-gray-400 mt-1">SKU: {getItemSKU(item)}</p>
+                        )}
+                        <div className="flex items-center gap-3 sm:gap-4 mt-2">
+                          <p className="text-xs sm:text-sm text-gray-600">Qty: {item.quantity}</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-900">
+                            {formatCurrency(item.price, order.currency)} each
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                          {formatCurrency(item.price * item.quantity, order.currency)}
                         </p>
                       </div>
                     </div>
-
-                    {/* Item Total */}
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">
-                        {formatCurrency(item.price * item.quantity, order.currency)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Order Totals */}
             <div className="mb-8">
               <div className="space-y-2 py-4 border-t border-b">
                 <div className="flex justify-between text-sm">
@@ -414,67 +360,63 @@ export default function SuccessPage() {
                   <span className="text-gray-600">Tax</span>
                   <span className="font-medium">{formatCurrency(order.tax_amount, order.currency)}</span>
                 </div>
-                <div className="flex justify-between text-lg font-bold pt-2">
+                <div className="flex justify-between text-base sm:text-lg font-bold pt-2">
                   <span>Total</span>
                   <span>{formatCurrency(order.total_amount, order.currency)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Addresses and Tracking */}
             <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Shipping Address */}
               {order.shipping_address && (
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <MapPin className="w-5 h-5 text-gray-600" />
-                    <h2 className="text-xl font-semibold">Shipping Address</h2>
+                    <h2 className="text-lg sm:text-xl font-semibold">Shipping Address</h2>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     {order.shipping_address.name && (
-                      <p className="font-medium mb-1">{order.shipping_address.name}</p>
+                      <p className="font-medium mb-1 text-sm sm:text-base">{order.shipping_address.name}</p>
                     )}
-                    <p className="text-gray-600">{order.shipping_address.line1}</p>
+                    <p className="text-gray-600 text-sm">{order.shipping_address.line1}</p>
                     {order.shipping_address.line2 && (
-                      <p className="text-gray-600">{order.shipping_address.line2}</p>
+                      <p className="text-gray-600 text-sm">{order.shipping_address.line2}</p>
                     )}
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 text-sm">
                       {order.shipping_address.city}, {order.shipping_address.state}{' '}
                       {order.shipping_address.postal_code}
                     </p>
-                    <p className="text-gray-600">{order.shipping_address.country}</p>
+                    <p className="text-gray-600 text-sm">{order.shipping_address.country}</p>
                   </div>
                 </div>
               )}
 
-              {/* Billing Address */}
               {order.billing_address && (
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <CreditCard className="w-5 h-5 text-gray-600" />
-                    <h2 className="text-xl font-semibold">Billing Address</h2>
+                    <h2 className="text-lg sm:text-xl font-semibold">Billing Address</h2>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-600">{order.billing_address.line1}</p>
+                    <p className="text-gray-600 text-sm">{order.billing_address.line1}</p>
                     {order.billing_address.line2 && (
-                      <p className="text-gray-600">{order.billing_address.line2}</p>
+                      <p className="text-gray-600 text-sm">{order.billing_address.line2}</p>
                     )}
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 text-sm">
                       {order.billing_address.city}, {order.billing_address.state}{' '}
                       {order.billing_address.postal_code}
                     </p>
-                    <p className="text-gray-600">{order.billing_address.country}</p>
+                    <p className="text-gray-600 text-sm">{order.billing_address.country}</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Tracking Number */}
             {order.tracking_number && (
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <Truck className="w-5 h-5 text-gray-600" />
-                  <h2 className="text-xl font-semibold">Tracking Information</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold">Tracking Information</h2>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-800">
@@ -484,27 +426,25 @@ export default function SuccessPage() {
               </div>
             )}
 
-            {/* Payment Information */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Receipt className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-semibold">Payment Information</h2>
+                <h2 className="text-lg sm:text-xl font-semibold">Payment Information</h2>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Payment Method</span>
-                  <span className="font-medium">Credit Card (Stripe)</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-1">
+                  <span className="text-gray-600 text-sm">Payment Method</span>
+                  <span className="font-medium text-sm">Credit Card (Stripe)</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Transaction ID</span>
-                  <span className="text-sm text-gray-500 font-mono">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <span className="text-gray-600 text-sm">Transaction ID</span>
+                  <span className="text-xs sm:text-sm text-gray-500 font-mono break-all">
                     {order.stripe_session_id.slice(-12).toUpperCase()}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Next Steps */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-800">
                 <strong>What's next?</strong> Your order is being prepared for shipment. You'll
@@ -513,7 +453,6 @@ export default function SuccessPage() {
               </p>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 href="/"
