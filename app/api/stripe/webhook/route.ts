@@ -156,7 +156,6 @@ export async function POST(req: NextRequest) {
       customer_name: customerName,
       shipping_address: shippingAddress,
       billing_address: billingAddress,
-      items: [],
       tax_details: fullSession.total_details?.breakdown || null,
     };
 
@@ -199,13 +198,15 @@ export async function POST(req: NextRequest) {
       const productName = product?.name || 'Unknown Product';
       const variantName = item.description || null;
       const quantity = item.quantity || 1;
-      const price = (item.amount_total || 0) / 100;
+      const itemTotal = (item.amount_total || 0) / 100;
+      const unitPrice = quantity > 0 ? itemTotal / quantity : 0;
 
       console.log(`[Webhook] Item ${index + 1}:`, {
         product_name: productName,
         variant_name: variantName,
         quantity: quantity,
-        price: price,
+        unit_price: unitPrice,
+        item_total: itemTotal,
         product_id: productId || 'null',
         variant_id: variantId || 'null',
       });
@@ -217,11 +218,18 @@ export async function POST(req: NextRequest) {
         product_name: productName,
         variant_name: variantName,
         quantity: quantity,
-        price: price,
+        price: unitPrice,
       };
     });
 
     console.log('[Webhook] Total order items to insert:', orderItems.length);
+
+    if (orderItems.length === 0) {
+      console.error('[Webhook] ❌ No order items to insert! This should not happen.');
+      throw new Error('No order items prepared for insertion');
+    }
+
+    console.log('[Webhook] Order items to insert:', JSON.stringify(orderItems, null, 2));
 
     console.log('[Webhook] Step 8: Insert order items into database');
     const { data: insertedItems, error: itemsError } = await supabase
@@ -234,12 +242,20 @@ export async function POST(req: NextRequest) {
       console.error('[Webhook] Error code:', itemsError.code);
       console.error('[Webhook] Error message:', itemsError.message);
       console.error('[Webhook] Error details:', itemsError.details);
+      console.error('[Webhook] Error hint:', itemsError.hint);
+      console.error('[Webhook] Order items that failed:', JSON.stringify(orderItems, null, 2));
       console.error('[Webhook] ⚠️  Order was created but items failed - orphaned order:', order.id);
       throw new Error(`Failed to insert order items: ${itemsError.message}`);
     }
 
+    if (!insertedItems || insertedItems.length === 0) {
+      console.error('[Webhook] ⚠️  Order items insert succeeded but no items returned');
+      console.warn('[Webhook] This might indicate RLS policy issues');
+    }
+
     console.log('[Webhook] ✓ Order items created successfully');
     console.log('[Webhook] Items inserted:', insertedItems?.length || 0);
+    console.log('[Webhook] Inserted item IDs:', insertedItems?.map(i => i.id).join(', ') || 'none');
 
     console.log('[Webhook] ========== ORDER CREATION COMPLETE ==========');
     console.log('[Webhook] Summary:');
