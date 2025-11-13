@@ -67,15 +67,25 @@ export default function SuccessPage() {
   const fetchOrderWithRetry = async () => {
     if (!sessionId) return;
 
-    const maxRetries = 8;
-    const baseDelay = 500;
+    const maxRetries = 5;
+    const baseDelay = 600;
+    const maxTotalTime = 5000;
+    const startTime = Date.now();
 
     const attemptFetch = async (attempt: number): Promise<boolean> => {
       try {
+        const elapsed = Date.now() - startTime;
+
+        if (elapsed > maxTotalTime) {
+          console.error('[Success] Timeout: Max wait time exceeded');
+          throw new Error(
+            'We are finalizing your order. Please refresh the page in a moment or contact support at support@goodlooks.com if this persists.'
+          );
+        }
+
         console.log(`[Success] Fetch attempt ${attempt}/${maxRetries} for session:`, sessionId);
         setRetryCount(attempt);
 
-        // Fetch order by order_number
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select('*')
@@ -88,52 +98,49 @@ export default function SuccessPage() {
         }
 
         if (orderData) {
-          console.log('[Success] Order found:', (orderData as any).order_number);
+          console.log('[Success] ✓ Order found:', (orderData as any).order_number);
           setOrder(orderData as any);
 
-          // Fetch order items
           const { data: itemsData, error: itemsError } = await supabase
             .from('order_items')
             .select('*')
             .eq('order_id', (orderData as any).id);
 
           if (itemsError) {
-            console.error('[Success] Error fetching order items:', itemsError);
-          } else {
-            console.log('[Success] Order items found:', itemsData?.length || 0);
-            setOrderItems((itemsData as any) || []);
+            console.error('[Success] ❌ Error fetching order items:', itemsError);
+            throw itemsError;
+          }
 
-            // Fetch variant details for images and SKU
-            if (itemsData && itemsData.length > 0) {
-              await fetchVariantDetails(itemsData as any);
-            }
+          console.log('[Success] ✓ Order items found:', itemsData?.length || 0);
+          setOrderItems((itemsData as any) || []);
+
+          if (itemsData && itemsData.length > 0) {
+            await fetchVariantDetails(itemsData as any);
           }
 
           setLoading(false);
           return true;
         }
 
-        // Order not found yet
-        if (attempt >= maxRetries) {
-          console.error('[Success] Order not found after max retries');
+        if (attempt >= maxRetries || elapsed > maxTotalTime) {
+          console.error('[Success] Order not found after retries or timeout');
           throw new Error(
-            'Your order is still being processed. Please check your email for confirmation or contact support if you need assistance.'
+            'We are finalizing your order. Please refresh the page in a moment or contact support at support@goodlooks.com if this persists.'
           );
         }
 
-        // Calculate exponential backoff
-        const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
+        const delay = Math.min(baseDelay * attempt, 1000);
         console.log(`[Success] Order not found, retrying in ${delay}ms...`);
-        setStatusMessage(`Waiting for order to sync... (${attempt}/${maxRetries})`);
+        setStatusMessage(`Loading order details... (${attempt}/${maxRetries})`);
 
         await new Promise((resolve) => setTimeout(resolve, delay));
         return await attemptFetch(attempt + 1);
       } catch (err: any) {
-        if (attempt >= maxRetries) {
+        if (attempt >= maxRetries || (Date.now() - startTime) > maxTotalTime) {
           throw err;
         }
 
-        const delay = Math.min(baseDelay * Math.pow(1.5, attempt - 1), 5000);
+        const delay = Math.min(baseDelay * attempt, 1000);
         console.log(`[Success] Error, retrying in ${delay}ms...`, err);
         setStatusMessage(`Retrying... (${attempt}/${maxRetries})`);
 
@@ -219,16 +226,18 @@ export default function SuccessPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-4">
-          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-6 text-gray-600" />
+          <div className="mb-6">
+            <Loader2 className="w-16 h-16 animate-spin mx-auto text-green-600" />
+          </div>
           <h2 className="text-2xl font-semibold mb-3 text-gray-900">{statusMessage}</h2>
-          {retryCount > 0 && (
-            <p className="text-gray-600 mb-2">
-              This usually takes just a few seconds. Please don't close this page.
+          <p className="text-gray-600 mb-2">
+            Your payment was successful! Loading your order details...
+          </p>
+          {retryCount > 2 && (
+            <p className="text-sm text-gray-500 mt-4">
+              This is taking longer than usual. Please wait a moment...
             </p>
           )}
-          <p className="text-sm text-gray-500">
-            Processing your payment and creating your order...
-          </p>
         </div>
       </div>
     );
