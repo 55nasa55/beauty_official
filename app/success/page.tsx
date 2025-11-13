@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { CheckCircle2, Package, MapPin, CreditCard, Loader2, Receipt, Truck } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
