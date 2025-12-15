@@ -47,6 +47,21 @@ interface Brand {
   name: string;
 }
 
+interface CategoryFacet {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+}
+
+interface FacetOption {
+  id: string;
+  facet_id: string;
+  label: string;
+  value: string;
+  sort_order: number;
+}
+
 export default function ProductsManagementPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -60,6 +75,9 @@ export default function ProductsManagementPage() {
   const [isVariantDialogOpen, setIsVariantDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFacets, setCategoryFacets] = useState<CategoryFacet[]>([]);
+  const [facetOptions, setFacetOptions] = useState<Record<string, FacetOption[]>>({});
+  const [selectedFacetOptions, setSelectedFacetOptions] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -86,6 +104,15 @@ export default function ProductsManagementPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (formData.category_id && isDialogOpen) {
+      fetchFacetsForCategory(formData.category_id);
+      if (!editingProduct) {
+        setSelectedFacetOptions(new Set());
+      }
+    }
+  }, [formData.category_id, isDialogOpen]);
 
   async function fetchData() {
     const [productsResult, categoriesResult, brandsResult] = await Promise.all([
@@ -152,19 +179,29 @@ export default function ProductsManagementPage() {
     };
 
     try {
+      let productId: string;
+
       if (editingProduct) {
         const { error } = await supabase.from('products').update(productData).eq('id', editingProduct.id);
 
         if (error) throw error;
+
+        productId = editingProduct.id;
+
+        await saveFacetOptions(productId);
 
         toast({
           title: 'Success',
           description: 'Product updated successfully',
         });
       } else {
-        const { error } = await supabase.from('products').insert([productData]);
+        const { data, error } = await supabase.from('products').insert([productData]).select().single();
 
         if (error) throw error;
+
+        productId = data.id;
+
+        await saveFacetOptions(productId);
 
         toast({
           title: 'Success',
@@ -275,7 +312,7 @@ export default function ProductsManagementPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = async (product: Product) => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
@@ -288,6 +325,12 @@ export default function ProductsManagementPage() {
       is_best_seller: product.is_best_seller,
       is_new: product.is_new,
     });
+
+    if (product.category_id) {
+      await fetchFacetsForCategory(product.category_id);
+      await loadProductFacetOptions(product.id);
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -388,6 +431,9 @@ export default function ProductsManagementPage() {
       is_new: false,
     });
     setEditingProduct(null);
+    setCategoryFacets([]);
+    setFacetOptions({});
+    setSelectedFacetOptions(new Set());
   };
 
   const resetVariantForm = () => {
@@ -401,6 +447,104 @@ export default function ProductsManagementPage() {
     });
     setEditingVariant(null);
     setSelectedProductId(null);
+  };
+
+  const fetchFacetsForCategory = async (categoryId: string) => {
+    if (!categoryId) {
+      setCategoryFacets([]);
+      setFacetOptions({});
+      return;
+    }
+
+    try {
+      const { data: facetsData, error: facetsError } = await supabase
+        .from('category_facets')
+        .select('*')
+        .eq('category_id', categoryId)
+        .order('sort_order');
+
+      if (facetsError) throw facetsError;
+
+      setCategoryFacets(facetsData || []);
+
+      if (facetsData && facetsData.length > 0) {
+        const facetIds = facetsData.map(f => f.id);
+        const { data: optionsData, error: optionsError } = await supabase
+          .from('facet_options')
+          .select('*')
+          .in('facet_id', facetIds)
+          .order('sort_order');
+
+        if (optionsError) throw optionsError;
+
+        const optionsByFacet: Record<string, FacetOption[]> = {};
+        (optionsData || []).forEach((option) => {
+          if (!optionsByFacet[option.facet_id]) {
+            optionsByFacet[option.facet_id] = [];
+          }
+          optionsByFacet[option.facet_id].push(option);
+        });
+
+        setFacetOptions(optionsByFacet);
+      } else {
+        setFacetOptions({});
+      }
+    } catch (error: any) {
+      console.error('Error fetching facets:', error);
+    }
+  };
+
+  const loadProductFacetOptions = async (productId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('product_facet_options')
+        .select('facet_option_id')
+        .eq('product_id', productId);
+
+      if (error) throw error;
+
+      const optionIds = new Set((data || []).map(item => item.facet_option_id));
+      setSelectedFacetOptions(optionIds);
+    } catch (error: any) {
+      console.error('Error loading product facet options:', error);
+    }
+  };
+
+  const saveFacetOptions = async (productId: string) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('product_facet_options')
+        .delete()
+        .eq('product_id', productId);
+
+      if (deleteError) throw deleteError;
+
+      if (selectedFacetOptions.size > 0) {
+        const insertData = Array.from(selectedFacetOptions).map(optionId => ({
+          product_id: productId,
+          facet_option_id: optionId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('product_facet_options')
+          .insert(insertData);
+
+        if (insertError) throw insertError;
+      }
+    } catch (error: any) {
+      console.error('Error saving facet options:', error);
+      throw error;
+    }
+  };
+
+  const toggleFacetOption = (optionId: string) => {
+    const newSelected = new Set(selectedFacetOptions);
+    if (newSelected.has(optionId)) {
+      newSelected.delete(optionId);
+    } else {
+      newSelected.add(optionId);
+    }
+    setSelectedFacetOptions(newSelected);
   };
 
   const getFilteredProducts = () => {
@@ -550,6 +694,35 @@ export default function ProductsManagementPage() {
                   placeholder="featured, sale, new"
                 />
               </div>
+
+              {categoryFacets.length > 0 && (
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <Label className="text-base font-semibold">Product Attributes</Label>
+                  {categoryFacets.map((facet) => (
+                    <div key={facet.id} className="space-y-2">
+                      <Label className="text-sm font-medium">{facet.name}</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(facetOptions[facet.id] || []).map((option) => (
+                          <label key={option.id} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={selectedFacetOptions.has(option.id)}
+                              onChange={() => toggleFacetOption(option.id)}
+                              className="rounded"
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {(facetOptions[facet.id] || []).length === 0 && (
+                        <p className="text-xs text-muted-foreground italic">
+                          No options available. Add options in the category facets settings.
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="space-y-3">
                 <label className="flex items-center gap-2">
