@@ -36,11 +36,11 @@ export function ProductCard({ product }: ProductCardProps) {
 
       <div className="space-y-1">
         {product.brand && (
-          <p className="text-xs text-gray-500 uppercase tracking-wide">
+          <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
             {product.brand.name}
           </p>
         )}
-        <h3 className="text-sm font-medium line-clamp-2 group-hover:text-gray-600 transition-colors">
+        <h3 className="text-sm font-normal line-clamp-2 group-hover:text-gray-600 transition-colors">
           {product.name}
         </h3>
         <div className="flex items-center gap-2">
