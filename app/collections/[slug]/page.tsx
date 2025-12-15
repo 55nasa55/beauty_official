@@ -10,7 +10,7 @@ import { Category, Brand, Collection } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Plus, Minus } from 'lucide-react';
 
 interface Facet {
   id: string;
@@ -23,6 +23,7 @@ interface FacetOption {
   id: string;
   label: string;
   value: string;
+  count: number;
 }
 
 interface Product {
@@ -49,6 +50,7 @@ export default function CollectionsPage() {
   const [facets, setFacets] = useState<Facet[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set());
+  const [openFacets, setOpenFacets] = useState<Record<string, boolean>>({});
   const [offset, setOffset] = useState(0);
   const [limit] = useState(24);
   const [total, setTotal] = useState(0);
@@ -130,14 +132,32 @@ export default function CollectionsPage() {
     }
   }, [pageType, matchedCategory, selectedOptionIds]);
 
+  useEffect(() => {
+    if (pageType === 'category') {
+      fetchFacets();
+    }
+  }, [pageType, selectedOptionIds]);
+
   const fetchFacets = async () => {
     try {
-      const response = await fetch(
-        `/api/storefront/category/facets?categorySlug=${slug}`
-      );
+      const optionIdsParam = Array.from(selectedOptionIds).join(',');
+      const url = `/api/storefront/category/facets?categorySlug=${slug}${
+        optionIdsParam ? `&selectedOptionIds=${optionIdsParam}` : ''
+      }`;
+
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch facets');
       const data = await response.json();
-      setFacets(data.facets || []);
+      const fetchedFacets = data.facets || [];
+      setFacets(fetchedFacets);
+
+      if (Object.keys(openFacets).length === 0 && fetchedFacets.length > 0) {
+        const initialOpenState: Record<string, boolean> = {};
+        fetchedFacets.forEach((facet: Facet, index: number) => {
+          initialOpenState[facet.id] = index < 2;
+        });
+        setOpenFacets(initialOpenState);
+      }
     } catch (error) {
       console.error('Error fetching facets:', error);
     }
@@ -289,6 +309,13 @@ export default function CollectionsPage() {
     router.push(`/collections/${slug}`, { scroll: false });
   };
 
+  const toggleFacet = (facetId: string) => {
+    setOpenFacets(prev => ({
+      ...prev,
+      [facetId]: !prev[facetId],
+    }));
+  };
+
   const hasActiveFilters = selectedOptionIds.size > 0;
 
   if (loading) {
@@ -312,11 +339,11 @@ export default function CollectionsPage() {
             )}
           </div>
 
-          <div className="flex gap-8">
+          <div className="flex gap-6">
             {pageType === 'category' && facets.length > 0 && (
               <aside className="w-72 shrink-0">
                 <div className="sticky top-4">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold">Filters</h2>
                     {hasActiveFilters && (
                       <Button
@@ -331,26 +358,59 @@ export default function CollectionsPage() {
                     )}
                   </div>
 
-                  <div className="space-y-6">
-                    {facets.map((facet) => (
-                      <div key={facet.id} className="space-y-3">
-                        <h3 className="font-medium text-sm">{facet.name}</h3>
-                        <div className="space-y-2">
-                          {facet.options.map((option) => (
-                            <div key={option.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={option.id}
-                                checked={selectedOptionIds.has(option.id)}
-                                onCheckedChange={() => toggleOption(option.id)}
-                              />
-                              <Label
-                                htmlFor={option.id}
-                                className="text-sm font-normal cursor-pointer"
-                              >
-                                {option.label}
-                              </Label>
+                  <div className="space-y-0">
+                    {facets.map((facet, index) => (
+                      <div key={facet.id}>
+                        {index > 0 && (
+                          <div className="border-b border-gray-200/70 my-4" />
+                        )}
+                        <div className="py-4">
+                          <div
+                            className="flex items-center justify-between cursor-pointer mb-3"
+                            onClick={() => toggleFacet(facet.id)}
+                          >
+                            <h3 className="text-base font-semibold tracking-wide">
+                              {facet.name}
+                            </h3>
+                            {openFacets[facet.id] ? (
+                              <Minus className="w-4 h-4 text-gray-500" />
+                            ) : (
+                              <Plus className="w-4 h-4 text-gray-500" />
+                            )}
+                          </div>
+
+                          {openFacets[facet.id] && (
+                            <div className="space-y-2">
+                              {facet.options.map((option) => (
+                                <div
+                                  key={option.id}
+                                  className="flex items-center justify-between"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={option.id}
+                                      checked={selectedOptionIds.has(option.id)}
+                                      onCheckedChange={() => toggleOption(option.id)}
+                                      disabled={option.count === 0}
+                                    />
+                                    <Label
+                                      htmlFor={option.id}
+                                      className={`text-sm font-normal cursor-pointer ${
+                                        option.count === 0
+                                          ? 'text-gray-400'
+                                          : ''
+                                      }`}
+                                    >
+                                      {option.label}
+                                    </Label>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {option.count}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     ))}
@@ -359,7 +419,7 @@ export default function CollectionsPage() {
               </aside>
             )}
 
-            <div className="flex-1">
+            <div className="flex-1 max-w-5xl mx-auto">
               {pageType === 'category' && (
                 <div className="mb-6">
                   <p className="text-sm text-gray-600">
