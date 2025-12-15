@@ -33,21 +33,36 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const autoplayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userInteractedRef = useRef(false);
 
-  const [currentIndex, setCurrentIndex] = useState(1);
+  const [realIndex, setRealIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
   if (banners.length === 0) return null;
 
-  const totalBanners = banners.length;
-  const allSlides = totalBanners > 1 ? [banners[totalBanners - 1], ...banners, banners[0]] : banners;
+  const total = banners.length;
+  const wrap = (i: number) => ((i % total) + total) % total;
 
-  const scrollToIndex = (index: number, smooth = true) => {
+  const allSlides = total > 1 ? [banners[total - 1], ...banners, banners[0]] : banners;
+
+  const renderIndexToReal = (renderIdx: number) => {
+    if (total === 1) return 0;
+    if (renderIdx === 0) return total - 1;
+    if (renderIdx === total + 1) return 0;
+    return renderIdx - 1;
+  };
+
+  const realToRenderIndex = (realIdx: number) => {
+    if (total === 1) return 0;
+    return realIdx + 1;
+  };
+
+  const scrollToRenderIndex = (renderIdx: number, smooth = true) => {
     if (!scrollContainerRef.current) return;
 
     const container = scrollContainerRef.current;
     const slideWidth = container.scrollWidth / allSlides.length;
-    const targetScroll = slideWidth * index;
+    const targetScroll = slideWidth * renderIdx;
 
     container.scrollTo({
       left: targetScroll,
@@ -66,42 +81,41 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   };
 
   const goToNext = () => {
-    if (!scrollContainerRef.current) return;
-    setCurrentIndex((prev) => prev + 1);
-    scrollToIndex(currentIndex + 1, true);
+    if (total === 1) return;
+    const nextReal = wrap(realIndex + 1);
+    setRealIndex(nextReal);
+    scrollToRenderIndex(realToRenderIndex(nextReal), true);
   };
 
   const goToPrevious = () => {
-    if (!scrollContainerRef.current) return;
-    setCurrentIndex((prev) => prev - 1);
-    scrollToIndex(currentIndex - 1, true);
+    if (total === 1) return;
+    const prevReal = wrap(realIndex - 1);
+    setRealIndex(prevReal);
+    scrollToRenderIndex(realToRenderIndex(prevReal), true);
   };
 
   const togglePlayPause = () => {
     setIsPlaying((prev) => !prev);
   };
 
-  const getRealIndex = (index: number) => {
-    if (totalBanners === 1) return 1;
-    if (index === 0) return totalBanners;
-    if (index === allSlides.length - 1) return 1;
-    return index;
-  };
-
   useEffect(() => {
-    if (totalBanners <= 1) return;
+    if (total <= 1) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    scrollToIndex(1, false);
+    scrollToRenderIndex(1, false);
   }, []);
 
   useEffect(() => {
-    if (totalBanners <= 1 || !isPlaying) return;
+    if (total <= 1 || !isPlaying) return;
+
+    if (autoplayIntervalRef.current) {
+      clearInterval(autoplayIntervalRef.current);
+    }
 
     autoplayIntervalRef.current = setInterval(() => {
-      if (!isScrollingRef.current) {
+      if (!isScrollingRef.current && !userInteractedRef.current) {
         goToNext();
       }
     }, 5000);
@@ -111,10 +125,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         clearInterval(autoplayIntervalRef.current);
       }
     };
-  }, [isPlaying, currentIndex, totalBanners]);
+  }, [isPlaying, realIndex, total]);
 
   useEffect(() => {
-    if (totalBanners <= 1) return;
+    if (total <= 1) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -131,22 +145,22 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
         const slideWidth = container.scrollWidth / allSlides.length;
         const scrollPosition = container.scrollLeft;
-        const newIndex = Math.round(scrollPosition / slideWidth);
+        const renderIdx = Math.round(scrollPosition / slideWidth);
 
-        if (newIndex !== currentIndex) {
-          setCurrentIndex(newIndex);
+        const newRealIndex = renderIndexToReal(renderIdx);
 
-          if (newIndex === 0) {
-            setTimeout(() => {
-              scrollToIndex(totalBanners, false);
-              setCurrentIndex(totalBanners);
-            }, 50);
-          } else if (newIndex === allSlides.length - 1) {
-            setTimeout(() => {
-              scrollToIndex(1, false);
-              setCurrentIndex(1);
-            }, 50);
-          }
+        if (newRealIndex !== realIndex) {
+          setRealIndex(newRealIndex);
+        }
+
+        if (renderIdx === 0) {
+          setTimeout(() => {
+            scrollToRenderIndex(total, false);
+          }, 50);
+        } else if (renderIdx === total + 1) {
+          setTimeout(() => {
+            scrollToRenderIndex(1, false);
+          }, 50);
         }
       }, 150);
     };
@@ -159,47 +173,33 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [currentIndex, totalBanners, allSlides.length]);
+  }, [realIndex, total, allSlides.length]);
 
   useEffect(() => {
-    if (totalBanners <= 1) return;
+    if (total <= 1) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const handleUserScroll = () => {
+    const handleUserInteraction = () => {
+      userInteractedRef.current = true;
       setIsPlaying(false);
     };
 
-    let isUserScrolling = false;
-    let scrollTimeout: NodeJS.Timeout;
+    const handleWheel = () => handleUserInteraction();
+    const handleTouchStart = () => handleUserInteraction();
+    const handleMouseDown = () => handleUserInteraction();
 
-    const detectUserScroll = () => {
-      if (!isScrollingRef.current) return;
-
-      if (!isUserScrolling) {
-        isUserScrolling = true;
-        handleUserScroll();
-      }
-
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        isUserScrolling = false;
-      }, 200);
-    };
-
-    container.addEventListener('scroll', detectUserScroll, { passive: true });
-    container.addEventListener('touchstart', () => {
-      isUserScrolling = true;
-    }, { passive: true });
+    container.addEventListener('wheel', handleWheel, { passive: true });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('mousedown', handleMouseDown, { passive: true });
 
     return () => {
-      container.removeEventListener('scroll', detectUserScroll);
-      clearTimeout(scrollTimeout);
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('mousedown', handleMouseDown);
     };
-  }, [totalBanners]);
-
-  const displayIndex = getRealIndex(currentIndex);
+  }, [total]);
 
   return (
     <div className="relative">
@@ -251,44 +251,40 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         aria-hidden="true"
       />
 
-      {totalBanners > 1 && (
-        <>
+      {total > 1 && (
+        <div className="w-[80vw] max-w-[1200px] mx-auto mt-4 flex items-center justify-center gap-4">
           <button
             onClick={goToPrevious}
-            className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 md:p-3 rounded-full transition-all opacity-0 md:group-hover:opacity-100 md:hover:scale-110 z-20 shadow-lg"
-            style={{ opacity: 1 }}
+            className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label="Previous banner"
           >
-            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-800" />
+            <ChevronLeft className="w-4 h-4 text-gray-800" />
           </button>
+
+          <button
+            onClick={togglePlayPause}
+            className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
+            aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
+          >
+            {isPlaying ? (
+              <Pause className="w-3.5 h-3.5 text-gray-800" />
+            ) : (
+              <Play className="w-3.5 h-3.5 text-gray-800" />
+            )}
+          </button>
+
+          <div className="text-gray-600 text-sm font-light">
+            {realIndex + 1} / {total}
+          </div>
 
           <button
             onClick={goToNext}
-            className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 md:p-3 rounded-full transition-all opacity-0 md:group-hover:opacity-100 md:hover:scale-110 z-20 shadow-lg"
-            style={{ opacity: 1 }}
+            className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label="Next banner"
           >
-            <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-gray-800" />
+            <ChevronRight className="w-4 h-4 text-gray-800" />
           </button>
-
-          <div className="absolute bottom-6 md:bottom-8 right-6 md:right-8 flex items-center gap-3 z-20">
-            <div className="text-white/80 text-sm font-light bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
-              {displayIndex} / {totalBanners}
-            </div>
-
-            <button
-              onClick={togglePlayPause}
-              className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-lg"
-              aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
-            >
-              {isPlaying ? (
-                <Pause className="w-4 h-4 text-gray-800" />
-              ) : (
-                <Play className="w-4 h-4 text-gray-800" />
-              )}
-            </button>
-          </div>
-        </>
+        </div>
       )}
 
       <style jsx>{`
