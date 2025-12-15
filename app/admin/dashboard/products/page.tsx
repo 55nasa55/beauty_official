@@ -724,38 +724,6 @@ export default function ProductsManagementPage() {
                 </div>
               )}
 
-              <div className="space-y-3">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_featured}
-                    onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                    className="rounded"
-                  />
-                  <span className="text-sm">Featured Product</span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_best_seller}
-                    onChange={(e) => setFormData({ ...formData, is_best_seller: e.target.checked })}
-                    className="rounded"
-                  />
-                  <span className="text-sm">Best Seller</span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_new}
-                    onChange={(e) => setFormData({ ...formData, is_new: e.target.checked })}
-                    className="rounded"
-                  />
-                  <span className="text-sm">New Arrival</span>
-                </label>
-              </div>
-
               <div className="flex gap-2 pt-4">
                 <Button type="submit" className="flex-1">
                   {editingProduct ? 'Update Product' : 'Create Product'}
@@ -935,23 +903,6 @@ export default function ProductsManagementPage() {
                     <div className="flex-1">
                       <h3 className="font-medium">{product.name}</h3>
                       <p className="text-sm text-gray-500">{product.slug}</p>
-                      <div className="flex gap-2 mt-2">
-                        {product.is_featured && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            Featured
-                          </span>
-                        )}
-                        {product.is_best_seller && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                            Best Seller
-                          </span>
-                        )}
-                        {product.is_new && (
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                            New
-                          </span>
-                        )}
-                      </div>
                     </div>
                     <div className="flex gap-2 items-center">
                       <Button

@@ -56,20 +56,24 @@ async function getHomePageData() {
       }
     });
 
-    const tagCarousels = Array.from(allTags).map((tag) => {
-      const tagProducts = allProducts.filter(
-        (p) => p && p.tags && Array.isArray(p.tags) && p.tags.includes(tag)
-      );
-      return {
-        tag,
-        slug: tag.toLowerCase().replace(/_/g, '-'),
-        title: tag
-          .split('_')
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' '),
-        products: tagProducts,
-      };
-    });
+    const excludedTags = new Set(['featured', 'new', 'best_seller']);
+
+    const tagCarousels = Array.from(allTags)
+      .filter((tag) => !excludedTags.has(tag.toLowerCase()))
+      .map((tag) => {
+        const tagProducts = allProducts.filter(
+          (p) => p && p.tags && Array.isArray(p.tags) && p.tags.includes(tag)
+        );
+        return {
+          tag,
+          slug: tag.toLowerCase().replace(/_/g, '-'),
+          title: tag
+            .split('_')
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' '),
+          products: tagProducts,
+        };
+      });
 
     const collectionProducts = await Promise.all(
       collections.map(async (collection) => {
