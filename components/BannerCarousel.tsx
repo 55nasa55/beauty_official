@@ -35,15 +35,14 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userInteractedRef = useRef(false);
 
-  const [realIndex, setRealIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-
   if (banners.length === 0) return null;
 
   const total = banners.length;
-  const wrap = (i: number) => ((i % total) + total) % total;
-
   const allSlides = total > 1 ? [banners[total - 1], ...banners, banners[0]] : banners;
+
+  const [renderIndex, setRenderIndex] = useState(total > 1 ? 1 : 0);
+  const [realIndex, setRealIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const renderIndexToReal = (renderIdx: number) => {
     if (total === 1) return 0;
@@ -52,20 +51,15 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     return renderIdx - 1;
   };
 
-  const realToRenderIndex = (realIdx: number) => {
-    if (total === 1) return 0;
-    return realIdx + 1;
-  };
-
   const scrollToRenderIndex = (renderIdx: number, smooth = true) => {
     if (!scrollContainerRef.current) return;
 
     const container = scrollContainerRef.current;
-    const slideWidth = container.scrollWidth / allSlides.length;
-    const targetScroll = slideWidth * renderIdx;
+    const slideEl = container.children.item(renderIdx) as HTMLElement;
+    if (!slideEl) return;
 
     container.scrollTo({
-      left: targetScroll,
+      left: slideEl.offsetLeft,
       behavior: smooth ? 'smooth' : 'auto',
     });
   };
@@ -82,16 +76,18 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
   const goToNext = () => {
     if (total === 1) return;
-    const nextReal = wrap(realIndex + 1);
-    setRealIndex(nextReal);
-    scrollToRenderIndex(realToRenderIndex(nextReal), true);
+    const target = renderIndex + 1;
+    setRenderIndex(target);
+    setRealIndex(renderIndexToReal(target));
+    scrollToRenderIndex(target, true);
   };
 
   const goToPrevious = () => {
     if (total === 1) return;
-    const prevReal = wrap(realIndex - 1);
-    setRealIndex(prevReal);
-    scrollToRenderIndex(realToRenderIndex(prevReal), true);
+    const target = renderIndex - 1;
+    setRenderIndex(target);
+    setRealIndex(renderIndexToReal(target));
+    scrollToRenderIndex(target, true);
   };
 
   const togglePlayPause = () => {
@@ -105,6 +101,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     if (!container) return;
 
     scrollToRenderIndex(1, false);
+    setRenderIndex(1);
+    setRealIndex(0);
   }, []);
 
   useEffect(() => {
@@ -125,7 +123,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         clearInterval(autoplayIntervalRef.current);
       }
     };
-  }, [isPlaying, realIndex, total]);
+  }, [isPlaying, total]);
 
   useEffect(() => {
     if (total <= 1) return;
@@ -143,24 +141,39 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       scrollTimeoutRef.current = setTimeout(() => {
         isScrollingRef.current = false;
 
-        const slideWidth = container.scrollWidth / allSlides.length;
-        const scrollPosition = container.scrollLeft;
-        const renderIdx = Math.round(scrollPosition / slideWidth);
+        const containerCenter = container.scrollLeft + container.clientWidth / 2;
+        let nearestIdx = 0;
+        let minDistance = Infinity;
 
-        const newRealIndex = renderIndexToReal(renderIdx);
+        for (let i = 0; i < container.children.length; i++) {
+          const child = container.children.item(i) as HTMLElement;
+          if (!child) continue;
 
-        if (newRealIndex !== realIndex) {
-          setRealIndex(newRealIndex);
+          const childCenter = child.offsetLeft + child.offsetWidth / 2;
+          const distance = Math.abs(childCenter - containerCenter);
+
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestIdx = i;
+          }
         }
 
-        if (renderIdx === 0) {
-          setTimeout(() => {
+        const settledRenderIndex = nearestIdx;
+        setRenderIndex(settledRenderIndex);
+        setRealIndex(renderIndexToReal(settledRenderIndex));
+
+        if (settledRenderIndex === 0) {
+          requestAnimationFrame(() => {
             scrollToRenderIndex(total, false);
-          }, 50);
-        } else if (renderIdx === total + 1) {
-          setTimeout(() => {
+            setRenderIndex(total);
+            setRealIndex(total - 1);
+          });
+        } else if (settledRenderIndex === total + 1) {
+          requestAnimationFrame(() => {
             scrollToRenderIndex(1, false);
-          }, 50);
+            setRenderIndex(1);
+            setRealIndex(0);
+          });
         }
       }, 150);
     };
@@ -173,7 +186,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [realIndex, total, allSlides.length]);
+  }, [total]);
 
   useEffect(() => {
     if (total <= 1) return;
@@ -205,7 +218,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     <div className="relative">
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] py-8 scrollbar-hide"
+        className="flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] scroll-px-[10vw] py-8 scrollbar-hide"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
