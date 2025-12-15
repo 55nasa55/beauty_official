@@ -16,7 +16,24 @@ interface HeaderProps {
 export function Header({ categories, brands, collections }: HeaderProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMegaMenu, setShowMegaMenu] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const headerRef = useRef<HTMLDivElement>(null);
   const megaMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.getBoundingClientRect().height);
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -43,7 +60,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
   }, [showMegaMenu]);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-black/10">
+    <header ref={headerRef} className="sticky top-0 z-50 w-full bg-white border-b border-black/10">
       {/* Row 1: Logo, Search, Icons */}
       <div className="border-b border-black/10">
         <div className="max-w-6xl mx-auto px-6">
@@ -89,49 +106,21 @@ export function Header({ categories, brands, collections }: HeaderProps) {
       </div>
 
       {/* Row 2: Navigation */}
-      <div className="hidden md:block relative">
+      <div className="hidden md:block">
         <div className="max-w-6xl mx-auto px-6">
           <nav className="flex items-center gap-6 py-2">
-            <div ref={megaMenuRef} className="relative">
+            <div
+              ref={megaMenuRef}
+              onMouseEnter={() => setShowMegaMenu(true)}
+              onMouseLeave={() => setShowMegaMenu(false)}
+            >
               <button
                 onClick={() => setShowMegaMenu(!showMegaMenu)}
-                onMouseEnter={() => setShowMegaMenu(true)}
                 className="flex items-center gap-2 text-sm font-medium text-black/80 hover:text-black transition-colors py-2"
               >
                 <Menu className="w-4 h-4" />
                 Categories
               </button>
-
-              {/* Full-Width Mega Menu */}
-              {showMegaMenu && (
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 w-screen top-full mt-0"
-                  onMouseLeave={() => setShowMegaMenu(false)}
-                >
-                  <div className="bg-white shadow-lg border-t border-black/10">
-                    <div className="max-w-6xl mx-auto px-6 py-6">
-                      <div className="grid grid-cols-3 gap-6">
-                        {categories.map((category) => (
-                          <div key={category.id}>
-                            <Link
-                              href={`/collections/${category.slug}`}
-                              className="block group"
-                              onClick={() => setShowMegaMenu(false)}
-                            >
-                              <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
-                                {category.name}
-                              </h3>
-                              <p className="text-sm text-black/60 line-clamp-2">
-                                {category.description}
-                              </p>
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <Link
@@ -151,6 +140,41 @@ export function Header({ categories, brands, collections }: HeaderProps) {
               </Link>
             ))}
           </nav>
+        </div>
+      </div>
+
+      {/* Full-Width Mega Menu - Fixed Position */}
+      <div
+        className={`fixed inset-x-0 w-screen z-40 transition-all duration-200 ease-out ${
+          showMegaMenu
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 -translate-y-2 pointer-events-none'
+        }`}
+        style={{ top: headerHeight }}
+        onMouseEnter={() => setShowMegaMenu(true)}
+        onMouseLeave={() => setShowMegaMenu(false)}
+      >
+        <div className="bg-white shadow-lg border-t border-black/10">
+          <div className="max-w-6xl mx-auto px-6 py-6">
+            <div className="grid grid-cols-3 gap-6">
+              {categories.map((category) => (
+                <div key={category.id}>
+                  <Link
+                    href={`/collections/${category.slug}`}
+                    className="block group"
+                    onClick={() => setShowMegaMenu(false)}
+                  >
+                    <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
+                      {category.name}
+                    </h3>
+                    <p className="text-sm text-black/60 line-clamp-2">
+                      {category.description}
+                    </p>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
