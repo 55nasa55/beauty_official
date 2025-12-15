@@ -142,13 +142,13 @@ export default async function Home() {
       <Header categories={categories} brands={brands} collections={collections} />
 
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-8">
-          {banners.length > 0 && (
-            <div className="mb-12">
-              <DynamicBannerCarousel initialBanners={banners} />
-            </div>
-          )}
+        {banners.length > 0 && (
+          <section className="relative w-screen overflow-hidden mb-12">
+            <DynamicBannerCarousel initialBanners={banners} />
+          </section>
+        )}
 
+        <div className="container mx-auto px-4 py-8">
           <div className="space-y-16">
             {tagCarousels.map(({ tag, slug, title, products }) => (
               <ProductCarousel key={tag} title={title} products={products} viewMoreSlug={slug} />
