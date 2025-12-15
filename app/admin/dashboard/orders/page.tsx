@@ -77,8 +77,8 @@ export default function OrdersManagementPage() {
   const [page, setPage] = useState(0);
   const [pageSize] = useState(25);
   const [total, setTotal] = useState(0);
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
-  const [shippingStatusFilter, setShippingStatusFilter] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
+  const [shippingStatusFilter, setShippingStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [dateRange, setDateRange] = useState('all');
@@ -104,11 +104,11 @@ export default function OrdersManagementPage() {
         pageSize: pageSize.toString(),
       });
 
-      if (paymentStatusFilter) {
+      if (paymentStatusFilter && paymentStatusFilter !== 'all') {
         params.append('payment_status', paymentStatusFilter);
       }
 
-      if (shippingStatusFilter) {
+      if (shippingStatusFilter && shippingStatusFilter !== 'all') {
         params.append('shipping_status', shippingStatusFilter);
       }
 
@@ -331,8 +331,8 @@ export default function OrdersManagementPage() {
   };
 
   const resetFilters = () => {
-    setPaymentStatusFilter('');
-    setShippingStatusFilter('');
+    setPaymentStatusFilter('all');
+    setShippingStatusFilter('all');
     setSearchInput('');
     setSearchQuery('');
     setDateRange('all');
@@ -387,7 +387,7 @@ export default function OrdersManagementPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="refunded">Refunded</SelectItem>
@@ -402,7 +402,7 @@ export default function OrdersManagementPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="shipped">Shipped</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
