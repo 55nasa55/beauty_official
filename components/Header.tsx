@@ -46,8 +46,8 @@ export function Header({ categories, brands, collections }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full bg-white border-b border-black/10">
       {/* Row 1: Logo, Search, Icons */}
       <div className="border-b border-black/10">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-3 items-center gap-4 py-3">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-[auto,1fr,auto] items-center gap-4 py-3">
             {/* Left: Logo */}
             <div className="flex items-center">
               <button
@@ -61,18 +61,20 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                   <Menu className="w-5 h-5" />
                 )}
               </button>
-              <Link href="/" className="text-xl md:text-2xl font-light tracking-wider">
+              <Link href="/" className="text-xl md:text-2xl font-light tracking-wider whitespace-nowrap">
                 Good Looks
               </Link>
             </div>
 
             {/* Center: Search */}
             <div className="hidden md:flex justify-center">
-              <SearchBar />
+              <div className="w-full max-w-[720px] mx-auto">
+                <SearchBar />
+              </div>
             </div>
 
             {/* Right: Icons */}
-            <div className="flex items-center justify-end gap-2 md:gap-3">
+            <div className="flex items-center justify-end gap-2 md:gap-3 whitespace-nowrap">
               <Link
                 href="#"
                 className="hidden md:flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md transition-colors"
@@ -87,8 +89,8 @@ export function Header({ categories, brands, collections }: HeaderProps) {
       </div>
 
       {/* Row 2: Navigation */}
-      <div className="hidden md:block">
-        <div className="container mx-auto px-4 md:px-6">
+      <div className="hidden md:block relative">
+        <div className="max-w-6xl mx-auto px-6">
           <nav className="flex items-center gap-6 py-2">
             <div ref={megaMenuRef} className="relative">
               <button
@@ -108,51 +110,23 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                 >
                   <div className="bg-white shadow-lg border-t border-black/10">
                     <div className="max-w-6xl mx-auto px-6 py-6">
-                      <div className="grid grid-cols-4 gap-8">
-                        {/* Categories Grid */}
-                        <div className="col-span-3">
-                          <div className="grid grid-cols-3 gap-6">
-                            {categories.map((category) => (
-                              <div key={category.id}>
-                                <Link
-                                  href={`/collections/${category.slug}`}
-                                  className="block group"
-                                  onClick={() => setShowMegaMenu(false)}
-                                >
-                                  <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
-                                    {category.name}
-                                  </h3>
-                                  <p className="text-sm text-black/60 line-clamp-2">
-                                    {category.description}
-                                  </p>
-                                </Link>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Featured/Promo Section */}
-                        <div className="space-y-3">
-                          <h3 className="text-sm font-semibold text-black/80 mb-3">Trending</h3>
-                          <Link
-                            href="/brands"
-                            className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                            onClick={() => setShowMegaMenu(false)}
-                          >
-                            <p className="text-sm font-medium text-black">All Brands</p>
-                            <p className="text-xs text-black/60 mt-1">Explore top brands</p>
-                          </Link>
-                          {collections.length > 0 && (
+                      <div className="grid grid-cols-3 gap-6">
+                        {categories.map((category) => (
+                          <div key={category.id}>
                             <Link
-                              href={`/collections/${collections[0].slug}`}
-                              className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                              href={`/collections/${category.slug}`}
+                              className="block group"
                               onClick={() => setShowMegaMenu(false)}
                             >
-                              <p className="text-sm font-medium text-black">{collections[0].name}</p>
-                              <p className="text-xs text-black/60 mt-1">Featured collection</p>
+                              <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
+                                {category.name}
+                              </h3>
+                              <p className="text-sm text-black/60 line-clamp-2">
+                                {category.description}
+                              </p>
                             </Link>
-                          )}
-                        </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -182,7 +156,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
 
       {/* Mobile Search */}
       <div className="md:hidden border-t border-black/10">
-        <div className="container mx-auto px-4 py-3">
+        <div className="max-w-6xl mx-auto px-6 py-3">
           <SearchBar />
         </div>
       </div>
@@ -190,7 +164,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
       {/* Mobile Menu */}
       {showMobileMenu && (
         <div className="md:hidden border-t border-black/10">
-          <div className="container mx-auto px-4 py-4">
+          <div className="max-w-6xl mx-auto px-6 py-4">
             <nav className="flex flex-col space-y-4">
               {/* Categories Section */}
               <div className="space-y-2">
