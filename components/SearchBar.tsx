@@ -146,22 +146,22 @@ export function SearchBar() {
   const hasResults = (results.products && results.products.length > 0) || (results.brands && results.brands.length > 0);
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-md">
+    <div ref={searchRef} className="relative w-full max-w-2xl">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search products and brands..."
-          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+          placeholder="Search for a product or brand..."
+          className="w-full h-10 pl-4 pr-10 bg-white border border-black/15 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:border-black/30 transition-all"
         />
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         {query && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute right-9 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-md transition-colors"
           >
-            <X className="w-4 h-4 text-gray-400" />
+            <X className="w-3 h-3 text-gray-400" />
           </button>
         )}
       </div>

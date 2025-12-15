@@ -1,19 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { Search, Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Menu, X, ShoppingBag, User } from 'lucide-react';
 import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from '@/components/ui/navigation-menu';
 
 interface HeaderProps {
   categories: Category[];
@@ -22,126 +14,183 @@ interface HeaderProps {
 }
 
 export function Header({ categories, brands, collections }: HeaderProps) {
-  const [showSearch, setShowSearch] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMegaMenu, setShowMegaMenu] = useState(false);
+  const megaMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (megaMenuRef.current && !megaMenuRef.current.contains(event.target as Node)) {
+        setShowMegaMenu(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowMegaMenu(false);
+      }
+    };
+
+    if (showMegaMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showMegaMenu]);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className="md:hidden p-2 hover:bg-gray-50 rounded-full transition-colors"
-            aria-label="Toggle menu"
-          >
-            {showMobileMenu ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
-          </button>
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-black/10">
+      {/* Row 1: Logo, Search, Icons */}
+      <div className="border-b border-black/10">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-3 items-center gap-4 py-3">
+            {/* Left: Logo */}
+            <div className="flex items-center">
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="md:hidden p-2 hover:bg-gray-50 rounded-md transition-colors mr-2"
+                aria-label="Toggle menu"
+              >
+                {showMobileMenu ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
+              <Link href="/" className="text-xl md:text-2xl font-light tracking-wider">
+                Good Looks
+              </Link>
+            </div>
 
-          {/* Logo */}
-          <Link href="/" className="text-2xl font-light tracking-wider">
-            Good Looks
-          </Link>
-
-          {/* Desktop Navigation - Centered */}
-          <div className="hidden md:flex items-center justify-center gap-8 flex-1 max-w-2xl mx-8">
-            {showSearch ? (
+            {/* Center: Search */}
+            <div className="hidden md:flex justify-center">
               <SearchBar />
-            ) : (
-              <NavigationMenu>
-                <NavigationMenuList className="flex items-center justify-center gap-2">
-                  <NavigationMenuItem>
-                    <NavigationMenuTrigger className="text-sm font-normal">
-                      Categories
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <ul className="grid w-[600px] grid-cols-2 gap-3 p-4 max-h-[500px] overflow-y-auto">
-                        {categories.map((category) => (
-                          <li key={category.id}>
-                            <NavigationMenuLink asChild>
-                              <Link
-                                href={`/collections/${category.slug}`}
-                                className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-50"
-                              >
-                                <div className="text-sm font-medium leading-none">
-                                  {category.name}
-                                </div>
-                                <p className="line-clamp-2 text-sm leading-snug text-gray-500">
-                                  {category.description}
-                                </p>
-                              </Link>
-                            </NavigationMenuLink>
-                          </li>
-                        ))}
-                      </ul>
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
+            </div>
 
-                  <NavigationMenuItem>
-                    <Link href="/brands" legacyBehavior passHref>
-                      <NavigationMenuLink className="text-sm font-normal px-4 py-2 hover:text-gray-600 transition-colors">
-                        Brands
-                      </NavigationMenuLink>
-                    </Link>
-                  </NavigationMenuItem>
-
-                  {collections.length > 0 && (
-                    <NavigationMenuItem>
-                      <NavigationMenuTrigger className="text-sm font-normal">
-                        Collections
-                      </NavigationMenuTrigger>
-                      <NavigationMenuContent>
-                        <ul className="grid w-[400px] gap-3 p-4">
-                          {collections.map((collection) => (
-                            <li key={collection.id}>
-                              <NavigationMenuLink asChild>
-                                <Link
-                                  href={`/collections/${collection.slug}`}
-                                  className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-gray-50"
-                                >
-                                  <div className="text-sm font-medium leading-none">
-                                    {collection.name}
-                                  </div>
-                                </Link>
-                              </NavigationMenuLink>
-                            </li>
-                          ))}
-                        </ul>
-                      </NavigationMenuContent>
-                    </NavigationMenuItem>
-                  )}
-                </NavigationMenuList>
-              </NavigationMenu>
-            )}
-          </div>
-
-          {/* Right Side Icons */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="p-2 hover:bg-gray-50 rounded-full transition-colors"
-              aria-label="Toggle search"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-            <MiniCart />
+            {/* Right: Icons */}
+            <div className="flex items-center justify-end gap-2 md:gap-3">
+              <Link
+                href="#"
+                className="hidden md:flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                <User className="w-5 h-5" />
+                <span className="text-sm">Account</span>
+              </Link>
+              <MiniCart />
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Search */}
-        {showSearch && (
-          <div className="md:hidden pb-4">
-            <SearchBar />
-          </div>
-        )}
+      {/* Row 2: Navigation */}
+      <div className="hidden md:block">
+        <div className="container mx-auto px-4 md:px-6">
+          <nav className="flex items-center gap-6 py-2">
+            <div ref={megaMenuRef} className="relative">
+              <button
+                onClick={() => setShowMegaMenu(!showMegaMenu)}
+                onMouseEnter={() => setShowMegaMenu(true)}
+                className="flex items-center gap-2 text-sm font-medium text-black/80 hover:text-black transition-colors py-2"
+              >
+                <Menu className="w-4 h-4" />
+                Categories
+              </button>
 
-        {/* Mobile Menu */}
-        {showMobileMenu && (
-          <div className="md:hidden border-t py-4">
+              {/* Full-Width Mega Menu */}
+              {showMegaMenu && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 w-screen top-full mt-0"
+                  onMouseLeave={() => setShowMegaMenu(false)}
+                >
+                  <div className="bg-white shadow-lg border-t border-black/10">
+                    <div className="max-w-6xl mx-auto px-6 py-6">
+                      <div className="grid grid-cols-4 gap-8">
+                        {/* Categories Grid */}
+                        <div className="col-span-3">
+                          <div className="grid grid-cols-3 gap-6">
+                            {categories.map((category) => (
+                              <div key={category.id}>
+                                <Link
+                                  href={`/collections/${category.slug}`}
+                                  className="block group"
+                                  onClick={() => setShowMegaMenu(false)}
+                                >
+                                  <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
+                                    {category.name}
+                                  </h3>
+                                  <p className="text-sm text-black/60 line-clamp-2">
+                                    {category.description}
+                                  </p>
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Featured/Promo Section */}
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-semibold text-black/80 mb-3">Trending</h3>
+                          <Link
+                            href="/brands"
+                            className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            onClick={() => setShowMegaMenu(false)}
+                          >
+                            <p className="text-sm font-medium text-black">All Brands</p>
+                            <p className="text-xs text-black/60 mt-1">Explore top brands</p>
+                          </Link>
+                          {collections.length > 0 && (
+                            <Link
+                              href={`/collections/${collections[0].slug}`}
+                              className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                              onClick={() => setShowMegaMenu(false)}
+                            >
+                              <p className="text-sm font-medium text-black">{collections[0].name}</p>
+                              <p className="text-xs text-black/60 mt-1">Featured collection</p>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Link
+              href="/brands"
+              className="text-sm font-normal text-black/70 hover:text-black transition-colors"
+            >
+              Brands
+            </Link>
+
+            {collections.slice(0, 4).map((collection) => (
+              <Link
+                key={collection.id}
+                href={`/collections/${collection.slug}`}
+                className="text-sm font-normal text-black/70 hover:text-black transition-colors"
+              >
+                {collection.name}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* Mobile Search */}
+      <div className="md:hidden border-t border-black/10">
+        <div className="container mx-auto px-4 py-3">
+          <SearchBar />
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="md:hidden border-t border-black/10">
+          <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col space-y-4">
               {/* Categories Section */}
               <div className="space-y-2">
@@ -198,8 +247,8 @@ export function Header({ categories, brands, collections }: HeaderProps) {
               )}
             </nav>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </header>
   );
 }
