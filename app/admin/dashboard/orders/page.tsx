@@ -64,6 +64,7 @@ export default function OrdersManagementPage() {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingStatus, setShippingStatus] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRefunding, setIsRefunding] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -159,31 +160,45 @@ export default function OrdersManagementPage() {
   const handleUpdateShipping = async () => {
     if (!selectedOrder) return;
 
+    if (!trackingNumber.trim() && !shippingStatus) {
+      toast({
+        title: 'No Changes',
+        description: 'Please enter tracking number or select shipping status',
+      });
+      return;
+    }
+
     try {
       setIsUpdating(true);
 
-      const updates: Record<string, any> = {};
-      if (trackingNumber.trim()) {
-        updates.tracking_number = trackingNumber.trim();
-      }
-      if (shippingStatus) {
-        updates.shipping_status = shippingStatus;
+      const res = await fetch('/api/admin/orders/update-shipping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          tracking_number: trackingNumber || null,
+          shipping_status: shippingStatus || null,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        console.error('[Shipping Update] API error:', json);
+        throw new Error(json.error || 'Failed to update shipping');
       }
 
-      if (Object.keys(updates).length === 0) {
-        toast({
-          title: 'No Changes',
-          description: 'Please enter tracking number or select shipping status',
-        });
-        return;
-      }
+      const updatedOrder = json.order;
 
-      const { error } = (await (supabase as any)
-        .from('orders')
-        .update(updates)
-        .eq('id', selectedOrder.id));
+      setOrders((prevOrders) =>
+        prevOrders.map((o) =>
+          o.id === updatedOrder.id ? { ...o, ...updatedOrder } : o
+        )
+      );
 
-      if (error) throw error;
+      setSelectedOrder((prev) =>
+        prev ? { ...prev, ...updatedOrder } : prev
+      );
 
       toast({
         title: 'Success',
@@ -195,6 +210,7 @@ export default function OrdersManagementPage() {
       setShippingStatus('');
       fetchOrders();
     } catch (error: any) {
+      console.error('[Shipping Update] Error:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -220,6 +236,8 @@ export default function OrdersManagementPage() {
     }
 
     try {
+      setIsRefunding(true);
+
       const response = await fetch('/api/stripe/refund', {
         method: 'POST',
         headers: {
@@ -234,7 +252,24 @@ export default function OrdersManagementPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('[Refund] API error:', data);
         throw new Error(data.error || 'Failed to process refund');
+      }
+
+      const updatedOrder = data.order;
+
+      setOrders((prevOrders) =>
+        prevOrders.map((o) =>
+          o.id === updatedOrder.id
+            ? { ...o, payment_status: 'refunded' }
+            : o
+        )
+      );
+
+      if (selectedOrder?.id === updatedOrder.id) {
+        setSelectedOrder((prev) =>
+          prev ? { ...prev, payment_status: 'refunded' } : prev
+        );
       }
 
       toast({
@@ -244,11 +279,14 @@ export default function OrdersManagementPage() {
 
       fetchOrders();
     } catch (error: any) {
+      console.error('[Refund] Error:', error);
       toast({
         title: 'Error',
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setIsRefunding(false);
     }
   };
 
@@ -392,8 +430,9 @@ export default function OrdersManagementPage() {
                           variant="destructive"
                           size="sm"
                           onClick={() => handleRefund(order)}
+                          disabled={isRefunding}
                         >
-                          Refund
+                          {isRefunding ? 'Processing...' : 'Refund'}
                         </Button>
                       )}
                     </div>
@@ -607,9 +646,17 @@ export default function OrdersManagementPage() {
                       setIsDetailDialogOpen(false);
                       handleRefund(selectedOrder);
                     }}
+                    disabled={isRefunding}
                     className="w-full"
                   >
-                    Process Refund
+                    {isRefunding ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing Refund...
+                      </>
+                    ) : (
+                      'Process Refund'
+                    )}
                   </Button>
                 </div>
               )}

@@ -13,41 +13,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log('[Refund] Processing refund for order:', order_id);
+
     const refund = await stripe.refunds.create({
       payment_intent: payment_intent,
     });
 
+    console.log('[Refund] Stripe refund status:', refund.status);
+
     if (refund.status === 'succeeded') {
       const supabase = createServerClient();
 
-      const { error: updateError } = await (supabase as any)
+      const { data, error: updateError } = await (supabase as any)
         .from('orders')
         .update({
-          status: 'refunded',
-          refund_date: new Date().toISOString(),
+          payment_status: 'refunded',
         })
-        .eq('id', order_id);
+        .eq('id', order_id)
+        .select('*')
+        .single();
 
       if (updateError) {
-        console.error('Error updating order status:', updateError);
+        console.error('[Refund] Database error:', updateError);
         return NextResponse.json(
-          { error: 'Refund processed but failed to update order status' },
+          { error: 'Refund processed but failed to update order status: ' + updateError.message },
           { status: 500 }
         );
       }
 
+      console.log('[Refund] Order updated successfully:', data.id);
+
       return NextResponse.json({
         success: true,
-        refund: refund,
+        refund_id: refund.id,
+        order: data,
       });
     } else {
+      console.error('[Refund] Refund failed with status:', refund.status);
       return NextResponse.json(
-        { error: 'Refund failed' },
+        { error: `Refund failed with status: ${refund.status}` },
         { status: 500 }
       );
     }
   } catch (error: any) {
-    console.error('Error processing refund:', error);
+    console.error('[Refund] Unexpected error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to process refund' },
       { status: 500 }
