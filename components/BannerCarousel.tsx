@@ -30,11 +30,12 @@ const getBannerLink = (banner: Banner) => {
 export function BannerCarousel({ banners }: BannerCarouselProps) {
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const autoplayIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userInteractedRef = useRef(false);
   const isResettingRef = useRef(false);
+  const programmaticScrollRef = useRef(false);
 
   if (banners.length === 0) return null;
 
@@ -44,7 +45,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const [renderIndex, setRenderIndex] = useState(total > 1 ? 1 : 0);
   const [realIndex, setRealIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   const renderIndexToReal = (renderIdx: number) => {
     if (total === 1) return 0;
@@ -71,7 +72,6 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     if (!container) return;
 
     isResettingRef.current = true;
-    setIsResetting(true);
 
     container.style.scrollBehavior = 'auto';
     container.style.scrollSnapType = 'none';
@@ -84,22 +84,26 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
       requestAnimationFrame(() => {
         isResettingRef.current = false;
-        setIsResetting(false);
       });
     });
   };
 
   const restartAutoplayTimer = () => {
-    if (!isPlaying) return;
-
-    if (autoplayIntervalRef.current) {
-      clearInterval(autoplayIntervalRef.current);
+    if (autoplayTimeoutRef.current) {
+      clearTimeout(autoplayTimeoutRef.current);
+      autoplayTimeoutRef.current = null;
     }
 
-    autoplayIntervalRef.current = setInterval(() => {
-      if (!isScrollingRef.current && !userInteractedRef.current) {
-        goToNext();
+    if (!isPlaying || total <= 1) return;
+
+    autoplayTimeoutRef.current = setTimeout(() => {
+      if (isScrollingRef.current || isResettingRef.current) {
+        restartAutoplayTimer();
+        return;
       }
+
+      goToNext();
+      restartAutoplayTimer();
     }, 5000);
   };
 
@@ -116,6 +120,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const goToNext = () => {
     if (total === 1) return;
     const target = renderIndex + 1;
+    programmaticScrollRef.current = true;
     setRenderIndex(target);
     setRealIndex(renderIndexToReal(target));
     scrollToRenderIndex(target, true);
@@ -124,6 +129,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const goToPrevious = () => {
     if (total === 1) return;
     const target = renderIndex - 1;
+    programmaticScrollRef.current = true;
     setRenderIndex(target);
     setRealIndex(renderIndexToReal(target));
     scrollToRenderIndex(target, true);
@@ -144,7 +150,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   };
 
   useEffect(() => {
-    if (total <= 1) return;
+    if (total <= 1) {
+      setIsReady(true);
+      return;
+    }
 
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -152,24 +161,29 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     scrollToRenderIndex(1, false);
     setRenderIndex(1);
     setRealIndex(0);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsReady(true);
+      });
+    });
   }, []);
 
   useEffect(() => {
-    if (total <= 1 || !isPlaying) return;
-
-    if (autoplayIntervalRef.current) {
-      clearInterval(autoplayIntervalRef.current);
+    if (!isPlaying || total <= 1) {
+      if (autoplayTimeoutRef.current) {
+        clearTimeout(autoplayTimeoutRef.current);
+        autoplayTimeoutRef.current = null;
+      }
+      return;
     }
 
-    autoplayIntervalRef.current = setInterval(() => {
-      if (!isScrollingRef.current && !userInteractedRef.current) {
-        goToNext();
-      }
-    }, 5000);
+    restartAutoplayTimer();
 
     return () => {
-      if (autoplayIntervalRef.current) {
-        clearInterval(autoplayIntervalRef.current);
+      if (autoplayTimeoutRef.current) {
+        clearTimeout(autoplayTimeoutRef.current);
+        autoplayTimeoutRef.current = null;
       }
     };
   }, [isPlaying, total]);
@@ -212,6 +226,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         const settledRenderIndex = nearestIdx;
         setRenderIndex(settledRenderIndex);
         setRealIndex(renderIndexToReal(settledRenderIndex));
+
+        programmaticScrollRef.current = false;
 
         if (settledRenderIndex === 0) {
           requestAnimationFrame(() => {
@@ -265,16 +281,22 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     };
   }, [total]);
 
-  const shouldPrioritizeImage = (index: number) => {
-    if (total === 1) return index === 0;
-    return index === 0 || index === 1 || index === 2 || index === 3 || index === allSlides.length - 1;
-  };
+  useEffect(() => {
+    if (banners.length === 0 || total <= 6) {
+      banners.forEach((banner) => {
+        const img = new window.Image();
+        img.src = banner.image_url;
+      });
+    }
+  }, [banners, total]);
 
   return (
     <div className="relative">
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] scroll-px-[10vw] py-8 scrollbar-hide"
+        className={`flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] scroll-px-[10vw] py-8 scrollbar-hide transition-opacity duration-200 ${
+          isReady ? 'opacity-100' : 'opacity-0'
+        }`}
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -294,8 +316,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                 alt={banner.title}
                 fill
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
-                priority={shouldPrioritizeImage(index)}
-                loading={shouldPrioritizeImage(index) ? 'eager' : undefined}
+                priority={total <= 6}
+                loading={total <= 6 ? 'eager' : undefined}
                 sizes="(min-width: 1280px) 1200px, 80vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
