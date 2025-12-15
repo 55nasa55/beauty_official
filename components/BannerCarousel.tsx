@@ -29,23 +29,40 @@ const getBannerLink = (banner: Banner) => {
 
 export function BannerCarousel({ banners }: BannerCarouselProps) {
   const router = useRouter();
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Autoplay: use a single reschedulable timeout (prevents double-advance/skip issues)
   const autoplayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isScrollingRef = useRef(false);
+
+  // Scroll state guards
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const userInteractedRef = useRef(false);
+  const isScrollingRef = useRef(false);
   const isResettingRef = useRef(false);
   const programmaticScrollRef = useRef(false);
 
-  if (banners.length === 0) return null;
+  // Keep latest state in refs (avoids stale closures in timers)
+  const isPlayingRef = useRef(true);
+  const renderIndexRef = useRef(0);
+  const totalRef = useRef(0);
+
+  const [isReady, setIsReady] = useState(false);
+
+  // realIndex is ONLY for counter (0..total-1)
+  const [realIndex, setRealIndex] = useState(0);
+
+  // renderIndex is for the rendered slides array (includes clones)
+  const [renderIndex, setRenderIndex] = useState(0);
+
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  if (!banners || banners.length === 0) return null;
 
   const total = banners.length;
-  const allSlides = total > 1 ? [banners[total - 1], ...banners, banners[0]] : banners;
+  totalRef.current = total;
 
-  const [renderIndex, setRenderIndex] = useState(total > 1 ? 1 : 0);
-  const [realIndex, setRealIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isReady, setIsReady] = useState(false);
+  // Slides including clones for looping
+  const allSlides = total > 1 ? [banners[total - 1], ...banners, banners[0]] : banners;
 
   const renderIndexToReal = (renderIdx: number) => {
     if (total === 1) return 0;
@@ -54,11 +71,22 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     return renderIdx - 1;
   };
 
-  const scrollToRenderIndex = (renderIdx: number, smooth = true) => {
-    if (!scrollContainerRef.current) return;
+  // --- Helpers ---
 
+  const handleBannerClick = (banner: Banner) => {
+    const href = getBannerLink(banner);
+    if (banner.target_type === 'external') {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      router.push(href);
+    }
+  };
+
+  const scrollToRenderIndex = (targetRenderIdx: number, smooth: boolean) => {
     const container = scrollContainerRef.current;
-    const slideEl = container.children.item(renderIdx) as HTMLElement;
+    if (!container) return;
+
+    const slideEl = container.children.item(targetRenderIdx) as HTMLElement | null;
     if (!slideEl) return;
 
     container.scrollTo({
@@ -67,90 +95,170 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     });
   };
 
+  // Find which slide is nearest the center of the container
+  const getNearestRenderIndex = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return renderIndexRef.current;
+
+    const center = container.scrollLeft + container.clientWidth / 2;
+
+    let nearestIdx = 0;
+    let bestDist = Infinity;
+
+    const children = Array.from(container.children) as HTMLElement[];
+    for (let i = 0; i < children.length; i++) {
+      const el = children[i];
+      const elCenter = el.offsetLeft + el.offsetWidth / 2;
+      const dist = Math.abs(elCenter - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        nearestIdx = i;
+      }
+    }
+
+    return nearestIdx;
+  };
+
+  // Atomic jump for clone->real: disable snap for 1 frame to prevent the visible "off-center" flash
   const atomicJumpToRenderIndex = (targetIdx: number) => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     isResettingRef.current = true;
 
-    container.style.scrollBehavior = 'auto';
+    // Temporarily disable snapping & smooth behavior
+    const prevSnap = container.style.scrollSnapType;
+    const prevBehavior = container.style.scrollBehavior;
+
     container.style.scrollSnapType = 'none';
+    container.style.scrollBehavior = 'auto';
 
     scrollToRenderIndex(targetIdx, false);
 
     requestAnimationFrame(() => {
-      container.style.scrollBehavior = '';
-      container.style.scrollSnapType = '';
+      container.style.scrollSnapType = prevSnap || '';
+      container.style.scrollBehavior = prevBehavior || '';
 
-      requestAnimationFrame(() => {
-        isResettingRef.current = false;
-      });
+      isResettingRef.current = false;
+      programmaticScrollRef.current = false;
+
+      setRenderIndex(targetIdx);
+      renderIndexRef.current = targetIdx;
+
+      const newReal = renderIndexToReal(targetIdx);
+      setRealIndex(newReal);
     });
   };
 
-  const restartAutoplayTimer = () => {
+  const clearAutoplay = () => {
     if (autoplayTimeoutRef.current) {
       clearTimeout(autoplayTimeoutRef.current);
       autoplayTimeoutRef.current = null;
     }
+  };
 
-    if (!isPlaying || total <= 1) return;
+  const restartAutoplayTimer = () => {
+    clearAutoplay();
+
+    if (totalRef.current <= 1) return;
+    if (!isPlayingRef.current) return;
 
     autoplayTimeoutRef.current = setTimeout(() => {
+      // If currently scrolling/resetting, delay and try again (prevents catching up / double-advance)
       if (isScrollingRef.current || isResettingRef.current) {
         restartAutoplayTimer();
         return;
       }
 
-      goToNext();
+      // Advance exactly one slide
+      goToNext(true);
+
+      // Schedule next tick
       restartAutoplayTimer();
     }, 5000);
   };
 
-  const handleBannerClick = (banner: Banner) => {
-    const href = getBannerLink(banner);
+  const goToNext = (fromAutoplayOrArrow: boolean) => {
+    if (totalRef.current <= 1) return;
 
-    if (banner.target_type === 'external') {
-      window.open(href, '_blank', 'noopener,noreferrer');
-    } else {
-      router.push(href);
-    }
-  };
+    const current = renderIndexRef.current;
+    const target = current + 1; // can become total+1 (first clone)
 
-  const goToNext = () => {
-    if (total === 1) return;
-    const target = renderIndex + 1;
     programmaticScrollRef.current = true;
+
     setRenderIndex(target);
-    setRealIndex(renderIndexToReal(target));
+    renderIndexRef.current = target;
+
+    const nextReal = renderIndexToReal(target);
+    setRealIndex(nextReal);
+
     scrollToRenderIndex(target, true);
+
+    // Reset timer if user clicked arrow, or if autoplay tick executed (keeps cadence stable)
+    if (fromAutoplayOrArrow) restartAutoplayTimer();
   };
 
-  const goToPrevious = () => {
-    if (total === 1) return;
-    const target = renderIndex - 1;
+  const goToPrevious = (fromArrow: boolean) => {
+    if (totalRef.current <= 1) return;
+
+    const current = renderIndexRef.current;
+    const target = current - 1; // can become 0 (last clone)
+
     programmaticScrollRef.current = true;
+
     setRenderIndex(target);
-    setRealIndex(renderIndexToReal(target));
+    renderIndexRef.current = target;
+
+    const prevReal = renderIndexToReal(target);
+    setRealIndex(prevReal);
+
     scrollToRenderIndex(target, true);
-  };
 
-  const handleNextClick = () => {
-    goToNext();
-    restartAutoplayTimer();
-  };
-
-  const handlePrevClick = () => {
-    goToPrevious();
-    restartAutoplayTimer();
+    if (fromArrow) restartAutoplayTimer();
   };
 
   const togglePlayPause = () => {
-    setIsPlaying((prev) => !prev);
+    setIsPlaying((prev) => {
+      const next = !prev;
+      isPlayingRef.current = next;
+
+      if (next) {
+        restartAutoplayTimer();
+      } else {
+        clearAutoplay();
+      }
+
+      return next;
+    });
   };
 
+  // Keep refs in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    renderIndexRef.current = renderIndex;
+  }, [renderIndex]);
+
+  // Preload banner images to avoid "loading in" during loop/reset
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!banners?.length) return;
+
+    for (const b of banners) {
+      if (!b?.image_url) continue;
+      const img = new window.Image();
+      img.src = b.image_url;
+    }
+  }, [banners]);
+
+  // Initial positioning: avoid initial flash by hiding until positioned on first real slide
   useEffect(() => {
     if (total <= 1) {
+      setRenderIndex(0);
+      renderIndexRef.current = 0;
+      setRealIndex(0);
       setIsReady(true);
       return;
     }
@@ -158,198 +266,195 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    scrollToRenderIndex(1, false);
+    // Start at first real slide (render index 1)
+    setIsReady(false);
     setRenderIndex(1);
+    renderIndexRef.current = 1;
     setRealIndex(0);
 
+    // Ensure DOM has children before scrolling
     requestAnimationFrame(() => {
+      scrollToRenderIndex(1, false);
+
+      // Only show after 2 frames so browser paints at correct position (prevents flash)
       requestAnimationFrame(() => {
-        setIsReady(true);
+        requestAnimationFrame(() => {
+          setIsReady(true);
+        });
       });
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
 
+  // Autoplay lifecycle
   useEffect(() => {
-    if (!isPlaying || total <= 1) {
-      if (autoplayTimeoutRef.current) {
-        clearTimeout(autoplayTimeoutRef.current);
-        autoplayTimeoutRef.current = null;
-      }
-      return;
+    clearAutoplay();
+    if (total <= 1) return;
+
+    if (isPlaying) {
+      restartAutoplayTimer();
     }
 
-    restartAutoplayTimer();
-
     return () => {
-      if (autoplayTimeoutRef.current) {
-        clearTimeout(autoplayTimeoutRef.current);
-        autoplayTimeoutRef.current = null;
-      }
+      clearAutoplay();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, total]);
 
+  // Scroll settle handler (updates index + performs clone->real atomic reset)
   useEffect(() => {
     if (total <= 1) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
+    const onScroll = () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
 
       isScrollingRef.current = true;
 
       scrollTimeoutRef.current = setTimeout(() => {
         isScrollingRef.current = false;
 
+        // Avoid fighting during atomic reset
         if (isResettingRef.current) return;
 
-        const containerCenter = container.scrollLeft + container.clientWidth / 2;
-        let nearestIdx = 0;
-        let minDistance = Infinity;
+        const settled = getNearestRenderIndex();
 
-        for (let i = 0; i < container.children.length; i++) {
-          const child = container.children.item(i) as HTMLElement;
-          if (!child) continue;
+        setRenderIndex(settled);
+        renderIndexRef.current = settled;
 
-          const childCenter = child.offsetLeft + child.offsetWidth / 2;
-          const distance = Math.abs(childCenter - containerCenter);
+        const settledReal = renderIndexToReal(settled);
+        setRealIndex(settledReal);
 
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestIdx = i;
-          }
+        // Clone boundaries: atomic reset AFTER settle
+        if (settled === 0) {
+          // last clone -> jump to last real (render index = total)
+          atomicJumpToRenderIndex(total);
+          return;
         }
 
-        const settledRenderIndex = nearestIdx;
-        setRenderIndex(settledRenderIndex);
-        setRealIndex(renderIndexToReal(settledRenderIndex));
+        if (settled === total + 1) {
+          // first clone -> jump to first real (render index = 1)
+          atomicJumpToRenderIndex(1);
+          return;
+        }
 
+        // Programmatic scroll done
         programmaticScrollRef.current = false;
-
-        if (settledRenderIndex === 0) {
-          requestAnimationFrame(() => {
-            atomicJumpToRenderIndex(total);
-            setRenderIndex(total);
-            setRealIndex(total - 1);
-          });
-        } else if (settledRenderIndex === total + 1) {
-          requestAnimationFrame(() => {
-            atomicJumpToRenderIndex(1);
-            setRenderIndex(1);
-            setRealIndex(0);
-          });
-        }
-      }, 150);
+      }, 140);
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
+    container.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
-      container.removeEventListener('scroll', handleScroll);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
+      container.removeEventListener('scroll', onScroll);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
 
+  // Pause autoplay on true user scroll interactions (but not control clicks)
   useEffect(() => {
     if (total <= 1) return;
 
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const handleUserInteraction = () => {
-      userInteractedRef.current = true;
+    const pauseOnUserScroll = () => {
+      // If we are scrolling because code initiated it, don't pause
+      if (programmaticScrollRef.current) return;
+
       setIsPlaying(false);
+      isPlayingRef.current = false;
+      clearAutoplay();
     };
 
-    const handleWheel = () => handleUserInteraction();
-    const handleTouchStart = () => handleUserInteraction();
-    const handleMouseDown = () => handleUserInteraction();
+    const onWheel = () => pauseOnUserScroll();
+    const onTouchStart = () => pauseOnUserScroll();
+    const onMouseDown = () => pauseOnUserScroll();
 
-    container.addEventListener('wheel', handleWheel, { passive: true });
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('mousedown', handleMouseDown, { passive: true });
+    container.addEventListener('wheel', onWheel, { passive: true });
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('mousedown', onMouseDown);
 
     return () => {
-      container.removeEventListener('wheel', handleWheel);
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('mousedown', handleMouseDown);
+      container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('mousedown', onMouseDown);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
 
-  useEffect(() => {
-    if (banners.length === 0 || total <= 6) {
-      banners.forEach((banner) => {
-        const img = new window.Image();
-        img.src = banner.image_url;
-      });
-    }
-  }, [banners, total]);
+  const stopControlPropagation = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
 
   return (
     <div className="relative">
       <div
         ref={scrollContainerRef}
-        className={`flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] scroll-px-[10vw] py-8 scrollbar-hide transition-opacity duration-200 ${
-          isReady ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
+        className={[
+          'flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] scroll-px-[10vw] py-8 scrollbar-hide',
+          'transition-opacity duration-200',
+          isReady ? 'opacity-100' : 'opacity-0',
+        ].join(' ')}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {allSlides.map((banner, index) => (
-          <div
-            key={`${banner.id}-${index}`}
-            className="flex-shrink-0 w-[80vw] max-w-[1200px] snap-center"
-          >
+        {allSlides.map((banner, index) => {
+          // For small banner counts, eager load to avoid clone boundary flashing
+          const eager = total <= 6;
+
+          return (
             <div
-              onClick={() => handleBannerClick(banner)}
-              className="relative w-full aspect-[16/6] rounded-lg overflow-hidden cursor-pointer group"
+              key={`${banner.id}-${index}`}
+              className="flex-shrink-0 w-[80vw] max-w-[1200px] snap-center"
             >
-              <Image
-                src={banner.image_url}
-                alt={banner.title}
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                priority={total <= 6}
-                loading={total <= 6 ? 'eager' : undefined}
-                sizes="(min-width: 1280px) 1200px, 80vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
-                <h2 className="text-3xl md:text-5xl font-light mb-3 tracking-wide">
-                  {banner.title}
-                </h2>
-                <p className="text-lg md:text-xl text-white/90 max-w-2xl">
-                  {banner.description}
-                </p>
+              <div
+                onClick={() => handleBannerClick(banner)}
+                className="relative w-full aspect-[16/6] rounded-lg overflow-hidden cursor-pointer group"
+              >
+                <Image
+                  src={banner.image_url}
+                  alt={banner.title}
+                  fill
+                  sizes="(min-width: 1280px) 1200px, 80vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  priority={eager}
+                  loading={eager ? 'eager' : undefined}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
+                  <h2 className="text-3xl md:text-5xl font-light mb-3 tracking-wide">
+                    {banner.title}
+                  </h2>
+                  <p className="text-lg md:text-xl text-white/90 max-w-2xl">
+                    {banner.description}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* Edge fades */}
       <div
         className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-white to-transparent pointer-events-none z-10"
         aria-hidden="true"
       />
-
       <div
         className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white to-transparent pointer-events-none z-10"
         aria-hidden="true"
       />
 
+      {/* Controls under the centered banner */}
       {total > 1 && (
         <div className="w-[80vw] max-w-[1200px] mx-auto mt-4 flex items-center justify-center gap-4">
           <button
-            onClick={handlePrevClick}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onMouseDown={stopControlPropagation}
+            onTouchStart={stopControlPropagation}
+            onClick={() => goToPrevious(true)}
             className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label="Previous banner"
           >
@@ -357,9 +462,9 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
           </button>
 
           <button
+            onMouseDown={stopControlPropagation}
+            onTouchStart={stopControlPropagation}
             onClick={togglePlayPause}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
             className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
           >
@@ -375,9 +480,9 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
           </div>
 
           <button
-            onClick={handleNextClick}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onMouseDown={stopControlPropagation}
+            onTouchStart={stopControlPropagation}
+            onClick={() => goToNext(true)}
             className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label="Next banner"
           >
