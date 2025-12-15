@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-light tracking-wide mb-2">Dashboard</h1>
-        <p className="text-gray-600">Welcome to the Good Looks admin dashboard</p>
+        <p className="text-gray-600">Welcome to the Cosmetic Club admin dashboard</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

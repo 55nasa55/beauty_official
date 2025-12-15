@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ShoppingBag, User } from 'lucide-react';
+import { Menu, X, ShoppingBag } from 'lucide-react';
 import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
@@ -102,7 +102,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                 )}
               </button>
               <Link href="/" className="text-xl md:text-2xl font-light tracking-wider whitespace-nowrap">
-                Good Looks
+                Cosmetic Club
               </Link>
             </div>
 
@@ -115,13 +115,6 @@ export function Header({ categories, brands, collections }: HeaderProps) {
 
             {/* Right: Icons */}
             <div className="flex items-center justify-end gap-2 md:gap-3 whitespace-nowrap">
-              <Link
-                href="#"
-                className="hidden md:flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md transition-colors"
-              >
-                <User className="w-5 h-5" />
-                <span className="text-sm">Account</span>
-              </Link>
               <MiniCart />
             </div>
           </div>

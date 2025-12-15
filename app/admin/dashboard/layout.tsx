@@ -82,7 +82,7 @@ export default function AdminDashboardLayout({
         {/* Sidebar - Desktop */}
         <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r min-h-screen">
           <div className="p-6 border-b">
-            <h1 className="text-2xl font-light tracking-wider">Good Looks</h1>
+            <h1 className="text-2xl font-light tracking-wider">Cosmetic Club</h1>
             <p className="text-sm text-gray-500 mt-1">Admin Dashboard</p>
           </div>
 
@@ -123,7 +123,7 @@ export default function AdminDashboardLayout({
         {/* Mobile Header */}
         <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-50">
           <div className="flex items-center justify-between p-4">
-            <h1 className="text-xl font-light tracking-wider">Good Looks Admin</h1>
+            <h1 className="text-xl font-light tracking-wider">Cosmetic Club Admin</h1>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg"

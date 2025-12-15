@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-lg font-light mb-4">Good Looks</h3>
+            <h3 className="text-lg font-light mb-4">Cosmetic Club</h3>
             <p className="text-sm text-gray-600 leading-relaxed">
               Premium beauty and skincare products for everyone.
             </p>
@@ -92,7 +92,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 pt-8 border-t text-center text-sm text-gray-600">
-          <p>&copy; {new Date().getFullYear()} Good Looks. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Cosmetic Club. All rights reserved.</p>
         </div>
       </div>
     </footer>
