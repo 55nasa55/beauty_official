@@ -19,6 +19,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
   const [headerHeight, setHeaderHeight] = useState(0);
   const headerRef = useRef<HTMLDivElement>(null);
   const megaMenuRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -34,6 +35,20 @@ export function Header({ categories, brands, collections }: HeaderProps) {
       window.removeEventListener('resize', updateHeaderHeight);
     };
   }, []);
+
+  const handleMegaMenuEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setShowMegaMenu(true);
+  };
+
+  const handleMegaMenuLeave = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setShowMegaMenu(false);
+    }, 150);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,6 +73,14 @@ export function Header({ categories, brands, collections }: HeaderProps) {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [showMegaMenu]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <header ref={headerRef} className="sticky top-0 z-50 w-full bg-white border-b border-black/10">
@@ -111,8 +134,8 @@ export function Header({ categories, brands, collections }: HeaderProps) {
           <nav className="flex items-center gap-6 py-2">
             <div
               ref={megaMenuRef}
-              onMouseEnter={() => setShowMegaMenu(true)}
-              onMouseLeave={() => setShowMegaMenu(false)}
+              onMouseEnter={handleMegaMenuEnter}
+              onMouseLeave={handleMegaMenuLeave}
             >
               <button
                 onClick={() => setShowMegaMenu(!showMegaMenu)}
@@ -121,6 +144,39 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                 <Menu className="w-4 h-4" />
                 Categories
               </button>
+
+              {/* Full-Width Mega Menu - Fixed Position */}
+              <div
+                className={`fixed inset-x-0 w-screen z-40 transition-all duration-200 ease-out ${
+                  showMegaMenu
+                    ? 'opacity-100 translate-y-0 pointer-events-auto'
+                    : 'opacity-0 -translate-y-2 pointer-events-none'
+                }`}
+                style={{ top: headerHeight }}
+              >
+                <div className="bg-white shadow-lg border-t border-black/10">
+                  <div className="max-w-6xl mx-auto px-6 py-6">
+                    <div className="grid grid-cols-3 gap-6">
+                      {categories.map((category) => (
+                        <div key={category.id}>
+                          <Link
+                            href={`/collections/${category.slug}`}
+                            className="block group"
+                            onClick={() => setShowMegaMenu(false)}
+                          >
+                            <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
+                              {category.name}
+                            </h3>
+                            <p className="text-sm text-black/60 line-clamp-2">
+                              {category.description}
+                            </p>
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <Link
@@ -140,41 +196,6 @@ export function Header({ categories, brands, collections }: HeaderProps) {
               </Link>
             ))}
           </nav>
-        </div>
-      </div>
-
-      {/* Full-Width Mega Menu - Fixed Position */}
-      <div
-        className={`fixed inset-x-0 w-screen z-40 transition-all duration-200 ease-out ${
-          showMegaMenu
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 -translate-y-2 pointer-events-none'
-        }`}
-        style={{ top: headerHeight }}
-        onMouseEnter={() => setShowMegaMenu(true)}
-        onMouseLeave={() => setShowMegaMenu(false)}
-      >
-        <div className="bg-white shadow-lg border-t border-black/10">
-          <div className="max-w-6xl mx-auto px-6 py-6">
-            <div className="grid grid-cols-3 gap-6">
-              {categories.map((category) => (
-                <div key={category.id}>
-                  <Link
-                    href={`/collections/${category.slug}`}
-                    className="block group"
-                    onClick={() => setShowMegaMenu(false)}
-                  >
-                    <h3 className="text-sm font-semibold text-black/80 mb-1 group-hover:text-black transition-colors">
-                      {category.name}
-                    </h3>
-                    <p className="text-sm text-black/60 line-clamp-2">
-                      {category.description}
-                    </p>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
