@@ -36,9 +36,13 @@ export function ProductCard({ product }: ProductCardProps) {
 
       <div className="space-y-1">
         {product.brand && (
-          <p className="text-xs text-black uppercase tracking-wide font-semibold">
+          <Link
+            href={`/brand/${product.brand.slug}`}
+            className="text-xs text-black uppercase tracking-wide font-semibold hover:underline inline-block"
+            onClick={(e) => e.stopPropagation()}
+          >
             {product.brand.name}
-          </p>
+          </Link>
         )}
         <h3 className="text-sm font-normal line-clamp-2 group-hover:text-gray-600 transition-colors">
           {product.name}
