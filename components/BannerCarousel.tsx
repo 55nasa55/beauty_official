@@ -34,6 +34,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userInteractedRef = useRef(false);
+  const isResettingRef = useRef(false);
 
   if (banners.length === 0) return null;
 
@@ -43,6 +44,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const [renderIndex, setRenderIndex] = useState(total > 1 ? 1 : 0);
   const [realIndex, setRealIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
 
   const renderIndexToReal = (renderIdx: number) => {
     if (total === 1) return 0;
@@ -62,6 +64,43 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       left: slideEl.offsetLeft,
       behavior: smooth ? 'smooth' : 'auto',
     });
+  };
+
+  const atomicJumpToRenderIndex = (targetIdx: number) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    isResettingRef.current = true;
+    setIsResetting(true);
+
+    container.style.scrollBehavior = 'auto';
+    container.style.scrollSnapType = 'none';
+
+    scrollToRenderIndex(targetIdx, false);
+
+    requestAnimationFrame(() => {
+      container.style.scrollBehavior = '';
+      container.style.scrollSnapType = '';
+
+      requestAnimationFrame(() => {
+        isResettingRef.current = false;
+        setIsResetting(false);
+      });
+    });
+  };
+
+  const restartAutoplayTimer = () => {
+    if (!isPlaying) return;
+
+    if (autoplayIntervalRef.current) {
+      clearInterval(autoplayIntervalRef.current);
+    }
+
+    autoplayIntervalRef.current = setInterval(() => {
+      if (!isScrollingRef.current && !userInteractedRef.current) {
+        goToNext();
+      }
+    }, 5000);
   };
 
   const handleBannerClick = (banner: Banner) => {
@@ -88,6 +127,16 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     setRenderIndex(target);
     setRealIndex(renderIndexToReal(target));
     scrollToRenderIndex(target, true);
+  };
+
+  const handleNextClick = () => {
+    goToNext();
+    restartAutoplayTimer();
+  };
+
+  const handlePrevClick = () => {
+    goToPrevious();
+    restartAutoplayTimer();
   };
 
   const togglePlayPause = () => {
@@ -141,6 +190,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       scrollTimeoutRef.current = setTimeout(() => {
         isScrollingRef.current = false;
 
+        if (isResettingRef.current) return;
+
         const containerCenter = container.scrollLeft + container.clientWidth / 2;
         let nearestIdx = 0;
         let minDistance = Infinity;
@@ -164,13 +215,13 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
         if (settledRenderIndex === 0) {
           requestAnimationFrame(() => {
-            scrollToRenderIndex(total, false);
+            atomicJumpToRenderIndex(total);
             setRenderIndex(total);
             setRealIndex(total - 1);
           });
         } else if (settledRenderIndex === total + 1) {
           requestAnimationFrame(() => {
-            scrollToRenderIndex(1, false);
+            atomicJumpToRenderIndex(1);
             setRenderIndex(1);
             setRealIndex(0);
           });
@@ -214,6 +265,11 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     };
   }, [total]);
 
+  const shouldPrioritizeImage = (index: number) => {
+    if (total === 1) return index === 0;
+    return index === 0 || index === 1 || index === 2 || index === 3 || index === allSlides.length - 1;
+  };
+
   return (
     <div className="relative">
       <div
@@ -238,7 +294,9 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                 alt={banner.title}
                 fill
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
-                priority={index <= 2}
+                priority={shouldPrioritizeImage(index)}
+                loading={shouldPrioritizeImage(index) ? 'eager' : undefined}
+                sizes="(min-width: 1280px) 1200px, 80vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
@@ -267,7 +325,9 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       {total > 1 && (
         <div className="w-[80vw] max-w-[1200px] mx-auto mt-4 flex items-center justify-center gap-4">
           <button
-            onClick={goToPrevious}
+            onClick={handlePrevClick}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label="Previous banner"
           >
@@ -276,6 +336,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
           <button
             onClick={togglePlayPause}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
           >
@@ -291,7 +353,9 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
           </div>
 
           <button
-            onClick={goToNext}
+            onClick={handleNextClick}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
             aria-label="Next banner"
           >
