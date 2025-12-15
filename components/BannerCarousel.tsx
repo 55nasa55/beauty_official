@@ -38,6 +38,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const isResettingRef = useRef(false);
   const programmaticScrollRef = useRef(false);
   const isPlayingRef = useRef(true);
+  const renderIndexRef = useRef(0);
 
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -109,6 +110,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       isResettingRef.current = false;
       programmaticScrollRef.current = false;
 
+      renderIndexRef.current = idx;
       setRenderIndex(idx);
       const newReal = toRealIndex(idx);
       setRealIndex(newReal);
@@ -165,9 +167,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const goNext = (resetTimer: boolean) => {
     if (total <= 1) return;
 
-    const next = renderIndex + 1;
+    const next = renderIndexRef.current + 1;
 
     programmaticScrollRef.current = true;
+    renderIndexRef.current = next;
     setRenderIndex(next);
     setRealIndex(toRealIndex(next));
     scrollToIndex(next, true);
@@ -178,9 +181,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const goPrev = (resetTimer: boolean) => {
     if (total <= 1) return;
 
-    const prev = renderIndex - 1;
+    const prev = renderIndexRef.current - 1;
 
     programmaticScrollRef.current = true;
+    renderIndexRef.current = prev;
     setRenderIndex(prev);
     setRealIndex(toRealIndex(prev));
     scrollToIndex(prev, true);
@@ -217,6 +221,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     isPlayingRef.current = isPlaying;
 
     if (total <= 1) {
+      renderIndexRef.current = 0;
       setRenderIndex(0);
       setRealIndex(0);
       setIsReady(true);
@@ -225,6 +230,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
     const start = middleRenderIndexForReal(0);
     setIsReady(false);
+    renderIndexRef.current = start;
     setRenderIndex(start);
     setRealIndex(0);
 
@@ -280,6 +286,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
         const settled = getNearestIndex();
 
+        renderIndexRef.current = settled;
         setRenderIndex(settled);
         const rReal = toRealIndex(settled);
         setRealIndex(rReal);
