@@ -86,8 +86,8 @@ export default function ProductsManagementPage() {
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [dateRange, setDateRange] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -164,11 +164,11 @@ export default function ProductsManagementPage() {
         params.append('q', searchQuery.trim());
       }
 
-      if (brandFilter) {
+      if (brandFilter && brandFilter !== 'all') {
         params.append('brand_id', brandFilter);
       }
 
-      if (categoryFilter) {
+      if (categoryFilter && categoryFilter !== 'all') {
         params.append('category_id', categoryFilter);
       }
 
@@ -616,15 +616,15 @@ export default function ProductsManagementPage() {
   const resetFilters = () => {
     setSearchInput('');
     setSearchQuery('');
-    setBrandFilter('');
-    setCategoryFilter('');
+    setBrandFilter('all');
+    setCategoryFilter('all');
     setDateRange('all');
     setDateFrom('');
     setDateTo('');
     setPage(0);
   };
 
-  const hasActiveFilters = searchQuery || brandFilter || categoryFilter || dateFrom || dateTo;
+  const hasActiveFilters = searchQuery || (brandFilter && brandFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || dateFrom || dateTo;
 
   const totalPages = Math.ceil(total / pageSize);
   const startItem = page * pageSize + 1;
@@ -913,7 +913,12 @@ export default function ProductsManagementPage() {
                   Filters
                   {hasActiveFilters && (
                     <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {[searchQuery, brandFilter, categoryFilter, dateFrom].filter(Boolean).length}
+                      {[
+                        searchQuery,
+                        brandFilter !== 'all' && brandFilter,
+                        categoryFilter !== 'all' && categoryFilter,
+                        dateFrom
+                      ].filter(Boolean).length}
                     </span>
                   )}
                 </Button>
@@ -944,7 +949,7 @@ export default function ProductsManagementPage() {
                         <SelectValue placeholder="All brands" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All brands</SelectItem>
+                        <SelectItem value="all">All brands</SelectItem>
                         {brands.map((brand) => (
                           <SelectItem key={brand.id} value={brand.id}>
                             {brand.name}
@@ -961,7 +966,7 @@ export default function ProductsManagementPage() {
                         <SelectValue placeholder="All categories" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All categories</SelectItem>
+                        <SelectItem value="all">All categories</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
