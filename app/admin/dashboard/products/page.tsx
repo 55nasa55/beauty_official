@@ -82,7 +82,7 @@ export default function ProductsManagementPage() {
   const { toast } = useToast();
 
   const [page, setPage] = useState(0);
-  const [pageSize] = useState(25);
+  const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
