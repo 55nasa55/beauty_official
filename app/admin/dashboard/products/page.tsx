@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -24,6 +24,7 @@ interface Product {
   is_featured: boolean;
   is_best_seller: boolean;
   is_new: boolean;
+  created_at: string;
 }
 
 interface ProductVariant {
@@ -67,6 +68,7 @@ export default function ProductsManagementPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
@@ -74,11 +76,22 @@ export default function ProductsManagementPage() {
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [isVariantDialogOpen, setIsVariantDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [categoryFacets, setCategoryFacets] = useState<CategoryFacet[]>([]);
   const [facetOptions, setFacetOptions] = useState<Record<string, FacetOption[]>>({});
   const [selectedFacetOptions, setSelectedFacetOptions] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [dateRange, setDateRange] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -102,8 +115,21 @@ export default function ProductsManagementPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    fetchCategoriesAndBrands();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setPage(0);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [page, pageSize, searchQuery, brandFilter, categoryFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     if (formData.category_id && isDialogOpen) {
@@ -114,44 +140,65 @@ export default function ProductsManagementPage() {
     }
   }, [formData.category_id, isDialogOpen]);
 
-  async function fetchData() {
-    const [productsResult, categoriesResult, brandsResult] = await Promise.all([
-      supabase.from('products').select('*').order('name'),
+  const fetchCategoriesAndBrands = async () => {
+    const [categoriesResult, brandsResult] = await Promise.all([
       supabase.from('categories').select('id, name').order('name'),
       supabase.from('brands').select('id, name').order('name'),
     ]);
 
-    const productsData = productsResult.data || [];
-    setProducts(productsData);
     setCategories(categoriesResult.data || []);
     setBrands(brandsResult.data || []);
-    setIsLoading(false);
+  };
 
-    if (productsData.length > 0) {
-      fetchAllVariants(productsData.map((p: any) => p.id));
-    }
-  }
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  async function fetchAllVariants(productIds: string[]) {
-    const { data } = await supabase
-      .from('product_variants')
-      .select('*')
-      .in('product_id', productIds)
-      .order('created_at');
-
-    if (data) {
-      const variantsByProduct: Record<string, ProductVariant[]> = {};
-      (data as any[]).forEach((variant: any) => {
-        if (!variantsByProduct[variant.product_id]) {
-          variantsByProduct[variant.product_id] = [];
-        }
-        variantsByProduct[variant.product_id].push(variant);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
       });
-      setVariants(variantsByProduct);
-    }
-  }
 
-  async function fetchVariants(productId: string) {
+      if (searchQuery.trim()) {
+        params.append('q', searchQuery.trim());
+      }
+
+      if (brandFilter) {
+        params.append('brand_id', brandFilter);
+      }
+
+      if (categoryFilter) {
+        params.append('category_id', categoryFilter);
+      }
+
+      if (dateFrom) {
+        params.append('from', dateFrom);
+      }
+
+      if (dateTo) {
+        params.append('to', dateTo);
+      }
+
+      const response = await fetch(`/api/admin/products/list?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load products');
+      }
+
+      const data = await response.json();
+
+      setProducts(data.products);
+      setTotal(data.total);
+      setIsLoading(false);
+    } catch (err: any) {
+      console.error('Error loading products:', err);
+      setError(err.message || 'Failed to load products');
+      setIsLoading(false);
+    }
+  };
+
+  const fetchVariants = async (productId: string) => {
     const { data } = await supabase
       .from('product_variants')
       .select('*')
@@ -161,7 +208,7 @@ export default function ProductsManagementPage() {
     if (data) {
       setVariants(prev => ({ ...prev, [productId]: data }));
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,7 +258,7 @@ export default function ProductsManagementPage() {
 
       setIsDialogOpen(false);
       resetForm();
-      fetchData();
+      loadProducts();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -350,7 +397,7 @@ export default function ProductsManagementPage() {
         description: 'Product deleted successfully',
       });
 
-      fetchData();
+      loadProducts();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -547,39 +594,43 @@ export default function ProductsManagementPage() {
     setSelectedFacetOptions(newSelected);
   };
 
-  const getFilteredProducts = () => {
-    if (!searchQuery.trim()) {
-      return products;
+  const handleDateRangeChange = (range: string) => {
+    setDateRange(range);
+    const now = new Date();
+    let from = '';
+    let to = '';
+
+    if (range === '7') {
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (range === '30') {
+      from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (range === '90') {
+      from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
     }
 
-    const query = searchQuery.toLowerCase();
-
-    return products.filter(product => {
-      const productName = product.name.toLowerCase();
-      const productSlug = product.slug.toLowerCase();
-
-      const categoryName = categories
-        .find(c => c.id === product.category_id)
-        ?.name.toLowerCase() || '';
-
-      const brandName = brands
-        .find(b => b.id === product.brand_id)
-        ?.name.toLowerCase() || '';
-
-      const productVariants = variants[product.id] || [];
-      const variantSkus = productVariants
-        .map(v => v.sku?.toLowerCase() || '')
-        .join(' ');
-
-      const searchableText = `${productName} ${productSlug} ${categoryName} ${brandName} ${variantSkus}`;
-
-      return searchableText.includes(query);
-    });
+    setDateFrom(from);
+    setDateTo(to);
+    setPage(0);
   };
 
-  const filteredProducts = getFilteredProducts();
+  const resetFilters = () => {
+    setSearchInput('');
+    setSearchQuery('');
+    setBrandFilter('');
+    setCategoryFilter('');
+    setDateRange('all');
+    setDateFrom('');
+    setDateTo('');
+    setPage(0);
+  };
 
-  if (isLoading) {
+  const hasActiveFilters = searchQuery || brandFilter || categoryFilter || dateFrom || dateTo;
+
+  const totalPages = Math.ceil(total / pageSize);
+  const startItem = page * pageSize + 1;
+  const endItem = Math.min((page + 1) * pageSize, total);
+
+  if (isLoading && products.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500">Loading products...</p>
@@ -848,169 +899,281 @@ export default function ProductsManagementPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle>All Products ({products.length})</CardTitle>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle>All Products ({total})</CardTitle>
 
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="Search by name, category, brand, or SKU..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filters
+                  {hasActiveFilters && (
+                    <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {[searchQuery, brandFilter, categoryFilter, dateFrom].filter(Boolean).length}
+                    </span>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {searchQuery && (
-            <p className="text-sm text-gray-600 mt-2">
-              Found {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
-            </p>
-          )}
-        </CardHeader>
-        <CardContent>
-          {products.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No products yet. Create your first product!</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-2">No products found matching "{searchQuery}"</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSearchQuery('')}
-              >
-                Clear Search
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="border rounded-lg">
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{product.name}</h3>
-                      <p className="text-sm text-gray-500">{product.slug}</p>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleProductExpand(product.id)}
-                      >
-                        {expandedProduct === product.id ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(product.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+            {showFilters && (
+              <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        type="text"
+                        placeholder="Name or slug..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        className="pl-9"
+                      />
                     </div>
                   </div>
 
-                  {expandedProduct === product.id && (
-                    <div className="border-t p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-medium">Product Variants</h4>
+                  <div className="space-y-2">
+                    <Label>Brand</Label>
+                    <Select value={brandFilter} onValueChange={(value) => { setBrandFilter(value); setPage(0); }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All brands" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All brands</SelectItem>
+                        {brands.map((brand) => (
+                          <SelectItem key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setPage(0); }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All categories</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Date Range</Label>
+                    <Select value={dateRange} onValueChange={handleDateRangeChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All time</SelectItem>
+                        <SelectItem value="7">Last 7 days</SelectItem>
+                        <SelectItem value="30">Last 30 days</SelectItem>
+                        <SelectItem value="90">Last 90 days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {hasActiveFilters && (
+                  <div className="flex justify-end">
+                    <Button variant="outline" size="sm" onClick={resetFilters}>
+                      <X className="w-4 h-4 mr-2" />
+                      Reset Filters
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 mb-2">{error}</p>
+              <Button variant="outline" size="sm" onClick={loadProducts}>
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading...</p>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-2">
+                {hasActiveFilters ? 'No products found matching your filters' : 'No products yet. Create your first product!'}
+              </p>
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2 mb-4">
+                {products.map((product) => (
+                  <div key={product.id} className="border rounded-lg">
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex-1">
+                        <h3 className="font-medium">{product.name}</h3>
+                        <p className="text-sm text-gray-500">{product.slug}</p>
+                      </div>
+                      <div className="flex gap-2 items-center">
                         <Button
+                          variant="outline"
                           size="sm"
-                          onClick={() => handleAddVariant(product.id)}
+                          onClick={() => toggleProductExpand(product.id)}
                         >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Variant
+                          {expandedProduct === product.id ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(product.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
+                    </div>
 
-                      {variants[product.id]?.length === 0 || !variants[product.id] ? (
-                        <p className="text-sm text-gray-500 text-center py-4">
-                          No variants yet. Add a variant to get started.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {variants[product.id]?.map((variant) => (
-                            <div key={variant.id} className="bg-white p-3 rounded border">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium">{variant.name}</span>
-                                    <span className="text-xs bg-gray-200 px-2 py-1 rounded">
-                                      {variant.sku || 'No SKU'}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-gray-600">
-                                    Price: ${variant.price.toFixed(2)}
-                                    {variant.compare_at_price > 0 && (
-                                      <span className="ml-2 line-through text-gray-400">
-                                        ${variant.compare_at_price.toFixed(2)}
+                    {expandedProduct === product.id && (
+                      <div className="border-t p-4 bg-gray-50">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium">Product Variants</h4>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddVariant(product.id)}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add Variant
+                          </Button>
+                        </div>
+
+                        {variants[product.id]?.length === 0 || !variants[product.id] ? (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No variants yet. Add a variant to get started.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {variants[product.id]?.map((variant) => (
+                              <div key={variant.id} className="bg-white p-3 rounded border">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium">{variant.name}</span>
+                                      <span className="text-xs bg-gray-200 px-2 py-1 rounded">
+                                        {variant.sku || 'No SKU'}
                                       </span>
-                                    )}
-                                  </p>
-                                  {variant.images && variant.images.length > 0 && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {variant.images.length} image(s)
-                                    </p>
-                                  )}
-                                  {variant.specs && Object.keys(variant.specs).length > 0 && (
-                                    <div className="flex gap-1 mt-2 flex-wrap">
-                                      {Object.entries(variant.specs).map(([key, value]) => (
-                                        <span key={key} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                          {key}: {String(value)}
-                                        </span>
-                                      ))}
                                     </div>
-                                  )}
-                                </div>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEditVariant(variant)}
-                                  >
-                                    <Edit className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleDeleteVariant(variant.id, product.id)}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
+                                    <p className="text-sm text-gray-600">
+                                      Price: ${variant.price.toFixed(2)}
+                                      {variant.compare_at_price > 0 && (
+                                        <span className="ml-2 line-through text-gray-400">
+                                          ${variant.compare_at_price.toFixed(2)}
+                                        </span>
+                                      )}
+                                    </p>
+                                    {variant.images && variant.images.length > 0 && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {variant.images.length} image(s)
+                                      </p>
+                                    )}
+                                    {variant.specs && Object.keys(variant.specs).length > 0 && (
+                                      <div className="flex gap-1 mt-2 flex-wrap">
+                                        {Object.entries(variant.specs).map(([key, value]) => (
+                                          <span key={key} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                            {key}: {String(value)}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEditVariant(variant)}
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDeleteVariant(variant.id, product.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <p className="text-sm text-gray-600">
+                    Showing {startItem}–{endItem} of {total} products
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 0}
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Prev
+                    </Button>
+                    <span className="text-sm text-gray-600">
+                      Page {page + 1} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={page >= totalPages - 1}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
