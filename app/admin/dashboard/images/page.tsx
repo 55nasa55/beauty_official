@@ -6,52 +6,88 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, Copy, Image as ImageIcon, X, CheckCircle } from 'lucide-react';
+import { Upload, Trash2, Copy, Image as ImageIcon, X, CheckCircle, Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 
-interface StorageImage {
-  name: string;
+interface AdminImage {
   id: string;
-  url: string;
+  bucket: string;
+  path: string;
   created_at: string;
+  bytes: number | null;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  tags: string[] | null;
+  url: string;
 }
 
 export default function ImageManagerPage() {
-  const [images, setImages] = useState<StorageImage[]>([]);
+  const [images, setImages] = useState<AdminImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(60);
+  const [total, setTotal] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showIndexWarning, setShowIndexWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchImages();
-  }, []);
+  }, [page, searchQuery]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setPage(0); // Reset to first page on new search
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchInput]);
 
   async function fetchImages() {
     try {
-      const { data, error } = await supabase.storage
-        .from('product-images')
-        .list('', {
-          sortBy: { column: 'created_at', order: 'desc' },
-        });
+      setIsLoading(true);
 
-      if (error) throw error;
-
-      const imagesWithUrls = data.map((file) => {
-        const { data: urlData } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(file.name);
-
-        return {
-          name: file.name,
-          id: file.id,
-          url: urlData.publicUrl,
-          created_at: file.created_at || '',
-        };
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+        search: searchQuery,
+        sortBy: 'created_at',
+        sortDir: 'desc',
       });
 
-      setImages(imagesWithUrls);
+      const response = await fetch(`/api/admin/images/list?${params}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch images');
+      }
+
+      const data = await response.json();
+
+      setImages(data.images);
+      setTotal(data.total);
+
+      // Show warning if database is empty but we might have storage files
+      if (data.total === 0 && page === 0 && !searchQuery) {
+        checkStorageForWarning();
+      } else {
+        setShowIndexWarning(false);
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -63,6 +99,21 @@ export default function ImageManagerPage() {
     }
   }
 
+  async function checkStorageForWarning() {
+    try {
+      // Try to list just 1 file from storage to see if there are any
+      const { data } = await supabase.storage
+        .from('product-images')
+        .list('', { limit: 1 });
+
+      if (data && data.length > 0) {
+        setShowIndexWarning(true);
+      }
+    } catch (error) {
+      // Silently fail - this is just for the warning
+    }
+  }
+
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -70,28 +121,46 @@ export default function ImageManagerPage() {
     setIsUploading(true);
 
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const uploadResults = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-        const { error } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+          // Upload to storage
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false,
+            });
 
-        if (error) throw error;
-        return fileName;
-      });
+          if (uploadError) throw uploadError;
 
-      await Promise.all(uploadPromises);
+          // Index in database
+          const { error: dbError } = await supabase
+            .from('admin_images')
+            .insert({
+              bucket: 'product-images',
+              path: fileName,
+              bytes: file.size,
+              mime_type: file.type,
+            });
+
+          if (dbError) {
+            console.error('Failed to index image in database:', dbError);
+            // Don't throw - storage upload succeeded, which is most important
+          }
+
+          return fileName;
+        })
+      );
 
       toast({
         title: 'Success',
         description: `${files.length} image(s) uploaded successfully`,
       });
 
+      // Refresh current page
       fetchImages();
     } catch (error: any) {
       toast({
@@ -107,15 +176,27 @@ export default function ImageManagerPage() {
     }
   }
 
-  async function handleDelete(imageName: string) {
+  async function handleDelete(imagePath: string) {
     if (!confirm('Are you sure you want to delete this image?')) return;
 
     try {
-      const { error } = await supabase.storage
+      // Delete from storage first
+      const { error: storageError } = await supabase.storage
         .from('product-images')
-        .remove([imageName]);
+        .remove([imagePath]);
 
-      if (error) throw error;
+      if (storageError) throw storageError;
+
+      // Delete from database index
+      const { error: dbError } = await supabase
+        .from('admin_images')
+        .delete()
+        .eq('path', imagePath);
+
+      if (dbError) {
+        console.error('Failed to remove image from database index:', dbError);
+        // Don't throw - storage deletion succeeded
+      }
 
       toast({
         title: 'Success',
@@ -125,7 +206,7 @@ export default function ImageManagerPage() {
       fetchImages();
       setSelectedImages(prev => {
         const newSet = new Set(prev);
-        newSet.delete(imageName);
+        newSet.delete(imagePath);
         return newSet;
       });
     } catch (error: any) {
@@ -143,11 +224,25 @@ export default function ImageManagerPage() {
     if (!confirm(`Are you sure you want to delete ${selectedImages.size} selected image(s)?`)) return;
 
     try {
-      const { error } = await supabase.storage
-        .from('product-images')
-        .remove(Array.from(selectedImages));
+      const pathsArray = Array.from(selectedImages);
 
-      if (error) throw error;
+      // Delete from storage first
+      const { error: storageError } = await supabase.storage
+        .from('product-images')
+        .remove(pathsArray);
+
+      if (storageError) throw storageError;
+
+      // Delete from database index
+      const { error: dbError } = await supabase
+        .from('admin_images')
+        .delete()
+        .in('path', pathsArray);
+
+      if (dbError) {
+        console.error('Failed to remove images from database index:', dbError);
+        // Don't throw - storage deletion succeeded
+      }
 
       toast({
         title: 'Success',
@@ -179,7 +274,7 @@ export default function ImageManagerPage() {
 
   function handleCopySelectedUrls() {
     const urls = images
-      .filter(img => selectedImages.has(img.name))
+      .filter(img => selectedImages.has(img.path))
       .map(img => img.url)
       .join(', ');
 
@@ -191,13 +286,13 @@ export default function ImageManagerPage() {
     });
   }
 
-  function toggleImageSelection(imageName: string) {
+  function toggleImageSelection(imagePath: string) {
     setSelectedImages(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(imageName)) {
-        newSet.delete(imageName);
+      if (newSet.has(imagePath)) {
+        newSet.delete(imagePath);
       } else {
-        newSet.add(imageName);
+        newSet.add(imagePath);
       }
       return newSet;
     });
@@ -207,11 +302,15 @@ export default function ImageManagerPage() {
     if (selectedImages.size === images.length) {
       setSelectedImages(new Set());
     } else {
-      setSelectedImages(new Set(images.map(img => img.name)));
+      setSelectedImages(new Set(images.map(img => img.path)));
     }
   }
 
-  if (isLoading) {
+  const totalPages = Math.ceil(total / pageSize);
+  const startIndex = page * pageSize + 1;
+  const endIndex = Math.min((page + 1) * pageSize, total);
+
+  if (isLoading && images.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-500">Loading images...</p>
@@ -246,6 +345,23 @@ export default function ImageManagerPage() {
           </Button>
         </div>
       </div>
+
+      {showIndexWarning && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-yellow-900">Image Index Not Populated</p>
+                <p className="text-sm text-yellow-800 mt-1">
+                  The database index is empty, but storage files may exist. Images uploaded through this interface will be indexed automatically.
+                  Existing storage files will need to be re-uploaded or manually indexed.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedImages.size > 0 && (
         <Card className="bg-blue-50 border-blue-200">
@@ -289,51 +405,71 @@ export default function ImageManagerPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>All Images ({images.length})</CardTitle>
-            {images.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectAll}
-              >
-                {selectedImages.size === images.length ? 'Deselect All' : 'Select All'}
-              </Button>
-            )}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle>
+              All Images ({total})
+              {total > 0 && ` - Showing ${startIndex}–${endIndex}`}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search images..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9 w-64"
+                />
+              </div>
+              {images.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAll}
+                >
+                  {selectedImages.size === images.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {images.length === 0 ? (
             <div className="text-center py-12">
               <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No images yet. Upload your first image!</p>
-              <Button onClick={() => fileInputRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Images
-              </Button>
+              <p className="text-gray-500 mb-4">
+                {searchQuery ? 'No images found matching your search.' : 'No images yet. Upload your first image!'}
+              </p>
+              {!searchQuery && (
+                <Button onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Images
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {images.map((image) => (
                 <div
-                  key={image.name}
+                  key={image.id}
                   className={`relative group border rounded-lg overflow-hidden transition-all ${
-                    selectedImages.has(image.name)
+                    selectedImages.has(image.path)
                       ? 'ring-2 ring-blue-500 border-blue-500'
                       : 'hover:border-gray-400'
                   }`}
                 >
                   <div
                     className="cursor-pointer"
-                    onClick={() => toggleImageSelection(image.name)}
+                    onClick={() => toggleImageSelection(image.path)}
                   >
                     <div className="aspect-square bg-gray-100 relative">
                       <img
                         src={image.url}
-                        alt={image.name}
+                        alt={image.path}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
-                      {selectedImages.has(image.name) && (
+                      {selectedImages.has(image.path) && (
                         <div className="absolute top-2 left-2 bg-blue-500 rounded-full p-1">
                           <CheckCircle className="w-5 h-5 text-white" />
                         </div>
@@ -341,8 +477,8 @@ export default function ImageManagerPage() {
                     </div>
 
                     <div className="p-2 bg-white">
-                      <p className="text-xs text-gray-600 truncate" title={image.name}>
-                        {image.name}
+                      <p className="text-xs text-gray-600 truncate" title={image.path}>
+                        {image.path}
                       </p>
                     </div>
                   </div>
@@ -368,7 +504,7 @@ export default function ImageManagerPage() {
                       variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(image.name);
+                        handleDelete(image.path);
                       }}
                       className="shadow-lg"
                     >
@@ -377,6 +513,34 @@ export default function ImageManagerPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t">
+              <div className="text-sm text-gray-600">
+                Page {page + 1} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -388,6 +552,7 @@ export default function ImageManagerPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-gray-600">
           <p><strong>Upload:</strong> Click "Upload Images" to select and upload one or multiple images</p>
+          <p><strong>Search:</strong> Use the search box to filter images by filename</p>
           <p><strong>Select:</strong> Click on any image to select it (blue ring appears)</p>
           <p><strong>Copy URL:</strong> Hover over an image and click the copy button, or select multiple and click "Copy URLs"</p>
           <p><strong>Delete:</strong> Hover over an image to delete individually, or select multiple and delete in bulk</p>
