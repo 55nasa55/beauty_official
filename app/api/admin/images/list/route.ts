@@ -3,10 +3,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdmin();
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const searchParams = request.nextUrl.searchParams;

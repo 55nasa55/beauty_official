@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/auth-helpers-nextjs';
 
 export async function requireAdmin() {
   const cookieStore = cookies();
@@ -10,16 +10,21 @@ export async function requireAdmin() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
         },
       },
     }
   );
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -36,7 +41,7 @@ export async function requireAdmin() {
   const { data: adminRecord } = await supabase
     .from('admins')
     .select('id')
-    .eq('email', user.email)
+    .eq('email', user.email.toLowerCase())
     .maybeSingle();
 
   if (!adminRecord) {
@@ -46,5 +51,5 @@ export async function requireAdmin() {
     );
   }
 
-  return { user };
+  return null;
 }

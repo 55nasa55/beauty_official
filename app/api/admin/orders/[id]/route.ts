@@ -6,10 +6,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const authResult = await requireAdmin();
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const orderId = params.id;

@@ -4,10 +4,8 @@ import { createServerClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(req: NextRequest) {
-  const authResult = await requireAdmin();
-  if (authResult instanceof NextResponse) {
-    return authResult;
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const { payment_intent, order_id } = await req.json();
