@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseClientComponent } from '@/lib/supabaseClientComponent';
 import { checkAdminStatus } from '@/lib/admin-auth';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = supabaseClientComponent();
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
