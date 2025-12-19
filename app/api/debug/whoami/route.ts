@@ -1,8 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
-export async function requireAdmin() {
+export async function GET() {
   const cookieStore = cookies();
 
   const supabase = createServerClient(
@@ -23,23 +23,8 @@ export async function requireAdmin() {
   );
 
   const { data } = await supabase.auth.getUser();
-  const user = data.user;
 
-  if (!user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const email = user.email.toLowerCase();
-
-  const { data: adminRow } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-
-  if (!adminRow) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  return null;
+  return NextResponse.json({
+    email: data.user?.email ?? null,
+  });
 }
