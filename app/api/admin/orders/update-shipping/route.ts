@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(request: Request) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     const body = await request.json();
     const { orderId, tracking_number, shipping_status } = body;

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
 

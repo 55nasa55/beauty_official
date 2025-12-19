@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createServerClient } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireAdmin();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     const { payment_intent, order_id } = await req.json();
 
