@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin(req);
+  const cookieStore = cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+
+  const denied = await requireAdmin(req, supabase);
   if (denied) return denied;
 
   try {
@@ -26,7 +30,6 @@ export async function POST(req: NextRequest) {
     console.log('[Refund] Stripe refund status:', refund.status);
 
     if (refund.status === 'succeeded') {
-      const supabase = createSupabaseServerClient();
 
       const { data, error: updateError } = await (supabase as any)
         .from('orders')

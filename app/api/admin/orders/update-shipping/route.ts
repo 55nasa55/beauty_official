@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(request: NextRequest) {
-  const denied = await requireAdmin(request);
+  const cookieStore = cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+
+  const denied = await requireAdmin(request, supabase);
   if (denied) return denied;
 
   try {
@@ -33,8 +37,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const supabase = createSupabaseServerClient();
 
     const { data, error } = await (supabase as any)
       .from('orders')

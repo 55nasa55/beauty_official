@@ -1,7 +1,8 @@
 /**
  * WARNING: DO NOT import this file in components or pages!
  *
- * This client uses Next.js cookies() which only works in:
+ * This client factory accepts a cookieStore from next/headers cookies()
+ * which must be called in:
  * - API route handlers (app/api directory)
  * - Server actions
  *
@@ -12,12 +13,9 @@
  * - import { useSupabase } from '@/app/providers'
  */
 
-import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies();
-
+export function createSupabaseServerClient(cookieStore: any) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

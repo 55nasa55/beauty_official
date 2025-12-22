@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(request: NextRequest) {
-  const denied = await requireAdmin(request);
+  const cookieStore = cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+
+  const denied = await requireAdmin(request, supabase);
   if (denied) return denied;
 
   try {
@@ -16,8 +20,6 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category_id') || '';
     const from = searchParams.get('from') || '';
     const to = searchParams.get('to') || '';
-
-    const supabase = createSupabaseServerClient();
 
     let query = supabase
       .from('products')

@@ -17,7 +17,7 @@ const supabaseAdmin = createClient(
   }
 );
 
-export async function requireAdmin(req: NextRequest) {
+export async function requireAdmin(req: NextRequest, supabase?: any) {
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 

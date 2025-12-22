@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
@@ -6,11 +7,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const denied = await requireAdmin(request);
+  const cookieStore = cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+
+  const denied = await requireAdmin(request, supabase);
   if (denied) return denied;
 
   try {
-    const supabase = createSupabaseServerClient();
     const productId = params.id;
 
     const [productResult, variantsResult] = await Promise.all([

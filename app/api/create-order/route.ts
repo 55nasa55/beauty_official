@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -43,7 +44,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseServerClient();
+    const cookieStore = cookies();
+    const supabase = createSupabaseServerClient(cookieStore);
 
     // Check if order already exists
     const { data: existingOrder, error: checkError } = await supabase
