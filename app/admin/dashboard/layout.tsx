@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,24 @@ export default function AdminDashboardLayout({
 }) {
   const supabase = useSupabase();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
+  const [pathname, setPathname] = useState('');
+
+  useEffect(() => {
+    // Set initial pathname
+    setPathname(window.location.pathname);
+
+    // Update pathname on navigation
+    const handleLocationChange = () => {
+      setPathname(window.location.pathname);
+    };
+
+    // Listen for popstate (back/forward navigation)
+    window.addEventListener('popstate', handleLocationChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -62,6 +78,7 @@ export default function AdminDashboardLayout({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setPathname(item.href)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-gray-100 text-black font-medium'
@@ -116,7 +133,10 @@ export default function AdminDashboardLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setPathname(item.href);
+                    }}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
                         ? 'bg-gray-100 text-black font-medium'
