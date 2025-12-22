@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabaseClient';
 import { checkAdminStatus } from '@/lib/admin-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,6 @@ export default function AdminLoginPage() {
   const [isChecking, setIsChecking] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = useSupabase();
 
   useEffect(() => {
     async function checkAuth() {
@@ -26,7 +25,7 @@ export default function AdminLoginPage() {
       if (user) {
         const isAdmin = await checkAdminStatus(user.id);
         if (isAdmin) {
-          router.push('/admin/dashboard');
+          router.replace('/admin/dashboard/products');
           return;
         }
       }
@@ -80,7 +79,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      router.push('/admin/dashboard');
+      router.replace('/admin/dashboard/products');
     } catch (error: any) {
       toast({
         title: 'Error',
