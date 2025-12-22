@@ -17,6 +17,7 @@ export default function AdminLoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("SUBMIT FIRED");
     setError(null);
     setIsLoading(true);
 
@@ -25,6 +26,8 @@ export default function AdminLoginPage() {
         email,
         password,
       });
+
+      console.log("SIGNIN RESULT", { hasError: !!error, email: data.user?.email, hasSession: !!data.session });
 
       if (error) {
         setError(error.message);
@@ -43,7 +46,7 @@ export default function AdminLoginPage() {
         }
       }
 
-      router.replace("/admin/dashboard/products");
+      window.location.href = "/admin/dashboard/products";
     } catch (err: any) {
       setError(err?.message || "Login failed");
       setIsLoading(false);
