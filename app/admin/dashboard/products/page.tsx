@@ -190,7 +190,8 @@ export default function ProductsManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        router.push('/admin/login');
+        await supabase.auth.signOut();
+        router.replace('/admin/login');
         return;
       }
 

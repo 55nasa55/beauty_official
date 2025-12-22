@@ -83,7 +83,8 @@ export default function ImageManagerPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        router.push('/admin/login');
+        await supabaseClient.auth.signOut();
+        router.replace('/admin/login');
         return;
       }
 

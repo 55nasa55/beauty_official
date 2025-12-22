@@ -131,7 +131,8 @@ export default function OrdersManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        router.push('/admin/login');
+        await supabase.auth.signOut();
+        router.replace('/admin/login');
         return;
       }
 
@@ -206,7 +207,8 @@ export default function OrdersManagementPage() {
       });
 
       if (res.status === 401 || res.status === 403) {
-        router.push('/admin/login');
+        await supabase.auth.signOut();
+        router.replace('/admin/login');
         return;
       }
 
@@ -283,7 +285,8 @@ export default function OrdersManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        router.push('/admin/login');
+        await supabase.auth.signOut();
+        router.replace('/admin/login');
         return;
       }
 
@@ -342,7 +345,8 @@ export default function OrdersManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        router.push('/admin/login');
+        await supabase.auth.signOut();
+        router.replace('/admin/login');
         return;
       }
 
