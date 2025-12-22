@@ -1,25 +1,34 @@
-import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export async function requireAdmin() {
-  const supabase = createSupabaseServerClient();
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+export async function requireAdmin(req: NextRequest) {
+  const authHeader = req.headers.get("authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-  if (!user?.email) {
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  const user = userData?.user;
+
+  if (userErr || !user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const email = user.email.toLowerCase();
-
-  const { data: adminRow, error } = await supabase
+  const { data: adminRow, error: adminErr } = await supabase
     .from("admins")
     .select("id")
     .eq("email", email)
     .maybeSingle();
 
-  if (error || !adminRow) {
+  if (adminErr || !adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

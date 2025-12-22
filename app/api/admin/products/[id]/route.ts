@@ -6,7 +6,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   try {

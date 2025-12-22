@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireAdmin(req);
   if (denied) return denied;
 
   try {
