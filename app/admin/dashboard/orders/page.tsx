@@ -108,6 +108,21 @@ export default function OrdersManagementPage() {
         return;
       }
 
+      // Verify admin access first
+      const meRes = await fetch('/api/admin/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (meRes.status === 401 || meRes.status === 403) {
+        await supabase.auth.signOut();
+        window.location.href = '/admin/login';
+        return;
+      }
+
+      if (!meRes.ok) {
+        throw new Error('Failed to verify admin access');
+      }
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),

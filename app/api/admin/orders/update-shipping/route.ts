@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
-export async function POST(request: Request) {
-  const denied = await requireAdmin(request as any);
+export async function POST(request: NextRequest) {
+  const denied = await requireAdmin(request);
   if (denied) return denied;
 
   try {
