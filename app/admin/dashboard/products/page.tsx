@@ -160,6 +160,11 @@ export default function ProductsManagementPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
+      if (!token) {
+        router.replace('/admin/login');
+        return;
+      }
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),

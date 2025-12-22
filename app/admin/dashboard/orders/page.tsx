@@ -105,6 +105,11 @@ export default function OrdersManagementPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
+      if (!token) {
+        router.replace('/admin/login');
+        return;
+      }
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
@@ -193,6 +198,11 @@ export default function OrdersManagementPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
+      if (!token) {
+        router.replace('/admin/login');
+        return;
+      }
+
       const res = await fetch('/api/admin/orders/update-shipping', {
         method: 'POST',
         headers: {
@@ -272,6 +282,11 @@ export default function OrdersManagementPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
+      if (!token) {
+        router.replace('/admin/login');
+        return;
+      }
+
       const response = await fetch('/api/stripe/refund', {
         method: 'POST',
         headers: {
@@ -339,6 +354,11 @@ export default function OrdersManagementPage() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+
+      if (!token) {
+        router.replace('/admin/login');
+        return;
+      }
 
       const response = await fetch(`/api/admin/orders/${order.id}`, {
         headers: { Authorization: `Bearer ${token}` },
