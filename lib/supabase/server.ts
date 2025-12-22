@@ -1,3 +1,17 @@
+/**
+ * WARNING: DO NOT import this file in components or pages!
+ *
+ * This client uses Next.js cookies() which only works in:
+ * - API route handlers (app/api directory)
+ * - Server actions
+ *
+ * For server components that need public reads, use:
+ * - import { supabasePublic } from '@/lib/supabase/public'
+ *
+ * For client components, use:
+ * - import { useSupabase } from '@/app/providers'
+ */
+
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 

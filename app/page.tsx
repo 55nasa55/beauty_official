@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { supabasePublic } from '@/lib/supabase/public';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DynamicBannerCarousel } from '@/components/DynamicBannerCarousel';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getHomePageData() {
-  const supabase = createSupabaseServerClient();
+  const supabase = supabasePublic;
   try {
     const [categoriesResult, brandsResult, collectionsResult, bannersResult, productsResult] =
       await Promise.all([

@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { supabasePublic } from '@/lib/supabase/public';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ProductCard } from '@/components/ProductCard';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getBrandData(slug: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = supabasePublic;
   const [categoriesResult, brandsResult, collectionsResult, brandResult] =
     await Promise.all([
       supabase.from('categories').select('*').order('name'),
