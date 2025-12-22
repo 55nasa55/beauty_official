@@ -44,6 +44,11 @@ export default function AdminLoginPage() {
         }
       }
 
+      // Debug: Log the actual email from getUser()
+      const { data: userData } = await supabase.auth.getUser();
+      console.log("AUTH USER EMAIL AFTER LOGIN:", userData?.user?.email);
+      console.log("AUTH USER EMAIL LOWERCASE:", userData?.user?.email?.toLowerCase());
+
       window.location.href = "/admin/dashboard/products";
     } catch (err: any) {
       setError(err?.message || "Login failed");
