@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
 import { Banner } from '@/lib/database.types';
 
 interface BannerCarouselProps {
-  banners?: Banner[];
+  banners: Banner[];
 }
 
 const getBannerLink = (banner: Banner) => {
@@ -27,12 +27,9 @@ const getBannerLink = (banner: Banner) => {
   }
 };
 
-export function BannerCarousel({ banners: bannersProp }: BannerCarouselProps) {
+export function BannerCarousel({ banners }: BannerCarouselProps) {
   const router = useRouter();
-  const banners = bannersProp ?? [];
-  const total = banners.length;
 
-  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const autoplayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -52,6 +49,10 @@ export function BannerCarousel({ banners: bannersProp }: BannerCarouselProps) {
   // renderIndex: index into repeated slides array
   const [renderIndex, setRenderIndex] = useState(0);
 
+  if (!banners || banners.length === 0) return null;
+
+  const total = banners.length;
+
   // Repeat banners to avoid ever hitting scroll boundaries
   // 5 copies is usually plenty for smooth looping in both directions.
   const COPIES = total > 1 ? 5 : 1;
@@ -64,10 +65,146 @@ export function BannerCarousel({ banners: bannersProp }: BannerCarouselProps) {
     return out;
   }, [banners, total]);
 
-  // Set mounted state
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const toRealIndex = (rIdx: number) => {
+    if (total <= 1) return 0;
+    // safe modulo for negatives (shouldn't happen, but just in case)
+    return ((rIdx % total) + total) % total;
+  };
+
+  const middleRenderIndexForReal = (rReal: number) => {
+    // Place the same real slide in the middle copy
+    return MIDDLE_COPY * total + rReal;
+  };
+
+  const scrollToIndex = (idx: number, smooth: boolean) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const el = container.children.item(idx) as HTMLElement | null;
+    if (!el) return;
+
+    container.scrollTo({
+      left: el.offsetLeft,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+  };
+
+  const atomicJumpToIndex = (idx: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    isResettingRef.current = true;
+
+    const prevSnap = container.style.scrollSnapType;
+    const prevBehavior = container.style.scrollBehavior;
+
+    container.style.scrollSnapType = 'none';
+    container.style.scrollBehavior = 'auto';
+
+    scrollToIndex(idx, false);
+
+    requestAnimationFrame(() => {
+      container.style.scrollSnapType = prevSnap || '';
+      container.style.scrollBehavior = prevBehavior || '';
+
+      isResettingRef.current = false;
+      programmaticScrollRef.current = false;
+
+      renderIndexRef.current = idx;
+      setRenderIndex(idx);
+      const newReal = toRealIndex(idx);
+      setRealIndex(newReal);
+    });
+  };
+
+  const handleBannerClick = (banner: Banner) => {
+    const href = getBannerLink(banner);
+    if (banner.target_type === 'external') {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      router.push(href);
+    }
+  };
+
+  const clearAutoplay = () => {
+    if (autoplayTimeoutRef.current) {
+      clearTimeout(autoplayTimeoutRef.current);
+      autoplayTimeoutRef.current = null;
+    }
+  };
+
+  const restartAutoplayTimer = () => {
+    clearAutoplay();
+    if (total <= 1) return;
+    if (!isPlayingRef.current) return;
+
+    autoplayTimeoutRef.current = setTimeout(() => {
+      // If we’re mid-scroll/reset, delay instead of double-advancing
+      if (isResettingRef.current) {
+        restartAutoplayTimer();
+        return;
+      }
+      goNext(true);
+      restartAutoplayTimer();
+    }, 5000);
+  };
+
+  const recenterIfNeeded = (candidateRenderIdx: number) => {
+    if (total <= 1) return;
+
+    // If we drift near ends of repeated region, jump back to the middle copy.
+    // We recenter when we're within 1 full copy of either end.
+    const lowerBound = total; // after first copy
+    const upperBound = total * (COPIES - 2); // before last copy
+
+    if (candidateRenderIdx < lowerBound || candidateRenderIdx > upperBound) {
+      const rReal = toRealIndex(candidateRenderIdx);
+      const mid = middleRenderIndexForReal(rReal);
+      atomicJumpToIndex(mid);
+    }
+  };
+
+  const goNext = (resetTimer: boolean) => {
+    if (total <= 1) return;
+
+    const next = renderIndexRef.current + 1;
+
+    programmaticScrollRef.current = true;
+    renderIndexRef.current = next;
+    setRenderIndex(next);
+    setRealIndex(toRealIndex(next));
+    scrollToIndex(next, true);
+
+    if (resetTimer) restartAutoplayTimer();
+  };
+
+  const goPrev = (resetTimer: boolean) => {
+    if (total <= 1) return;
+
+    const prev = renderIndexRef.current - 1;
+
+    programmaticScrollRef.current = true;
+    renderIndexRef.current = prev;
+    setRenderIndex(prev);
+    setRealIndex(toRealIndex(prev));
+    scrollToIndex(prev, true);
+
+    if (resetTimer) restartAutoplayTimer();
+  };
+
+  const togglePlayPause = () => {
+    setIsPlaying((prev) => {
+      const next = !prev;
+      isPlayingRef.current = next;
+      if (next) restartAutoplayTimer();
+      else clearAutoplay();
+      return next;
+    });
+  };
+
+  const stopControlPropagation = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
 
   // Preload banner images to avoid any "loading in" stutter
   useEffect(() => {
@@ -199,151 +336,6 @@ export function BannerCarousel({ banners: bannersProp }: BannerCarouselProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
-
-  const toRealIndex = (rIdx: number) => {
-    if (total <= 1) return 0;
-    // safe modulo for negatives (shouldn't happen, but just in case)
-    return ((rIdx % total) + total) % total;
-  };
-
-  const middleRenderIndexForReal = (rReal: number) => {
-    // Place the same real slide in the middle copy
-    return MIDDLE_COPY * total + rReal;
-  };
-
-  const scrollToIndex = (idx: number, smooth: boolean) => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const el = container.children.item(idx) as HTMLElement | null;
-    if (!el) return;
-
-    container.scrollTo({
-      left: el.offsetLeft,
-      behavior: smooth ? 'smooth' : 'auto',
-    });
-  };
-
-  const atomicJumpToIndex = (idx: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    isResettingRef.current = true;
-
-    const prevSnap = container.style.scrollSnapType;
-    const prevBehavior = container.style.scrollBehavior;
-
-    container.style.scrollSnapType = 'none';
-    container.style.scrollBehavior = 'auto';
-
-    scrollToIndex(idx, false);
-
-    requestAnimationFrame(() => {
-      container.style.scrollSnapType = prevSnap || '';
-      container.style.scrollBehavior = prevBehavior || '';
-
-      isResettingRef.current = false;
-      programmaticScrollRef.current = false;
-
-      renderIndexRef.current = idx;
-      setRenderIndex(idx);
-      const newReal = toRealIndex(idx);
-      setRealIndex(newReal);
-    });
-  };
-
-  const handleBannerClick = (banner: Banner) => {
-    const href = getBannerLink(banner);
-    if (banner.target_type === 'external') {
-      window.open(href, '_blank', 'noopener,noreferrer');
-    } else {
-      router.push(href);
-    }
-  };
-
-  const clearAutoplay = () => {
-    if (autoplayTimeoutRef.current) {
-      clearTimeout(autoplayTimeoutRef.current);
-      autoplayTimeoutRef.current = null;
-    }
-  };
-
-  const restartAutoplayTimer = () => {
-    clearAutoplay();
-    if (total <= 1) return;
-    if (!isPlayingRef.current) return;
-
-    autoplayTimeoutRef.current = setTimeout(() => {
-      // If we're mid-scroll/reset, delay instead of double-advancing
-      if (isResettingRef.current) {
-        restartAutoplayTimer();
-        return;
-      }
-      goNext(true);
-      restartAutoplayTimer();
-    }, 5000);
-  };
-
-  const recenterIfNeeded = (candidateRenderIdx: number) => {
-    if (total <= 1) return;
-
-    // If we drift near ends of repeated region, jump back to the middle copy.
-    // We recenter when we're within 1 full copy of either end.
-    const lowerBound = total; // after first copy
-    const upperBound = total * (COPIES - 2); // before last copy
-
-    if (candidateRenderIdx < lowerBound || candidateRenderIdx > upperBound) {
-      const rReal = toRealIndex(candidateRenderIdx);
-      const mid = middleRenderIndexForReal(rReal);
-      atomicJumpToIndex(mid);
-    }
-  };
-
-  const goNext = (resetTimer: boolean) => {
-    if (total <= 1) return;
-
-    const next = renderIndexRef.current + 1;
-
-    programmaticScrollRef.current = true;
-    renderIndexRef.current = next;
-    setRenderIndex(next);
-    setRealIndex(toRealIndex(next));
-    scrollToIndex(next, true);
-
-    if (resetTimer) restartAutoplayTimer();
-  };
-
-  const goPrev = (resetTimer: boolean) => {
-    if (total <= 1) return;
-
-    const prev = renderIndexRef.current - 1;
-
-    programmaticScrollRef.current = true;
-    renderIndexRef.current = prev;
-    setRenderIndex(prev);
-    setRealIndex(toRealIndex(prev));
-    scrollToIndex(prev, true);
-
-    if (resetTimer) restartAutoplayTimer();
-  };
-
-  const togglePlayPause = () => {
-    setIsPlaying((prev) => {
-      const next = !prev;
-      isPlayingRef.current = next;
-      if (next) restartAutoplayTimer();
-      else clearAutoplay();
-      return next;
-    });
-  };
-
-  const stopControlPropagation = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-  };
-
-  // Early return after all hooks
-  if (!mounted) return null;
-  if (total === 0) return null;
 
   const eager = total <= 8; // safe for small sets
 

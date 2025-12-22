@@ -38,7 +38,6 @@ interface Product {
 }
 
 export default function CategoryPage() {
-  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,11 +58,6 @@ export default function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     async function fetchData() {
       const [categoriesResult, brandsResult, collectionsResult, categoryResult] =
         await Promise.all([
@@ -92,10 +86,9 @@ export default function CategoryPage() {
     }
 
     fetchData();
-  }, [mounted, slug]);
+  }, [slug]);
 
   useEffect(() => {
-    if (!mounted) return;
     const optionsParam = searchParams.get('options');
     if (optionsParam) {
       const optionIds = optionsParam.split(',').filter(id => id.trim());
@@ -186,7 +179,6 @@ export default function CategoryPage() {
 
   const hasActiveFilters = selectedOptionIds.size > 0;
 
-  if (!mounted) return null;
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

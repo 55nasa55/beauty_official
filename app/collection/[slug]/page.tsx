@@ -10,7 +10,6 @@ import { ProductWithVariants, Category, Brand, Collection } from '@/lib/database
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function CollectionPage() {
-  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const slug = params.slug as string;
 
@@ -24,11 +23,6 @@ export default function CollectionPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     async function fetchData() {
       const [categoriesResult, brandsResult, collectionsResult, collectionResult] =
         await Promise.all([
@@ -83,10 +77,9 @@ export default function CollectionPage() {
     }
 
     fetchData();
-  }, [mounted, slug]);
+  }, [slug]);
 
   useEffect(() => {
-    if (!mounted) return;
     const sorted = [...products];
 
     switch (sortBy) {
@@ -124,7 +117,6 @@ export default function CollectionPage() {
     setSortedProducts(sorted);
   }, [sortBy, products]);
 
-  if (!mounted) return null;
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
