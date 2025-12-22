@@ -7,10 +7,10 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams } = new URL(request.url);
 
-    const page = parseInt(searchParams.get('page') || '0');
-    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '25'), 10), 100);
+    const page = Math.max(0, parseInt(searchParams.get('page') || '0', 10) || 0);
+    const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get('pageSize') || '10', 10) || 10));
     const q = searchParams.get('q') || '';
     const brandId = searchParams.get('brand_id') || '';
     const categoryId = searchParams.get('category_id') || '';
@@ -64,10 +64,10 @@ export async function GET(request: NextRequest) {
       pageSize,
       total: count || 0,
     });
-  } catch (error) {
-    console.error('Error in products list endpoint:', error);
+  } catch (err: any) {
+    console.error('Admin products list error:', err);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', detail: String(err?.message || err) },
       { status: 500 }
     );
   }
