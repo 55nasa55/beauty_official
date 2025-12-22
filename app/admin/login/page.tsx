@@ -7,17 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -27,32 +27,25 @@ export default function AdminLoginPage() {
       });
 
       if (error) {
-        toast({
-          title: 'Login failed',
-          description: error.message,
-          variant: 'destructive',
-        });
+        setError(error.message);
         setIsLoading(false);
         return;
       }
 
-      if (!data.user) {
-        toast({
-          title: 'Login failed',
-          description: 'Invalid credentials',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
+      // Confirm session exists
+      const session = data.session;
+      if (!session) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          setError("Login succeeded but no session was created. Please try again.");
+          setIsLoading(false);
+          return;
+        }
       }
 
-      router.replace('/admin/dashboard/products');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'An error occurred during login',
-        variant: 'destructive',
-      });
+      router.replace("/admin/dashboard/products");
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
       setIsLoading(false);
     }
   };
@@ -70,6 +63,11 @@ export default function AdminLoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-800 text-sm">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
