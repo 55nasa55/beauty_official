@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,6 @@ export default function AdminDashboardLayout({
   const supabase = useSupabase();
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -34,7 +33,7 @@ export default function AdminDashboardLayout({
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -42,11 +41,11 @@ export default function AdminDashboardLayout({
     }
 
     checkAuth();
-  }, [router]);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/admin/login');
+    window.location.href = '/admin/login';
   };
 
   const navItems = [

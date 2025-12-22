@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/app/providers';
 import { supabase as supabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,6 @@ interface AdminImage {
 }
 
 export default function ImageManagerPage() {
-  const router = useRouter();
   const supabase = useSupabase();
   const [images, setImages] = useState<AdminImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +69,7 @@ export default function ImageManagerPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -89,7 +87,7 @@ export default function ImageManagerPage() {
 
       if (response.status === 401 || response.status === 403) {
         await supabaseClient.auth.signOut();
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 

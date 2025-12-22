@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,7 +64,6 @@ interface OrderWithItems extends Order {
 }
 
 export default function OrdersManagementPage() {
-  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
@@ -106,7 +104,7 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -137,7 +135,7 @@ export default function OrdersManagementPage() {
 
       if (response.status === 401 || response.status === 403) {
         await supabase.auth.signOut();
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -199,7 +197,7 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -218,7 +216,7 @@ export default function OrdersManagementPage() {
 
       if (res.status === 401 || res.status === 403) {
         await supabase.auth.signOut();
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -283,7 +281,7 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -301,7 +299,7 @@ export default function OrdersManagementPage() {
 
       if (response.status === 401 || response.status === 403) {
         await supabase.auth.signOut();
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -356,7 +354,7 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
@@ -366,7 +364,7 @@ export default function OrdersManagementPage() {
 
       if (response.status === 401 || response.status === 403) {
         await supabase.auth.signOut();
-        router.replace('/admin/login');
+        window.location.href = '/admin/login';
         return;
       }
 
