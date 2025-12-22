@@ -24,6 +24,7 @@ interface Order {
 }
 
 export default function CheckoutSuccessPage() {
+  const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
 
@@ -34,6 +35,11 @@ export default function CheckoutSuccessPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     async function fetchData() {
       const [categoriesResult, brandsResult, collectionsResult] =
         await Promise.all([
@@ -66,8 +72,9 @@ export default function CheckoutSuccessPage() {
     }
 
     fetchData();
-  }, [sessionId]);
+  }, [mounted, sessionId]);
 
+  if (!mounted) return null;
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

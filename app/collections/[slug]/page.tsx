@@ -39,6 +39,7 @@ interface Product {
 }
 
 export default function CollectionsPage() {
+  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,6 +64,11 @@ export default function CollectionsPage() {
   const [matchedCategory, setMatchedCategory] = useState<Category | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     async function fetchData() {
       const [categoriesResult, brandsResult, collectionsResult] = await Promise.all([
         supabase.from('categories').select('*').order('name'),
@@ -114,9 +120,10 @@ export default function CollectionsPage() {
     }
 
     fetchData();
-  }, [slug]);
+  }, [mounted, slug]);
 
   useEffect(() => {
+    if (!mounted) return;
     const optionsParam = searchParams.get('options');
     if (optionsParam) {
       const optionIds = optionsParam.split(',').filter(id => id.trim());
@@ -318,6 +325,7 @@ export default function CollectionsPage() {
 
   const hasActiveFilters = selectedOptionIds.size > 0;
 
+  if (!mounted) return null;
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

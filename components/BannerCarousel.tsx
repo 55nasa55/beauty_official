@@ -29,6 +29,7 @@ const getBannerLink = (banner: Banner) => {
 
 export function BannerCarousel({ banners }: BannerCarouselProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +50,11 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   // renderIndex: index into repeated slides array
   const [renderIndex, setRenderIndex] = useState(0);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
   if (!banners || banners.length === 0) return null;
 
   const total = banners.length;

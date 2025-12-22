@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 
 export default function ProductPage() {
+  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const slug = params.slug as string;
   const { addItem } = useCart();
@@ -36,6 +37,11 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     async function fetchData() {
       const [categoriesResult, brandsResult, collectionsResult, productResult] =
         await Promise.all([
@@ -68,8 +74,9 @@ export default function ProductPage() {
     }
 
     fetchData();
-  }, [slug]);
+  }, [mounted, slug]);
 
+  if (!mounted) return null;
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

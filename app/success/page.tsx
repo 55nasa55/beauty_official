@@ -48,6 +48,7 @@ type EnrichedOrderItem = OrderItem & {
 };
 
 export default function SuccessPage() {
+  const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
 
@@ -57,6 +58,11 @@ export default function SuccessPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (!sessionId) {
       setError('No session ID provided. Please check your order confirmation email.');
       setLoading(false);
@@ -64,7 +70,7 @@ export default function SuccessPage() {
     }
 
     fetchOrder();
-  }, [sessionId]);
+  }, [mounted, sessionId]);
 
   const fetchOrder = async () => {
     if (!sessionId) return;
@@ -187,6 +193,8 @@ export default function SuccessPage() {
   const getItemSKU = (item: EnrichedOrderItem): string | null => {
     return item.variant?.sku || null;
   };
+
+  if (!mounted) return null;
 
   if (loading) {
     return (
