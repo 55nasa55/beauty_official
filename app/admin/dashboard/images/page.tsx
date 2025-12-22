@@ -27,6 +27,7 @@ export default function ImageManagerPage() {
   const [images, setImages] = useState<AdminImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -69,7 +70,8 @@ export default function ImageManagerPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        window.location.href = '/admin/login';
+        setAuthStatus("No session token (not logged in).");
+        setIsLoading(false);
         return;
       }
 
@@ -79,14 +81,20 @@ export default function ImageManagerPage() {
       });
 
       if (meRes.status === 401 || meRes.status === 403) {
-        await supabaseClient.auth.signOut();
-        window.location.href = '/admin/login';
+        const text = await meRes.text().catch(() => "");
+        setAuthStatus(`Admin check failed: ${meRes.status}. Body: ${text}`);
+        setIsLoading(false);
         return;
       }
 
       if (!meRes.ok) {
-        throw new Error('Failed to verify admin access');
+        const text = await meRes.text().catch(() => "");
+        setAuthStatus(`Admin check failed: ${meRes.status}. Body: ${text}`);
+        setIsLoading(false);
+        return;
       }
+
+      setAuthStatus("OK (admin verified). Loading images...");
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -101,19 +109,24 @@ export default function ImageManagerPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        await supabaseClient.auth.signOut();
-        window.location.href = '/admin/login';
+        const text = await response.text().catch(() => "");
+        setAuthStatus(`Images fetch failed: ${response.status}. Body: ${text}`);
+        setIsLoading(false);
         return;
       }
 
       if (!response.ok) {
-        throw new Error('Failed to fetch images');
+        const text = await response.text().catch(() => "");
+        setAuthStatus(`Images fetch failed: ${response.status}. Body: ${text}`);
+        setIsLoading(false);
+        return;
       }
 
       const data = await response.json();
 
       setImages(data.images);
       setTotal(data.total);
+      setAuthStatus(null);
 
       // Show warning if database is empty but we might have storage files
       if (data.total === 0 && page === 0 && !searchQuery) {
@@ -353,6 +366,13 @@ export default function ImageManagerPage() {
 
   return (
     <div className="space-y-6">
+      {authStatus && (
+        <div className="mb-4 rounded border p-3 text-sm bg-yellow-50 border-yellow-200">
+          <p className="font-semibold text-yellow-800 mb-1">Auth Status:</p>
+          <p className="text-yellow-700">{authStatus}</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-light tracking-wide mb-2">Image Manager</h1>

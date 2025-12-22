@@ -66,6 +66,7 @@ interface OrderWithItems extends Order {
 export default function OrdersManagementPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -104,7 +105,8 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        window.location.href = '/admin/login';
+        setAuthStatus("No session token (not logged in).");
+        setIsLoading(false);
         return;
       }
 
@@ -114,14 +116,20 @@ export default function OrdersManagementPage() {
       });
 
       if (meRes.status === 401 || meRes.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        const text = await meRes.text().catch(() => "");
+        setAuthStatus(`Admin check failed: ${meRes.status}. Body: ${text}`);
+        setIsLoading(false);
         return;
       }
 
       if (!meRes.ok) {
-        throw new Error('Failed to verify admin access');
+        const text = await meRes.text().catch(() => "");
+        setAuthStatus(`Admin check failed: ${meRes.status}. Body: ${text}`);
+        setIsLoading(false);
+        return;
       }
+
+      setAuthStatus("OK (admin verified). Loading orders...");
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -149,8 +157,9 @@ export default function OrdersManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        const text = await response.text().catch(() => "");
+        setAuthStatus(`Orders fetch failed: ${response.status}. Body: ${text}`);
+        setIsLoading(false);
         return;
       }
 
@@ -158,13 +167,17 @@ export default function OrdersManagementPage() {
 
       if (!response.ok) {
         console.error('[Orders List] API error:', json);
-        throw new Error(json.error || 'Failed to load orders');
+        setAuthStatus(`Orders fetch failed: ${response.status}. Error: ${json.error || 'Unknown error'}`);
+        setIsLoading(false);
+        return;
       }
 
       setOrders(json.orders || []);
       setTotal(json.total || 0);
+      setAuthStatus(null);
     } catch (error: any) {
       console.error('[Orders List] Error:', error);
+      setAuthStatus(`Error: ${error?.message || String(error)}`);
       toast({
         title: 'Error',
         description: error.message || 'Failed to load orders',
@@ -212,7 +225,11 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        window.location.href = '/admin/login';
+        toast({
+          title: 'Error',
+          description: 'No session token. Please log in again.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -230,8 +247,11 @@ export default function OrdersManagementPage() {
       });
 
       if (res.status === 401 || res.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        toast({
+          title: 'Error',
+          description: 'Not authorized. Please log in again.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -296,7 +316,11 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        window.location.href = '/admin/login';
+        toast({
+          title: 'Error',
+          description: 'No session token. Please log in again.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -313,8 +337,11 @@ export default function OrdersManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        toast({
+          title: 'Error',
+          description: 'Not authorized. Please log in again.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -369,7 +396,11 @@ export default function OrdersManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        window.location.href = '/admin/login';
+        toast({
+          title: 'Error',
+          description: 'No session token. Please log in again.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -378,8 +409,11 @@ export default function OrdersManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        toast({
+          title: 'Error',
+          description: 'Not authorized. Please log in again.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -427,6 +461,13 @@ export default function OrdersManagementPage() {
 
   return (
     <div className="space-y-6">
+      {authStatus && (
+        <div className="mb-4 rounded border p-3 text-sm bg-yellow-50 border-yellow-200">
+          <p className="font-semibold text-yellow-800 mb-1">Auth Status:</p>
+          <p className="text-yellow-700">{authStatus}</p>
+        </div>
+      )}
+
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Orders Management</h2>
         <p className="text-muted-foreground">View and manage customer orders</p>

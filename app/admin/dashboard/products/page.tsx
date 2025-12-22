@@ -69,6 +69,7 @@ export default function ProductsManagementPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
@@ -159,7 +160,8 @@ export default function ProductsManagementPage() {
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        window.location.href = '/admin/login';
+        setAuthStatus("No session token (not logged in).");
+        setIsLoading(false);
         return;
       }
 
@@ -169,14 +171,20 @@ export default function ProductsManagementPage() {
       });
 
       if (meRes.status === 401 || meRes.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        const text = await meRes.text().catch(() => "");
+        setAuthStatus(`Admin check failed: ${meRes.status}. Body: ${text}`);
+        setIsLoading(false);
         return;
       }
 
       if (!meRes.ok) {
-        throw new Error('Failed to verify admin access');
+        const text = await meRes.text().catch(() => "");
+        setAuthStatus(`Admin check failed: ${meRes.status}. Body: ${text}`);
+        setIsLoading(false);
+        return;
       }
+
+      setAuthStatus("OK (admin verified). Loading products...");
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -208,23 +216,29 @@ export default function ProductsManagementPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        await supabase.auth.signOut();
-        window.location.href = '/admin/login';
+        const text = await response.text().catch(() => "");
+        setAuthStatus(`Products fetch failed: ${response.status}. Body: ${text}`);
+        setIsLoading(false);
         return;
       }
 
       if (!response.ok) {
-        throw new Error('Failed to load products');
+        const text = await response.text().catch(() => "");
+        setAuthStatus(`Products fetch failed: ${response.status}. Body: ${text}`);
+        setIsLoading(false);
+        return;
       }
 
       const data = await response.json();
 
       setProducts(data.products);
       setTotal(data.total);
+      setAuthStatus(null);
       setIsLoading(false);
     } catch (err: any) {
       console.error('Error loading products:', err);
       setError(err.message || 'Failed to load products');
+      setAuthStatus(`Error: ${err?.message || String(err)}`);
       setIsLoading(false);
     }
   };
@@ -671,6 +685,13 @@ export default function ProductsManagementPage() {
 
   return (
     <div className="space-y-6">
+      {authStatus && (
+        <div className="mb-4 rounded border p-3 text-sm bg-yellow-50 border-yellow-200">
+          <p className="font-semibold text-yellow-800 mb-1">Auth Status:</p>
+          <p className="text-yellow-700">{authStatus}</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-light tracking-wide mb-2">Products</h1>
