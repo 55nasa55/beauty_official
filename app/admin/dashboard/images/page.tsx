@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/app/providers';
+import { supabase as supabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +24,7 @@ interface AdminImage {
 }
 
 export default function ImageManagerPage() {
+  const router = useRouter();
   const supabase = useSupabase();
   const [images, setImages] = useState<AdminImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +67,9 @@ export default function ImageManagerPage() {
     try {
       setIsLoading(true);
 
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
@@ -72,7 +78,14 @@ export default function ImageManagerPage() {
         sortDir: 'desc',
       });
 
-      const response = await fetch(`/api/admin/images/list?${params}`);
+      const response = await fetch(`/api/admin/images/list?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        router.push('/admin/login');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Failed to fetch images');

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { checkAdminStatus } from '@/lib/admin-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,11 +22,8 @@ export default function AdminLoginPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        const isAdmin = await checkAdminStatus(user.id);
-        if (isAdmin) {
-          router.replace('/admin/dashboard/products');
-          return;
-        }
+        router.replace('/admin/dashboard/products');
+        return;
       }
 
       setIsChecking(false);
@@ -60,19 +56,6 @@ export default function AdminLoginPage() {
         toast({
           title: 'Login failed',
           description: 'Invalid credentials',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const isAdmin = await checkAdminStatus(data.user.id);
-
-      if (!isAdmin) {
-        await supabase.auth.signOut();
-        toast({
-          title: 'Access denied',
-          description: 'You do not have admin privileges',
           variant: 'destructive',
         });
         setIsLoading(false);

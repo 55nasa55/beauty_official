@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -63,6 +65,7 @@ interface OrderWithItems extends Order {
 }
 
 export default function OrdersManagementPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
@@ -99,6 +102,9 @@ export default function OrdersManagementPage() {
     try {
       setIsLoading(true);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
@@ -120,7 +126,15 @@ export default function OrdersManagementPage() {
       if (from) params.append('from', from);
       if (to) params.append('to', to);
 
-      const response = await fetch(`/api/admin/orders/list?${params.toString()}`);
+      const response = await fetch(`/api/admin/orders/list?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        router.push('/admin/login');
+        return;
+      }
+
       const json = await response.json();
 
       if (!response.ok) {
@@ -175,15 +189,26 @@ export default function OrdersManagementPage() {
     try {
       setIsUpdating(true);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const res = await fetch('/api/admin/orders/update-shipping', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           orderId: selectedOrder.id,
           tracking_number: trackingNumber || null,
           shipping_status: shippingStatus || null,
         }),
       });
+
+      if (res.status === 401 || res.status === 403) {
+        router.push('/admin/login');
+        return;
+      }
 
       const json = await res.json();
 
@@ -242,16 +267,25 @@ export default function OrdersManagementPage() {
     try {
       setIsRefunding(true);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const response = await fetch('/api/stripe/refund', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           payment_intent: order.stripe_payment_intent,
           order_id: order.id,
         }),
       });
+
+      if (response.status === 401 || response.status === 403) {
+        router.push('/admin/login');
+        return;
+      }
 
       const data = await response.json();
 
@@ -300,7 +334,18 @@ export default function OrdersManagementPage() {
     setSelectedOrder(null);
 
     try {
-      const response = await fetch(`/api/admin/orders/${order.id}`);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const response = await fetch(`/api/admin/orders/${order.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        router.push('/admin/login');
+        return;
+      }
+
       const json = await response.json();
 
       if (!response.ok) {

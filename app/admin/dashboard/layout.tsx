@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
-import { checkAdminStatus } from '@/lib/admin-auth';
 import { Button } from '@/components/ui/button';
 import {
   Package,
@@ -35,14 +34,6 @@ export default function AdminDashboardLayout({
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push('/admin/login');
-        return;
-      }
-
-      const isAdmin = await checkAdminStatus(user.id);
-
-      if (!isAdmin) {
-        await supabase.auth.signOut();
         router.push('/admin/login');
         return;
       }

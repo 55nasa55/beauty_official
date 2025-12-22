@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ interface FacetOption {
 }
 
 export default function ProductsManagementPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -186,6 +188,11 @@ export default function ProductsManagementPage() {
       const response = await fetch(`/api/admin/products/list?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (response.status === 401 || response.status === 403) {
+        router.push('/admin/login');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Failed to load products');
