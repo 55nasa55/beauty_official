@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, Copy, Image as ImageIcon, X, CheckCircle, Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Upload, Trash2, Copy, Image as ImageIcon, X, CircleCheck as CheckCircle, Search, ChevronLeft, ChevronRight, CircleAlert as AlertCircle } from 'lucide-react';
 
 interface AdminImage {
   id: string;
