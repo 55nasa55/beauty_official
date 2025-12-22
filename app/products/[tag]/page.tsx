@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ProductCard } from '@/components/ProductCard';
@@ -15,6 +15,7 @@ interface ProductsPageProps {
 }
 
 async function getProductsByTag(tag: string) {
+  const supabase = createSupabaseServerClient();
   const [categoriesResult, brandsResult, collectionsResult, productsResult] = await Promise.all([
     supabase.from('categories').select('*').order('name'),
     supabase.from('brands').select('*').order('name'),

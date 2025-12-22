@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(request: Request) {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = createSupabaseServerClient();
 
     const { data, error } = await (supabase as any)
       .from('orders')

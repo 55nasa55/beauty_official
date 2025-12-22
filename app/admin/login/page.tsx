@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabaseClientComponent } from '@/lib/supabaseClientComponent';
+import { useSupabase } from '@/app/providers';
 import { checkAdminStatus } from '@/lib/admin-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
   const [isChecking, setIsChecking] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = supabaseClientComponent();
+  const supabase = useSupabase();
 
   useEffect(() => {
     async function checkAuth() {

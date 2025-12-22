@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
   if (denied) return denied;
 
   try {
-    const supabase = createServerClient();
+    const supabase = createSupabaseServerClient();
     const productId = params.id;
 
     const [productResult, variantsResult] = await Promise.all([

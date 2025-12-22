@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { supabaseClientComponent } from '@/lib/supabaseClientComponent';
+import { useSupabase } from '@/app/providers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ interface AdminImage {
 }
 
 export default function ImageManagerPage() {
-  const supabase = supabaseClientComponent();
+  const supabase = useSupabase();
   const [images, setImages] = useState<AdminImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);

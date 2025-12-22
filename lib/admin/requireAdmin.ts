@@ -1,26 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function requireAdmin() {
-  const cookieStore = cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
+  const supabase = createSupabaseServerClient();
 
   const { data } = await supabase.auth.getUser();
   const user = data.user;
@@ -31,13 +13,13 @@ export async function requireAdmin() {
 
   const email = user.email.toLowerCase();
 
-  const { data: adminRow } = await supabase
+  const { data: adminRow, error } = await supabase
     .from("admins")
     .select("id")
     .eq("email", email)
     .maybeSingle();
 
-  if (!adminRow) {
+  if (error || !adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

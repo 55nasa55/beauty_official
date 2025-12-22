@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { createServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = createSupabaseServerClient();
 
     // Check if order already exists
     const { data: existingOrder, error: checkError } = await supabase

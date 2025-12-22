@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(
@@ -19,7 +19,7 @@ export async function GET(
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = createSupabaseServerClient();
 
     const { data: order, error: orderError } = await (supabase as any)
       .from('orders')

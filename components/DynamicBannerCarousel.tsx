@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabaseClientComponent } from '@/lib/supabaseClientComponent';
+import { useSupabase } from '@/app/providers';
 import { BannerCarousel } from './BannerCarousel';
 import { Banner } from '@/lib/database.types';
 
@@ -10,7 +10,7 @@ interface DynamicBannerCarouselProps {
 }
 
 export function DynamicBannerCarousel({ initialBanners }: DynamicBannerCarouselProps) {
-  const supabase = supabaseClientComponent();
+  const supabase = useSupabase();
   const [banners, setBanners] = useState<Banner[]>(initialBanners);
 
   useEffect(() => {

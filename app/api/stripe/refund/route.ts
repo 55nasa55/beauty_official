@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { createServerClient } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(req: NextRequest) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     console.log('[Refund] Stripe refund status:', refund.status);
 
     if (refund.status === 'succeeded') {
-      const supabase = createServerClient();
+      const supabase = createSupabaseServerClient();
 
       const { data, error: updateError } = await (supabase as any)
         .from('orders')
