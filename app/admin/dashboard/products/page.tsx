@@ -155,6 +155,9 @@ export default function ProductsManagementPage() {
       setIsLoading(true);
       setError(null);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
@@ -180,7 +183,9 @@ export default function ProductsManagementPage() {
         params.append('to', dateTo);
       }
 
-      const response = await fetch(`/api/admin/products/list?${params.toString()}`);
+      const response = await fetch(`/api/admin/products/list?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to load products');
