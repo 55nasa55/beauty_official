@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
@@ -24,24 +24,8 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const supabase = useSupabase();
-  const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        window.location.href = '/admin/login';
-        return;
-      }
-
-      setIsLoading(false);
-    }
-
-    checkAuth();
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -58,14 +42,6 @@ export default function AdminDashboardLayout({
     { href: '/admin/dashboard/images', label: 'Images', icon: Image },
     { href: '/admin/dashboard/orders', label: 'Orders', icon: ShoppingBag },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
