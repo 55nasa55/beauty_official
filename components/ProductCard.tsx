@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ProductWithVariants } from '@/lib/database.types';
+import { AddToCartButton } from './AddToCartButton';
 
 interface ProductCardProps {
   product: ProductWithVariants;
@@ -11,7 +12,10 @@ export function ProductCard({ product }: ProductCardProps) {
 
   if (!defaultVariant) return null;
 
-  const hasDiscount = defaultVariant.compare_at_price > 0;
+  // Only show discount UI when compare_at_price is greater than both 0 AND the actual price
+  const hasDiscount =
+    defaultVariant.compare_at_price > 0 &&
+    defaultVariant.compare_at_price > defaultVariant.price;
 
   return (
     <div className="group">
@@ -50,15 +54,27 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
         </Link>
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium">
-            ${defaultVariant.price.toFixed(2)}
-          </p>
-          {hasDiscount && (
-            <p className="text-xs text-gray-400 line-through">
-              ${defaultVariant.compare_at_price.toFixed(2)}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <p className={`text-sm font-medium ${hasDiscount ? 'text-red-600' : ''}`}>
+              ${defaultVariant.price.toFixed(2)}
             </p>
-          )}
+            {hasDiscount && (
+              <p className="text-xs text-gray-400 line-through">
+                ${defaultVariant.compare_at_price.toFixed(2)}
+              </p>
+            )}
+          </div>
+          <AddToCartButton
+            variantId={defaultVariant.id}
+            productId={product.id}
+            productName={product.name}
+            productSlug={product.slug}
+            variantName={defaultVariant.name}
+            price={defaultVariant.price}
+            image={defaultVariant.images[0] || '/placeholder.jpg'}
+            stock={defaultVariant.stock}
+          />
         </div>
       </div>
     </div>
