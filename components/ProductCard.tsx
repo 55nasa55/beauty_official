@@ -40,7 +40,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1.5">
         {product.brand && (
           <Link
             href={`/brand/${product.brand.slug}`}
