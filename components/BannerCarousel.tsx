@@ -93,6 +93,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     const container = containerRef.current;
     if (!container) return;
 
+    programmaticScrollRef.current = true;
     isResettingRef.current = true;
 
     const prevSnap = container.style.scrollSnapType;
@@ -107,13 +108,15 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       container.style.scrollSnapType = prevSnap || '';
       container.style.scrollBehavior = prevBehavior || '';
 
-      isResettingRef.current = false;
-      programmaticScrollRef.current = false;
+      requestAnimationFrame(() => {
+        isResettingRef.current = false;
+        programmaticScrollRef.current = false;
 
-      renderIndexRef.current = idx;
-      setRenderIndex(idx);
-      const newReal = toRealIndex(idx);
-      setRealIndex(newReal);
+        renderIndexRef.current = idx;
+        setRenderIndex(idx);
+        const newReal = toRealIndex(idx);
+        setRealIndex(newReal);
+      });
     });
   };
 
@@ -149,24 +152,6 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     }, 5000);
   };
 
-  const recenterIfNeeded = (candidateRenderIdx: number): number => {
-    if (total <= 1) return candidateRenderIdx;
-
-    // If we drift near ends of repeated region, jump back to the middle copy.
-    // We recenter when we're within 1 full copy of either end.
-    const lowerBound = total; // after first copy
-    const upperBound = total * (COPIES - 2); // before last copy
-
-    if (candidateRenderIdx < lowerBound || candidateRenderIdx > upperBound) {
-      const rReal = toRealIndex(candidateRenderIdx);
-      const mid = middleRenderIndexForReal(rReal);
-      programmaticScrollRef.current = true;
-      atomicJumpToIndex(mid);
-      return mid;
-    }
-
-    return candidateRenderIdx;
-  };
 
   const goNext = (resetTimer: boolean) => {
     if (total <= 1) return;
@@ -312,21 +297,26 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       settleTimeoutRef.current = setTimeout(() => {
         if (isResettingRef.current) return;
 
-        const settled = getNearestIndex();
+        const settledRenderIdx = getNearestIndex();
+        const settledRealIdx = toRealIndex(settledRenderIdx);
 
-        // Set indices BEFORE recenter
-        renderIndexRef.current = settled;
-        setRenderIndex(settled);
-        const rReal = toRealIndex(settled);
-        setRealIndex(rReal);
+        // Update state with settled indices
+        renderIndexRef.current = settledRenderIdx;
+        setRenderIndex(settledRenderIdx);
+        setRealIndex(settledRealIdx);
 
-        // Key: recenter away from boundaries so the peek never disappears
-        const finalIdx = recenterIfNeeded(settled);
+        // ALWAYS normalize to middle copy to prevent drift
+        const normalizedRenderIdx = middleRenderIndexForReal(settledRealIdx);
 
-        // If recenter happened, don't overwrite state again
-        if (finalIdx === settled) {
-          programmaticScrollRef.current = false;
+        if (normalizedRenderIdx !== settledRenderIdx) {
+          // Need to jump to normalized position
+          atomicJumpToIndex(normalizedRenderIdx);
+          // atomicJumpToIndex will set state, so return early
+          return;
         }
+
+        // No jump needed, clear programmatic flag
+        programmaticScrollRef.current = false;
       }, 130);
     };
 
@@ -378,14 +368,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       if (isResettingRef.current) return;
 
       requestAnimationFrame(() => {
-        const currentIdx = renderIndexRef.current;
-        const el = container.children.item(currentIdx) as HTMLElement | null;
-        if (!el) return;
-
-        container.scrollTo({
-          left: el.offsetLeft,
-          behavior: 'auto',
-        });
+        // Only realign scroll position, don't change indices
+        scrollToIndex(renderIndexRef.current, false);
       });
     });
 
@@ -412,7 +396,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         {allSlides.map((banner, idx) => (
           <div
             key={`${banner.id}-${idx}`}
-            className="flex-shrink-0 basis-[80vw] min-w-[80vw] max-w-[1200px] snap-center"
+            className="flex-shrink-0 w-[min(80vw,1200px)] snap-center"
           >
             <div
               onClick={() => handleBannerClick(banner)}
