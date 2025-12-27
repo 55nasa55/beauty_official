@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(request: NextRequest) {
@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
 
   const denied = await requireAdmin(request, supabase);
   if (denied) return denied;
+
+  const supabaseAdmin = createSupabaseServiceRoleClient();
 
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get('from') || '';
     const to = searchParams.get('to') || '';
 
-    let query = (supabase as any)
+    let query = (supabaseAdmin as any)
       .from('orders')
       .select('id, order_number, created_at, payment_status, shipping_status, tracking_number, total_amount, tax_amount, currency, customer_email, customer_name', { count: 'exact' })
       .order('created_at', { ascending: false });

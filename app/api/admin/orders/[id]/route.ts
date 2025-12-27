@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(
@@ -13,6 +13,8 @@ export async function GET(
   const denied = await requireAdmin(request, supabase);
   if (denied) return denied;
 
+  const supabaseAdmin = createSupabaseServiceRoleClient();
+
   try {
     const orderId = params.id;
 
@@ -23,7 +25,7 @@ export async function GET(
       );
     }
 
-    const { data: order, error: orderError } = await (supabase as any)
+    const { data: order, error: orderError } = await (supabaseAdmin as any)
       .from('orders')
       .select('*')
       .eq('id', orderId)
@@ -44,7 +46,7 @@ export async function GET(
       );
     }
 
-    const { data: orderItems, error: itemsError } = await (supabase as any)
+    const { data: orderItems, error: itemsError } = await (supabaseAdmin as any)
       .from('order_items')
       .select('*')
       .eq('order_id', orderId);
@@ -63,7 +65,7 @@ export async function GET(
     if (items.length > 0) {
       const variantIds = Array.from(new Set(items.map((item: any) => item.variant_id)));
 
-      const { data: variants, error: variantsError } = await (supabase as any)
+      const { data: variants, error: variantsError } = await (supabaseAdmin as any)
         .from('product_variants')
         .select('id, images, sku')
         .in('id', variantIds);

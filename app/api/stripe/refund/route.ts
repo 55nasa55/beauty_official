@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(req: NextRequest) {
@@ -10,6 +10,8 @@ export async function POST(req: NextRequest) {
 
   const denied = await requireAdmin(req, supabase);
   if (denied) return denied;
+
+  const supabaseAdmin = createSupabaseServiceRoleClient();
 
   try {
     const { payment_intent, order_id } = await req.json();
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     if (refund.status === 'succeeded') {
 
-      const { data, error: updateError } = await (supabase as any)
+      const { data, error: updateError } = await (supabaseAdmin as any)
         .from('orders')
         .update({
           payment_status: 'refunded',

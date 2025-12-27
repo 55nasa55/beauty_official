@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function POST(request: NextRequest) {
@@ -9,6 +9,8 @@ export async function POST(request: NextRequest) {
 
   const denied = await requireAdmin(request, supabase);
   if (denied) return denied;
+
+  const supabaseAdmin = createSupabaseServiceRoleClient();
 
   try {
     const body = await request.json();
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabaseAdmin as any)
       .from('orders')
       .update(updates)
       .eq('id', orderId)
