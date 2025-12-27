@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   const cookieStore = cookies();
   const supabase = createSupabaseServerClient(cookieStore);
