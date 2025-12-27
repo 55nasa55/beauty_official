@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ShoppingBag } from 'lucide-react';
+import { Menu, X, ShoppingBag, User } from 'lucide-react';
 import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
+import { useAuth } from '@/lib/auth-context';
 
 interface HeaderProps {
   categories: Category[];
@@ -14,6 +15,7 @@ interface HeaderProps {
 }
 
 export function Header({ categories, brands, collections }: HeaderProps) {
+  const { user } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMegaMenu, setShowMegaMenu] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -115,6 +117,13 @@ export function Header({ categories, brands, collections }: HeaderProps) {
 
             {/* Right: Icons */}
             <div className="flex items-center justify-end gap-2 md:gap-3 whitespace-nowrap">
+              <Link
+                href={user ? '/account' : '/login'}
+                className="p-2 hover:bg-gray-50 rounded-md transition-colors"
+                aria-label={user ? 'Account' : 'Login'}
+              >
+                <User className="w-5 h-5" />
+              </Link>
               <MiniCart />
             </div>
           </div>

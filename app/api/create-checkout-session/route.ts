@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
     const cookieStore = cookies();
     const supabase = createSupabaseServerClient(cookieStore);
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     const variantIds = cartItems.map((item: any) => item.variantId);
 
     const { data: variants, error: variantsError } = await supabase
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     const origin = req.headers.get('origin') || 'http://localhost:3000';
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig: any = {
       mode: 'payment',
       line_items: lineItems,
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -76,7 +78,13 @@ export async function POST(req: NextRequest) {
       metadata: {
         cart_items: JSON.stringify(cartItems),
       },
-    });
+    };
+
+    if (user) {
+      sessionConfig.client_reference_id = user.id;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     return NextResponse.json({ url: session.url });
   } catch (error: any) {

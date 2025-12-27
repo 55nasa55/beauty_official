@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useMemo } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { AuthProvider } from "@/lib/auth-context";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SupabaseContextType = {
@@ -17,7 +18,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SupabaseContext.Provider value={value}>
-      {children}
+      <AuthProvider>
+        {children}
+      </AuthProvider>
     </SupabaseContext.Provider>
   );
 }
