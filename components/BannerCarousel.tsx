@@ -149,8 +149,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     }, 5000);
   };
 
-  const recenterIfNeeded = (candidateRenderIdx: number) => {
-    if (total <= 1) return;
+  const recenterIfNeeded = (candidateRenderIdx: number): number => {
+    if (total <= 1) return candidateRenderIdx;
 
     // If we drift near ends of repeated region, jump back to the middle copy.
     // We recenter when we're within 1 full copy of either end.
@@ -160,20 +160,36 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     if (candidateRenderIdx < lowerBound || candidateRenderIdx > upperBound) {
       const rReal = toRealIndex(candidateRenderIdx);
       const mid = middleRenderIndexForReal(rReal);
+      programmaticScrollRef.current = true;
       atomicJumpToIndex(mid);
+      return mid;
     }
+
+    return candidateRenderIdx;
   };
 
   const goNext = (resetTimer: boolean) => {
     if (total <= 1) return;
 
     const next = renderIndexRef.current + 1;
+    const container = containerRef.current;
 
     programmaticScrollRef.current = true;
     renderIndexRef.current = next;
     setRenderIndex(next);
     setRealIndex(toRealIndex(next));
-    scrollToIndex(next, true);
+
+    // Temporarily disable snap to prevent fighting with smooth scroll
+    if (container) {
+      const prevSnap = container.style.scrollSnapType;
+      container.style.scrollSnapType = 'none';
+      scrollToIndex(next, true);
+      requestAnimationFrame(() => {
+        container.style.scrollSnapType = prevSnap || '';
+      });
+    } else {
+      scrollToIndex(next, true);
+    }
 
     if (resetTimer) restartAutoplayTimer();
   };
@@ -182,12 +198,24 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     if (total <= 1) return;
 
     const prev = renderIndexRef.current - 1;
+    const container = containerRef.current;
 
     programmaticScrollRef.current = true;
     renderIndexRef.current = prev;
     setRenderIndex(prev);
     setRealIndex(toRealIndex(prev));
-    scrollToIndex(prev, true);
+
+    // Temporarily disable snap to prevent fighting with smooth scroll
+    if (container) {
+      const prevSnap = container.style.scrollSnapType;
+      container.style.scrollSnapType = 'none';
+      scrollToIndex(prev, true);
+      requestAnimationFrame(() => {
+        container.style.scrollSnapType = prevSnap || '';
+      });
+    } else {
+      scrollToIndex(prev, true);
+    }
 
     if (resetTimer) restartAutoplayTimer();
   };
@@ -286,15 +314,19 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
         const settled = getNearestIndex();
 
+        // Set indices BEFORE recenter
         renderIndexRef.current = settled;
         setRenderIndex(settled);
         const rReal = toRealIndex(settled);
         setRealIndex(rReal);
 
         // Key: recenter away from boundaries so the peek never disappears
-        recenterIfNeeded(settled);
+        const finalIdx = recenterIfNeeded(settled);
 
-        programmaticScrollRef.current = false;
+        // If recenter happened, don't overwrite state again
+        if (finalIdx === settled) {
+          programmaticScrollRef.current = false;
+        }
       }, 130);
     };
 
@@ -337,6 +369,33 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
 
+  // ResizeObserver: re-align current slide on layout changes to prevent jumping
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (isResettingRef.current) return;
+
+      requestAnimationFrame(() => {
+        const currentIdx = renderIndexRef.current;
+        const el = container.children.item(currentIdx) as HTMLElement | null;
+        if (!el) return;
+
+        container.scrollTo({
+          left: el.offsetLeft,
+          behavior: 'auto',
+        });
+      });
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   const eager = total <= 8; // safe for small sets
 
   return (
@@ -353,7 +412,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         {allSlides.map((banner, idx) => (
           <div
             key={`${banner.id}-${idx}`}
-            className="flex-shrink-0 w-[80vw] max-w-[1200px] snap-center"
+            className="flex-shrink-0 basis-[80vw] min-w-[80vw] max-w-[1200px] snap-center"
           >
             <div
               onClick={() => handleBannerClick(banner)}
