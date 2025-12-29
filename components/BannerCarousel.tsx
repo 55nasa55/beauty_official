@@ -83,8 +83,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
     const el = container.children.item(idx) as HTMLElement | null;
     if (!el) return;
 
+    const targetLeft = el.offsetLeft - (container.clientWidth / 2 - el.clientWidth / 2);
+
     container.scrollTo({
-      left: el.offsetLeft,
+      left: targetLeft,
       behavior: smooth ? 'smooth' : 'auto',
     });
   };
