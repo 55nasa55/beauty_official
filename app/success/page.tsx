@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { useCart } from '@/lib/cart-context';
 import { CheckCircle2, Package, MapPin, CreditCard, Loader2, Receipt, Truck } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -50,6 +51,8 @@ type EnrichedOrderItem = OrderItem & {
 export default function SuccessPage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const { clearCart } = useCart();
+  const hasCleared = useRef(false);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [orderItems, setOrderItems] = useState<EnrichedOrderItem[]>([]);
@@ -65,6 +68,19 @@ export default function SuccessPage() {
 
     fetchOrder();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId && order && !hasCleared.current) {
+      const storageKey = `cart_cleared_for_session_${sessionId}`;
+      const alreadyCleared = sessionStorage.getItem(storageKey);
+
+      if (!alreadyCleared) {
+        clearCart();
+        sessionStorage.setItem(storageKey, '1');
+        hasCleared.current = true;
+      }
+    }
+  }, [sessionId, order, clearCart]);
 
   const fetchOrder = async () => {
     if (!sessionId) return;

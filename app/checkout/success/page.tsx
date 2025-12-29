@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { useCart } from '@/lib/cart-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Category, Brand, Collection } from '@/lib/database.types';
@@ -26,6 +27,8 @@ interface Order {
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const { clearCart } = useCart();
+  const hasCleared = useRef(false);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -67,6 +70,19 @@ export default function CheckoutSuccessPage() {
 
     fetchData();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId && order && !hasCleared.current) {
+      const storageKey = `cart_cleared_for_session_${sessionId}`;
+      const alreadyCleared = sessionStorage.getItem(storageKey);
+
+      if (!alreadyCleared) {
+        clearCart();
+        sessionStorage.setItem(storageKey, '1');
+        hasCleared.current = true;
+      }
+    }
+  }, [sessionId, order, clearCart]);
 
   if (loading) {
     return (

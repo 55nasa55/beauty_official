@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const sessionConfig: any = {
       mode: 'payment',
       line_items: lineItems,
-      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout/cancel`,
       automatic_tax: {
         enabled: true,
