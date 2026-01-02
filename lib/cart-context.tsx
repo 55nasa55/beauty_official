@@ -14,6 +14,14 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface AddedItemSummary {
+  productName: string;
+  variantName: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
+
 interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
@@ -22,6 +30,10 @@ interface CartContextType {
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
+  lastAddedItem: AddedItemSummary | null;
+  isAddedModalOpen: boolean;
+  openAddedModal: (item: AddedItemSummary) => void;
+  closeAddedModal: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -29,6 +41,8 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState<AddedItemSummary | null>(null);
+  const [isAddedModalOpen, setIsAddedModalOpen] = useState(false);
 
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
@@ -62,6 +76,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return [...currentItems, { ...newItem, quantity: 1 }];
     });
+
+    openAddedModal({
+      productName: newItem.productName,
+      variantName: newItem.variantName,
+      price: newItem.price,
+      image: newItem.image,
+      quantity: 1,
+    });
   };
 
   const removeItem = (variantId: string) => {
@@ -85,6 +107,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([]);
   };
 
+  const openAddedModal = (item: AddedItemSummary) => {
+    setLastAddedItem(item);
+    setIsAddedModalOpen(true);
+  };
+
+  const closeAddedModal = () => {
+    setIsAddedModalOpen(false);
+  };
+
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -98,6 +129,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart,
         totalItems,
         totalPrice,
+        lastAddedItem,
+        isAddedModalOpen,
+        openAddedModal,
+        closeAddedModal,
       }}
     >
       {children}
