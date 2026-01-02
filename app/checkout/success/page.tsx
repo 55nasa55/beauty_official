@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabaseClient';
 import { useCart } from '@/lib/cart-context';
 import { Header } from '@/components/Header';
@@ -12,6 +13,26 @@ import { CheckCircle, Package, MapPin, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+interface OrderItem {
+  id: string;
+  product_id: string | null;
+  variant_id: string | null;
+  product_name: string;
+  variant_name: string | null;
+  quantity: number;
+  price: number;
+}
+
+interface ProductVariant {
+  id: string;
+  images: string[];
+  sku: string | null;
+}
+
+interface EnrichedOrderItem extends OrderItem {
+  variant?: ProductVariant;
+}
+
 interface Order {
   id: string;
   stripe_session_id: string;
@@ -20,7 +41,6 @@ interface Order {
   currency: string;
   shipping_address: any;
   billing_address: any;
-  items: any[];
   created_at: string;
 }
 
@@ -34,6 +54,7 @@ export default function CheckoutSuccessPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [order, setOrder] = useState<Order | null>(null);
+  const [orderItems, setOrderItems] = useState<EnrichedOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,6 +83,42 @@ export default function CheckoutSuccessPage() {
 
         if (orderData) {
           setOrder(orderData as Order);
+
+          const { data: itemsData } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', orderData.id);
+
+          if (itemsData && itemsData.length > 0) {
+            const variantIds = itemsData
+              .map((item: any) => item.variant_id)
+              .filter((id): id is string => id !== null);
+
+            if (variantIds.length > 0) {
+              const { data: variantsData } = await supabase
+                .from('product_variants')
+                .select('id, images, sku')
+                .in('id', variantIds);
+
+              if (variantsData) {
+                const variantsMap = new Map<string, ProductVariant>();
+                variantsData.forEach((v: any) => {
+                  variantsMap.set(v.id, v);
+                });
+
+                const enrichedItems: EnrichedOrderItem[] = (itemsData as OrderItem[]).map((item) => ({
+                  ...item,
+                  variant: item.variant_id ? variantsMap.get(item.variant_id) : undefined,
+                }));
+
+                setOrderItems(enrichedItems);
+              } else {
+                setOrderItems(itemsData as OrderItem[]);
+              }
+            } else {
+              setOrderItems(itemsData as OrderItem[]);
+            }
+          }
         }
       }
 
@@ -140,34 +197,63 @@ export default function CheckoutSuccessPage() {
                 </CardContent>
               </Card>
 
-              {order.items && order.items.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-medium flex items-center gap-2">
-                      <Package className="w-5 h-5" />
-                      Items Ordered
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-medium flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    Items in Your Order
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {orderItems.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-4">No items found for this order.</p>
+                  ) : (
                     <div className="space-y-4">
-                      {order.items.map((item: any, index: number) => (
+                      {orderItems.map((item) => (
                         <div
-                          key={index}
-                          className="flex justify-between items-center py-3 border-b last:border-0"
+                          key={item.id}
+                          className="flex gap-4 py-3 border-b last:border-0"
                         >
-                          <div>
-                            <p className="font-medium text-sm">{item.product_name}</p>
-                            <p className="text-xs text-gray-500">
-                              Quantity: {item.quantity}
+                          <div className="relative w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                            {item.variant?.images && item.variant.images.length > 0 ? (
+                              <Image
+                                src={item.variant.images[0]}
+                                alt={item.product_name}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm">{item.product_name}</h4>
+                            {item.variant_name && (
+                              <p className="text-xs text-gray-500 mt-1">{item.variant_name}</p>
+                            )}
+                            {item.variant?.sku && (
+                              <p className="text-xs text-gray-400 mt-1">SKU: {item.variant.sku}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2">
+                              <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                              <p className="text-sm text-gray-600">${item.price.toFixed(2)} each</p>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold">
+                              ${(item.price * item.quantity).toFixed(2)}
                             </p>
                           </div>
-                          <p className="font-medium">${item.price.toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  )}
+                </CardContent>
+              </Card>
 
               {order.shipping_address && (
                 <Card>
