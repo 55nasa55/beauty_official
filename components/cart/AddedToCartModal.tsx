@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Image from 'next/image';
 import { useCart } from '@/lib/cart-context';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -15,14 +16,45 @@ import { Button } from '@/components/ui/button';
 import { CircleCheck as CheckCircle2, ShoppingCart } from 'lucide-react';
 
 export function AddedToCartModal() {
-  const router = useRouter();
-  const { isAddedModalOpen, closeAddedModal, lastAddedItem } = useCart();
+  const { isAddedModalOpen, closeAddedModal, lastAddedItem, items } = useCart();
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   if (!lastAddedItem) return null;
 
-  const handleViewCart = () => {
-    closeAddedModal();
-    router.push('/cart');
+  const handleCheckout = async () => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cartItems: items,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      if (data.url) {
+        closeAddedModal();
+        window.location.href = data.url;
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Checkout failed',
+        description: error.message || 'Unable to proceed to checkout',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleContinueShopping = () => {
@@ -77,15 +109,17 @@ export function AddedToCartModal() {
             variant="outline"
             onClick={handleContinueShopping}
             className="w-full sm:w-auto"
+            disabled={isLoading}
           >
             Continue Shopping
           </Button>
           <Button
-            onClick={handleViewCart}
+            onClick={handleCheckout}
             className="w-full sm:w-auto"
+            disabled={isLoading}
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
-            View Cart
+            {isLoading ? 'Processing...' : 'Checkout'}
           </Button>
         </DialogFooter>
       </DialogContent>

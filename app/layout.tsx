@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { CartProvider } from '@/lib/cart-context';
 import { AddedToCartModal } from '@/components/cart/AddedToCartModal';
+import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -25,6 +26,7 @@ export default function RootLayout({
           <CartProvider>
             {children}
             <AddedToCartModal />
+            <Toaster />
           </CartProvider>
         </Providers>
       </body>
