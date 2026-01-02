@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, ShoppingCart } from 'lucide-react';
+import { CircleCheck as CheckCircle2, ShoppingCart } from 'lucide-react';
 
 export function AddedToCartModal() {
   const router = useRouter();
