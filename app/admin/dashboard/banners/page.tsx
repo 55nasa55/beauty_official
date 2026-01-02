@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Plus, Edit2, Trash2, Eye, Copy, Check, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, X } from 'lucide-react';
 import Image from 'next/image';
 
 type Banner = {
@@ -34,8 +34,6 @@ export default function BannersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState<BannerFormData>({
     title: '',
     description: '',
@@ -63,35 +61,6 @@ export default function BannersPage() {
       console.error('Error fetching banners:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `banner-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-
-      setFormData({ ...formData, image_url: publicUrl });
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Failed to upload image');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -166,12 +135,6 @@ export default function BannersPage() {
     setShowForm(false);
   };
 
-  const copyToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(null), 2000);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -230,49 +193,26 @@ export default function BannersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Image *</label>
-              <div className="space-y-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={uploading}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-                {uploading && <p className="text-sm text-gray-500">Uploading...</p>}
-                {formData.image_url && (
-                  <div className="space-y-2">
-                    <div className="relative w-full h-48 border rounded-lg overflow-hidden">
-                      <Image
-                        src={formData.image_url}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={formData.image_url}
-                        onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                        className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                        placeholder="Or paste image URL"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(formData.image_url)}
-                        className="px-3 py-2 border rounded-lg hover:bg-gray-50"
-                      >
-                        {copiedUrl === formData.image_url ? (
-                          <Check className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <label className="block text-sm font-medium mb-1">Image URL *</label>
+              <input
+                type="text"
+                value={formData.image_url}
+                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="https://example.com/banner-image.jpg"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Paste a direct image URL</p>
+              {formData.image_url && (
+                <div className="mt-3 relative w-full h-48 border rounded-lg overflow-hidden">
+                  <Image
+                    src={formData.image_url}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -337,7 +277,7 @@ export default function BannersPage() {
               <button
                 type="submit"
                 className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800"
-                disabled={uploading || !formData.image_url}
+                disabled={!formData.image_url}
               >
                 {editingBanner ? 'Update Banner' : 'Create Banner'}
               </button>
@@ -437,17 +377,17 @@ export default function BannersPage() {
                           <div className="flex gap-1">
                             <button
                               onClick={() => handleDelete(banner.id)}
-                              className="p-2 bg-red-100 hover:bg-red-200 rounded text-red-600"
+                              className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-white text-xs font-medium"
                               title="Confirm delete"
                             >
-                              <Check className="w-4 h-4" />
+                              Confirm
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(null)}
-                              className="p-2 bg-gray-100 hover:bg-gray-200 rounded"
+                              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium"
                               title="Cancel"
                             >
-                              <X className="w-4 h-4" />
+                              Cancel
                             </button>
                           </div>
                         ) : (
