@@ -76,12 +76,13 @@ export async function POST(req: NextRequest) {
       },
       billing_address_collection: 'required',
       metadata: {
-        cart_items: JSON.stringify(cartItems),
+        source: 'web',
       },
     };
 
     if (user) {
       sessionConfig.client_reference_id = user.id;
+      sessionConfig.metadata.user_id = user.id;
     }
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
