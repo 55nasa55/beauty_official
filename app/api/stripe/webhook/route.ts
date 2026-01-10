@@ -37,16 +37,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (event.type !== 'checkout.session.completed') {
-    console.log('[Webhook] Ignoring event type:', event.type);
-    return NextResponse.json({ received: true });
-  }
-
-  const session = event.data.object as Stripe.Checkout.Session;
-  console.log('[Webhook] Processing checkout.session.completed');
-  console.log('[Webhook] Session ID:', session.id);
-  console.log('[Webhook] Payment status:', session.payment_status);
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
@@ -56,6 +46,19 @@ export async function POST(req: NextRequest) {
       persistSession: false,
     },
   });
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    console.log('[Webhook] Processing checkout.session.completed');
+    console.log('[Webhook] Session ID:', session.id);
+    console.log('[Webhook] Mode:', session.mode);
+
+    if (session.mode === 'subscription') {
+      console.log('[Webhook] Subscription checkout - will be handled by subscription.created event');
+      return NextResponse.json({ received: true });
+    }
+
+    console.log('[Webhook] Payment status:', session.payment_status);
 
   try {
     console.log('[Webhook] Step 1: Check for duplicate order');
@@ -286,4 +289,83 @@ export async function POST(req: NextRequest) {
       status: 500,
     });
   }
+  }
+
+  if (
+    event.type === 'customer.subscription.created' ||
+    event.type === 'customer.subscription.updated' ||
+    event.type === 'customer.subscription.deleted'
+  ) {
+    const subscription = event.data.object as Stripe.Subscription;
+    console.log('[Webhook] Processing subscription event:', event.type);
+    console.log('[Webhook] Subscription ID:', subscription.id);
+    console.log('[Webhook] Status:', subscription.status);
+
+    try {
+      const priceId = subscription.items.data[0]?.price.id;
+
+      if (!priceId) {
+        console.error('[Webhook] No price ID found in subscription');
+        return NextResponse.json({ received: true });
+      }
+
+      const { data: plan } = await supabase
+        .from('membership_plans')
+        .select('id')
+        .eq('stripe_price_id', priceId)
+        .maybeSingle();
+
+      if (!plan) {
+        console.log('[Webhook] No matching membership plan found for price:', priceId);
+        return NextResponse.json({ received: true });
+      }
+
+      const userId = subscription.metadata?.user_id;
+
+      if (!userId) {
+        console.error('[Webhook] No user_id in subscription metadata');
+        return NextResponse.json({ received: true });
+      }
+
+      const membershipData = {
+        user_id: userId,
+        plan_id: plan.id,
+        status: subscription.status,
+        stripe_customer_id: subscription.customer as string,
+        stripe_subscription_id: subscription.id,
+        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        cancel_at_period_end: (subscription as any).cancel_at_period_end || false,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: upsertError } = await supabase
+        .from('memberships')
+        .upsert(membershipData, {
+          onConflict: 'user_id',
+        });
+
+      if (upsertError) {
+        console.error('[Webhook] Failed to upsert membership:', upsertError);
+        throw new Error(`Failed to upsert membership: ${upsertError.message}`);
+      }
+
+      console.log('[Webhook] ✓ Membership updated successfully');
+      console.log('[Webhook]   - User ID:', userId);
+      console.log('[Webhook]   - Status:', subscription.status);
+      console.log('[Webhook]   - Period End:', membershipData.current_period_end);
+
+      return NextResponse.json({ received: true });
+    } catch (error: any) {
+      console.error('[Webhook] Error processing subscription:', error.message);
+      return NextResponse.json({
+        received: true,
+        error: error.message,
+      }, {
+        status: 500,
+      });
+    }
+  }
+
+  console.log('[Webhook] Ignoring event type:', event.type);
+  return NextResponse.json({ received: true });
 }

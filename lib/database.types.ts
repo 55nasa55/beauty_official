@@ -77,6 +77,7 @@ export interface Database {
           is_featured: boolean
           is_best_seller: boolean
           is_new: boolean
+          member_price_cents: number | null
           created_at: string
           updated_at: string
         }
@@ -92,6 +93,7 @@ export interface Database {
           is_featured?: boolean
           is_best_seller?: boolean
           is_new?: boolean
+          member_price_cents?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -107,6 +109,7 @@ export interface Database {
           is_featured?: boolean
           is_best_seller?: boolean
           is_new?: boolean
+          member_price_cents?: number | null
           created_at?: string
           updated_at?: string
         }

@@ -1,16 +1,51 @@
+"use client";
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { ProductWithVariants } from '@/lib/database.types';
 import { AddToCartButton } from './AddToCartButton';
+import { useAuth } from '@/lib/auth-context';
+import { useState, useEffect } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 interface ProductCardProps {
   product: ProductWithVariants;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { user } = useAuth();
+  const [isMember, setIsMember] = useState(false);
+  const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    if (user) {
+      checkMembership();
+    }
+  }, [user]);
+
+  const checkMembership = async () => {
+    if (!user) return;
+
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('status, current_period_end')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (membership) {
+      const isActive = ['active', 'trialing'].includes(membership.status);
+      const notExpired = membership.current_period_end && new Date(membership.current_period_end) > new Date();
+      setIsMember(isActive && notExpired);
+    }
+  };
+
   const defaultVariant = product.variants[0];
 
   if (!defaultVariant) return null;
+
+  const hasMemberPrice = product.member_price_cents && product.member_price_cents > 0;
+  const memberPrice = hasMemberPrice && product.member_price_cents ? product.member_price_cents / 100 : null;
+  const savings = memberPrice ? defaultVariant.price - memberPrice : 0;
 
   // Only show discount UI when compare_at_price is greater than both 0 AND the actual price
   const hasDiscount =
@@ -54,27 +89,49 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
         </Link>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <p className={`text-sm font-medium ${hasDiscount ? 'text-red-600' : ''}`}>
-              ${defaultVariant.price.toFixed(2)}
-            </p>
-            {hasDiscount && (
-              <p className="text-xs text-gray-400 line-through">
-                ${defaultVariant.compare_at_price.toFixed(2)}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className={`text-sm font-medium ${hasDiscount ? 'text-red-600' : ''}`}>
+                ${defaultVariant.price.toFixed(2)}
               </p>
-            )}
+              {hasDiscount && (
+                <p className="text-xs text-gray-400 line-through">
+                  ${defaultVariant.compare_at_price.toFixed(2)}
+                </p>
+              )}
+            </div>
+            <AddToCartButton
+              variantId={defaultVariant.id}
+              productId={product.id}
+              productName={product.name}
+              productSlug={product.slug}
+              variantName={defaultVariant.name}
+              price={defaultVariant.price}
+              image={defaultVariant.images[0] || '/placeholder.jpg'}
+              stock={defaultVariant.stock}
+            />
           </div>
-          <AddToCartButton
-            variantId={defaultVariant.id}
-            productId={product.id}
-            productName={product.name}
-            productSlug={product.slug}
-            variantName={defaultVariant.name}
-            price={defaultVariant.price}
-            image={defaultVariant.images[0] || '/placeholder.jpg'}
-            stock={defaultVariant.stock}
-          />
+          {hasMemberPrice && (
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-blue-600">
+                Member: ${memberPrice?.toFixed(2)}
+              </p>
+              <span className="text-xs text-gray-500">
+                (save ${savings.toFixed(2)})
+              </span>
+              {!user && (
+                <Link href="/login?redirect=/pricing" className="text-xs text-blue-600 hover:underline">
+                  Log in
+                </Link>
+              )}
+              {user && !isMember && (
+                <Link href="/pricing" className="text-xs text-blue-600 hover:underline">
+                  Join
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

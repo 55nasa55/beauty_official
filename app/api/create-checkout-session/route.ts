@@ -19,11 +19,26 @@ export async function POST(req: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    let isMember = false;
+    if (user) {
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('status, current_period_end')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (membership) {
+        const isActive = ['active', 'trialing'].includes(membership.status);
+        const notExpired = membership.current_period_end && new Date(membership.current_period_end) > new Date();
+        isMember = isActive && notExpired;
+      }
+    }
+
     const variantIds = cartItems.map((item: any) => item.variantId);
 
     const { data: variants, error: variantsError } = await supabase
       .from('product_variants')
-      .select('id, name, price, images, product_id, products(name, slug)')
+      .select('id, name, price, images, product_id, products(name, slug, member_price_cents)')
       .in('id', variantIds);
 
     if (variantsError || !variants) {
@@ -42,6 +57,11 @@ export async function POST(req: NextRequest) {
       const product = variant.products as any;
       const productName = product?.name || 'Product';
 
+      let priceToUse = variant.price;
+      if (isMember && product?.member_price_cents) {
+        priceToUse = product.member_price_cents / 100;
+      }
+
       return {
         price_data: {
           currency: 'usd',
@@ -55,7 +75,7 @@ export async function POST(req: NextRequest) {
               variant_id: variant.id,
             },
           },
-          unit_amount: Math.round(variant.price * 100),
+          unit_amount: Math.round(priceToUse * 100),
         },
         quantity: item.quantity,
       };
