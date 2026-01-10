@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('products')
-      .select('id, created_at, name, slug, category_id, brand_id, tags, is_featured, is_best_seller, is_new', { count: 'exact' })
+      .select('id, created_at, name, slug, category_id, brand_id, tags, is_featured, is_best_seller, is_new, member_price_cents', { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (brandId) {

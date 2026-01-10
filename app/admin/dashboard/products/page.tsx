@@ -24,6 +24,7 @@ interface Product {
   is_featured: boolean;
   is_best_seller: boolean;
   is_new: boolean;
+  member_price_cents: number | null;
   created_at: string;
 }
 
@@ -104,6 +105,7 @@ export default function ProductsManagementPage() {
     is_featured: false,
     is_best_seller: false,
     is_new: false,
+    member_price_cents: '',
   });
 
   const [variantFormData, setVariantFormData] = useState({
@@ -258,6 +260,8 @@ export default function ProductsManagementPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const memberPriceCents = formData.member_price_cents ? Math.round(parseFloat(formData.member_price_cents) * 100) : null;
+
     const productData = {
       name: formData.name,
       slug: formData.slug,
@@ -268,6 +272,7 @@ export default function ProductsManagementPage() {
       is_featured: formData.is_featured,
       is_best_seller: formData.is_best_seller,
       is_new: formData.is_new,
+      member_price_cents: memberPriceCents,
     };
 
     try {
@@ -416,6 +421,7 @@ export default function ProductsManagementPage() {
       is_featured: product.is_featured,
       is_best_seller: product.is_best_seller,
       is_new: product.is_new,
+      member_price_cents: product.member_price_cents ? (product.member_price_cents / 100).toFixed(2) : '',
     });
 
     if (product.category_id) {
@@ -521,6 +527,7 @@ export default function ProductsManagementPage() {
       is_featured: false,
       is_best_seller: false,
       is_new: false,
+      member_price_cents: '',
     });
     setEditingProduct(null);
     setCategoryFacets([]);
@@ -796,6 +803,32 @@ export default function ProductsManagementPage() {
                   onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                   placeholder="featured, sale, new"
                 />
+              </div>
+
+              <div className="space-y-2 p-4 border rounded-lg bg-blue-50/50">
+                <Label htmlFor="member_price_cents" className="text-base font-semibold">
+                  Member Pricing
+                </Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Set an exclusive member price that active subscribers will see at checkout
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="member_price_cents" className="text-sm">
+                    Member Price (USD)
+                  </Label>
+                  <Input
+                    id="member_price_cents"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.member_price_cents}
+                    onChange={(e) => setFormData({ ...formData, member_price_cents: e.target.value })}
+                    placeholder="Leave empty for no member discount"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This price applies to all variants of this product for members
+                  </p>
+                </div>
               </div>
 
               {categoryFacets.length > 0 && (
@@ -1091,6 +1124,13 @@ export default function ProductsManagementPage() {
                       <div className="flex-1">
                         <h3 className="font-medium">{product.name}</h3>
                         <p className="text-sm text-gray-500">{product.slug}</p>
+                        {product.member_price_cents && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                              Member: ${(product.member_price_cents / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2 items-center">
                         <Button
@@ -1155,6 +1195,11 @@ export default function ProductsManagementPage() {
                                       {variant.compare_at_price > 0 && (
                                         <span className="ml-2 line-through text-gray-400">
                                           ${variant.compare_at_price.toFixed(2)}
+                                        </span>
+                                      )}
+                                      {product.member_price_cents && (
+                                        <span className="ml-2 text-blue-600 text-xs">
+                                          (Member: ${(product.member_price_cents / 100).toFixed(2)} - Save ${(variant.price - (product.member_price_cents / 100)).toFixed(2)})
                                         </span>
                                       )}
                                     </p>
