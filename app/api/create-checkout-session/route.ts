@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const { data: variants, error: variantsError } = await supabase
       .from('product_variants')
-      .select('id, name, price, images, product_id, products(name, slug, member_price_cents)')
+      .select('id, name, price, member_price_cents, images, product_id, products(name, slug, member_price_cents)')
       .in('id', variantIds);
 
     if (variantsError || !variants) {
@@ -58,8 +58,12 @@ export async function POST(req: NextRequest) {
       const productName = product?.name || 'Product';
 
       let priceToUse = variant.price;
-      if (isMember && product?.member_price_cents) {
-        priceToUse = product.member_price_cents / 100;
+      if (isMember) {
+        if (variant.member_price_cents) {
+          priceToUse = variant.member_price_cents / 100;
+        } else if (product?.member_price_cents) {
+          priceToUse = product.member_price_cents / 100;
+        }
       }
 
       return {

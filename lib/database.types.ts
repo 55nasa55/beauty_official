@@ -122,6 +122,7 @@ export interface Database {
           name: string
           price: number
           compare_at_price: number
+          member_price_cents: number | null
           stock: number
           images: string[]
           specs: Json
@@ -135,6 +136,7 @@ export interface Database {
           name: string
           price: number
           compare_at_price?: number
+          member_price_cents?: number | null
           stock?: number
           images?: string[]
           specs?: Json
@@ -148,6 +150,7 @@ export interface Database {
           name?: string
           price?: number
           compare_at_price?: number
+          member_price_cents?: number | null
           stock?: number
           images?: string[]
           specs?: Json

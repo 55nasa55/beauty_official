@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useCart } from '@/lib/cart-context';
+import { useAuth } from '@/lib/auth-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { VariantSelector } from '@/components/VariantSelector';
@@ -20,12 +21,14 @@ import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
+import { formatCents, calculateSavingsFromCents } from '@/lib/pricing';
 
 export default function ProductPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { addItem } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -34,6 +37,7 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -69,6 +73,28 @@ export default function ProductPage() {
 
     fetchData();
   }, [slug]);
+
+  useEffect(() => {
+    if (user) {
+      checkMembership();
+    }
+  }, [user]);
+
+  const checkMembership = async () => {
+    if (!user) return;
+
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('status, current_period_end')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (membership) {
+      const isActive = ['active', 'trialing'].includes(membership.status);
+      const notExpired = membership.current_period_end && new Date(membership.current_period_end) > new Date();
+      setIsMember(isActive && notExpired);
+    }
+  };
 
   if (loading) {
     return (
@@ -170,6 +196,46 @@ export default function ProductPage() {
                     </p>
                   )}
                 </div>
+                {selectedVariant.member_price_cents && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-base font-medium text-blue-700">
+                        Member Price: {formatCents(selectedVariant.member_price_cents)}
+                      </p>
+                      <span className="text-sm text-blue-600">
+                        (Save {formatCents(calculateSavingsFromCents(Math.round(selectedVariant.price * 100), selectedVariant.member_price_cents))})
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      {!user && (
+                        <>
+                          <Link href="/login?redirect=/pricing">
+                            <Button variant="outline" size="sm" className="text-blue-600 border-blue-600 hover:bg-blue-50">
+                              Log in
+                            </Button>
+                          </Link>
+                          <Link href="/pricing">
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                              Join Now
+                            </Button>
+                          </Link>
+                        </>
+                      )}
+                      {user && !isMember && (
+                        <Link href="/pricing">
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                            Join Now to Save
+                          </Button>
+                        </Link>
+                      )}
+                      {user && isMember && (
+                        <span className="text-sm text-green-600 font-medium">
+                          ✓ Member price will be applied at checkout
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <p className="text-gray-600 leading-relaxed">{product.description}</p>

@@ -7,6 +7,7 @@ import { AddToCartButton } from './AddToCartButton';
 import { useAuth } from '@/lib/auth-context';
 import { useState, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { formatCents, getMemberPriceRange, getSavingsRange } from '@/lib/pricing';
 
 interface ProductCardProps {
   product: ProductWithVariants;
@@ -43,9 +44,9 @@ export function ProductCard({ product }: ProductCardProps) {
 
   if (!defaultVariant) return null;
 
-  const hasMemberPrice = product.member_price_cents && product.member_price_cents > 0;
-  const memberPrice = hasMemberPrice && product.member_price_cents ? product.member_price_cents / 100 : null;
-  const savings = memberPrice ? defaultVariant.price - memberPrice : 0;
+  const memberPriceRange = getMemberPriceRange(product.variants);
+  const savingsRange = getSavingsRange(product.variants);
+  const hasMemberPrice = memberPriceRange !== null;
 
   // Only show discount UI when compare_at_price is greater than both 0 AND the actual price
   const hasDiscount =
@@ -112,13 +113,21 @@ export function ProductCard({ product }: ProductCardProps) {
               stock={defaultVariant.stock}
             />
           </div>
-          {hasMemberPrice && (
+          {hasMemberPrice && memberPriceRange && savingsRange && (
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-medium text-blue-600">
-                Member: ${memberPrice?.toFixed(2)}
+                {memberPriceRange.single ? (
+                  `Member: ${formatCents(memberPriceRange.min)}`
+                ) : (
+                  `Member: ${formatCents(memberPriceRange.min)}–${formatCents(memberPriceRange.max)}`
+                )}
               </p>
               <span className="text-xs text-gray-500">
-                (save ${savings.toFixed(2)})
+                {savingsRange.single ? (
+                  `(save ${formatCents(savingsRange.min)})`
+                ) : (
+                  `(save ${formatCents(savingsRange.min)}–${formatCents(savingsRange.max)})`
+                )}
               </span>
               {!user && (
                 <Link href="/login?redirect=/pricing" className="text-xs text-blue-600 hover:underline">
@@ -129,6 +138,9 @@ export function ProductCard({ product }: ProductCardProps) {
                 <Link href="/pricing" className="text-xs text-blue-600 hover:underline">
                   Join
                 </Link>
+              )}
+              {user && isMember && (
+                <span className="text-xs text-green-600">Member price applied</span>
               )}
             </div>
           )}

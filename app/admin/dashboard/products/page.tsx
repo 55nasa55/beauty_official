@@ -35,6 +35,7 @@ interface ProductVariant {
   name: string;
   price: number;
   compare_at_price: number;
+  member_price_cents: number | null;
   images: string[];
   specs: Record<string, any>;
 }
@@ -113,6 +114,7 @@ export default function ProductsManagementPage() {
     name: '',
     price: '',
     compare_at_price: '',
+    member_price_cents: '',
     images: '',
     specs: '{}',
   });
@@ -248,7 +250,7 @@ export default function ProductsManagementPage() {
   const fetchVariants = async (productId: string) => {
     const { data } = await supabase
       .from('product_variants')
-      .select('*')
+      .select('id, product_id, sku, name, price, compare_at_price, member_price_cents, images, specs')
       .eq('product_id', productId)
       .order('created_at');
 
@@ -345,6 +347,7 @@ export default function ProductsManagementPage() {
     }
 
     const sku = variantFormData.sku || `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const memberPriceCents = variantFormData.member_price_cents ? Math.round(parseFloat(variantFormData.member_price_cents) * 100) : null;
 
     try {
       if (editingVariant) {
@@ -354,6 +357,7 @@ export default function ProductsManagementPage() {
           name: variantFormData.name,
           price: parseFloat(variantFormData.price),
           compare_at_price: parseFloat(variantFormData.compare_at_price) || 0,
+          member_price_cents: memberPriceCents,
           images: variantFormData.images ? variantFormData.images.split(',').map(s => s.trim()) : [],
           specs: specs,
         };
@@ -376,6 +380,7 @@ export default function ProductsManagementPage() {
           name: variantFormData.name,
           price: parseFloat(variantFormData.price),
           compare_at_price: parseFloat(variantFormData.compare_at_price) || 0,
+          member_price_cents: memberPriceCents,
           images: variantFormData.images ? variantFormData.images.split(',').map(s => s.trim()) : [],
           specs: specs,
         };
@@ -466,6 +471,7 @@ export default function ProductsManagementPage() {
       name: variant.name,
       price: variant.price.toString(),
       compare_at_price: variant.compare_at_price?.toString() || '',
+      member_price_cents: variant.member_price_cents ? (variant.member_price_cents / 100).toFixed(2) : '',
       images: variant.images?.join(', ') || '',
       specs: JSON.stringify(variant.specs || {}, null, 2),
     });
@@ -541,6 +547,7 @@ export default function ProductsManagementPage() {
       name: '',
       price: '',
       compare_at_price: '',
+      member_price_cents: '',
       images: '',
       specs: '{}',
     });
@@ -922,6 +929,7 @@ export default function ProductsManagementPage() {
                   id="variant-price"
                   type="number"
                   step="0.01"
+                  min="0"
                   value={variantFormData.price}
                   onChange={(e) => setVariantFormData({ ...variantFormData, price: e.target.value })}
                   required
@@ -934,9 +942,38 @@ export default function ProductsManagementPage() {
                   id="variant-compare-price"
                   type="number"
                   step="0.01"
+                  min="0"
                   value={variantFormData.compare_at_price}
                   onChange={(e) => setVariantFormData({ ...variantFormData, compare_at_price: e.target.value })}
                 />
+              </div>
+            </div>
+
+            <div className="space-y-2 p-4 border rounded-lg bg-blue-50/50">
+              <Label htmlFor="variant-member-price" className="text-base font-semibold">
+                Member Pricing
+              </Label>
+              <p className="text-sm text-muted-foreground mb-2">
+                Set an exclusive member price for this variant
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="variant-member-price" className="text-sm">
+                  Member Price (USD)
+                </Label>
+                <Input
+                  id="variant-member-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={variantFormData.member_price_cents}
+                  onChange={(e) => setVariantFormData({ ...variantFormData, member_price_cents: e.target.value })}
+                  placeholder="Leave empty for no member discount"
+                />
+                {variantFormData.price && variantFormData.member_price_cents && (
+                  <p className="text-xs text-blue-600">
+                    Savings: ${(parseFloat(variantFormData.price) - parseFloat(variantFormData.member_price_cents)).toFixed(2)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1197,9 +1234,9 @@ export default function ProductsManagementPage() {
                                           ${variant.compare_at_price.toFixed(2)}
                                         </span>
                                       )}
-                                      {product.member_price_cents && (
+                                      {variant.member_price_cents && (
                                         <span className="ml-2 text-blue-600 text-xs">
-                                          (Member: ${(product.member_price_cents / 100).toFixed(2)} - Save ${(variant.price - (product.member_price_cents / 100)).toFixed(2)})
+                                          (Member: ${(variant.member_price_cents / 100).toFixed(2)} - Save ${(variant.price - (variant.member_price_cents / 100)).toFixed(2)})
                                         </span>
                                       )}
                                     </p>
