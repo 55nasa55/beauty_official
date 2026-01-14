@@ -130,7 +130,10 @@ export function ProductCard({ product }: ProductCardProps) {
                 )}
               </span>
               {!user && (
-                <Link href="/login?redirect=/pricing" className="text-xs text-blue-600 hover:underline">
+                <Link
+                  href={`/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`}
+                  className="text-xs text-blue-600 hover:underline"
+                >
                   Log in
                 </Link>
               )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
 import { useAuth } from '@/lib/auth-context';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useSupabase();
   const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
@@ -18,9 +19,14 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const getRedirectUrl = () => {
+    const redirect = searchParams.get('redirect');
+    return redirect?.startsWith('/') ? redirect : '/account';
+  };
+
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/account');
+      router.push(getRedirectUrl());
     }
   }, [user, authLoading, router]);
 
@@ -41,7 +47,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/account');
+      router.push(getRedirectUrl());
     } catch (err: any) {
       setError(err.message || 'An error occurred');
       setLoading(false);
@@ -117,7 +123,10 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
-            <Link href="/signup" className="text-black font-medium hover:underline">
+            <Link
+              href={searchParams.get('redirect') ? `/signup?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/signup'}
+              className="text-black font-medium hover:underline"
+            >
               Sign up
             </Link>
           </p>

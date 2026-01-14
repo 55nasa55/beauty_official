@@ -209,7 +209,7 @@ export default function ProductPage() {
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
                       {!user && (
                         <>
-                          <Link href="/login?redirect=/pricing">
+                          <Link href={`/login?redirect=${encodeURIComponent(`/product/${slug}`)}`}>
                             <Button variant="outline" size="sm" className="text-blue-600 border-blue-600 hover:bg-blue-50">
                               Log in
                             </Button>
