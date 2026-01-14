@@ -27,6 +27,11 @@ interface OrderItem {
   price: number;
 }
 
+interface Membership {
+  status: string;
+  current_period_end: string | null;
+}
+
 export default function AccountPage() {
   const router = useRouter();
   const supabase = useSupabase();
@@ -34,6 +39,8 @@ export default function AccountPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [membership, setMembership] = useState<Membership | null>(null);
+  const [membershipLoading, setMembershipLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -44,8 +51,27 @@ export default function AccountPage() {
   useEffect(() => {
     if (user) {
       loadOrders();
+      loadMembership();
     }
   }, [user]);
+
+  const loadMembership = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('memberships')
+        .select('status, current_period_end')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setMembership(data);
+      }
+    } catch (error) {
+      console.error('Error loading membership:', error);
+    } finally {
+      setMembershipLoading(false);
+    }
+  };
 
   const loadOrders = async () => {
     try {
@@ -100,6 +126,30 @@ export default function AccountPage() {
     router.push('/');
   };
 
+  const handleManageMembership = async () => {
+    try {
+      const response = await fetch('/api/membership/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error opening portal:', error);
+    }
+  };
+
+  const isMemberActive = membership &&
+    ['active', 'trialing'].includes(membership.status) &&
+    membership.current_period_end &&
+    new Date(membership.current_period_end) > new Date();
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -128,6 +178,60 @@ export default function AccountPage() {
               Sign Out
             </Button>
           </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-light tracking-wide mb-4">Membership</h2>
+
+          {membershipLoading ? (
+            <div className="py-4">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : isMemberActive ? (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-base font-medium text-gray-900">Cosmetic Club Plus</h3>
+                  <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 font-medium">
+                    Active
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-1">
+                  Enjoy exclusive member pricing on all products
+                </p>
+                {membership?.current_period_end && (
+                  <p className="text-xs text-gray-500">
+                    Renews {format(new Date(membership.current_period_end), 'MMMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+              <Button
+                onClick={handleManageMembership}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                Manage Membership
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-[#FAF8F6] to-[#F5F0EB] rounded-lg p-6 border border-[#E6A6B0]/20">
+              <h3 className="text-base font-medium text-[#3A3231] mb-2">
+                Unlock Exclusive Member Pricing
+              </h3>
+              <p className="text-sm text-[#6B5D56] mb-4">
+                Join Cosmetic Club Plus to save on every purchase with automatically applied member discounts.
+              </p>
+              <Link href="/pricing">
+                <Button
+                  size="sm"
+                  className="bg-[#E6A6B0] hover:bg-[#D89AA4] text-white"
+                >
+                  View Membership
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

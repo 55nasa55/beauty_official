@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAuth } from "@/lib/auth-context";
 
@@ -95,6 +96,25 @@ export default function PricingPage() {
     <div className="min-h-screen bg-gradient-to-b from-[#FAF8F6] to-[#F5F0EB]">
       <div className="container mx-auto px-4 py-20 lg:py-32">
         <div className="max-w-2xl mx-auto">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-[#8B7D78] hover:text-[#6B5D56] transition-colors mb-8"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to Shop
+          </Link>
           <div className="text-center mb-16 space-y-5">
             <h1 className="text-4xl lg:text-5xl font-light text-[#3A3231] tracking-wide">
               Exclusive member pricing
