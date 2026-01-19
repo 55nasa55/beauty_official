@@ -60,14 +60,14 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { user } } = await supabase.auth.getUser();
 
         if (!mounted) return;
 
-        if (session?.user) {
-          setUser(session.user);
+        if (user) {
+          setUser(user);
           setLoading(true);
-          await checkMembership(session.user);
+          await checkMembership(user);
         } else {
           setUser(null);
           setIsMember(false);
@@ -88,10 +88,12 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      if (session?.user) {
-        setUser(session.user);
+      const authUser = session?.user || null;
+
+      if (authUser) {
+        setUser(authUser);
         setLoading(true);
-        await checkMembership(session.user);
+        await checkMembership(authUser);
       } else {
         setUser(null);
         setIsMember(false);
