@@ -1,12 +1,14 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useCart } from '@/lib/cart-context';
-import { useAuth } from '@/lib/auth-context';
+import { useMembership } from '@/lib/membership-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { VariantSelector } from '@/components/VariantSelector';
@@ -28,7 +30,7 @@ export default function ProductPage() {
   const slug = params.slug as string;
   const { addItem } = useCart();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { isMember, user } = useMembership();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -37,7 +39,6 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -74,28 +75,6 @@ export default function ProductPage() {
     fetchData();
   }, [slug]);
 
-  useEffect(() => {
-    if (user) {
-      checkMembership();
-    }
-  }, [user]);
-
-  const checkMembership = async () => {
-    if (!user) return;
-
-    const { data: membership } = await supabase
-      .from('memberships')
-      .select('status, current_period_end')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (membership) {
-      const isActive = ['active', 'trialing'].includes(membership.status);
-      const notExpired = membership.current_period_end && new Date(membership.current_period_end) > new Date();
-      setIsMember(isActive && notExpired);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -120,13 +99,16 @@ export default function ProductPage() {
   const handleAddToCart = () => {
     if (!product || !selectedVariant) return;
 
+    const memberPrice = selectedVariant.member_price_cents ? selectedVariant.member_price_cents / 100 : null;
+    const finalPrice = isMember && memberPrice ? memberPrice : selectedVariant.price;
+
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
       productName: product.name,
       productSlug: product.slug,
       variantName: selectedVariant.name,
-      price: selectedVariant.price,
+      price: finalPrice,
       image: selectedVariant.images[0] || '',
     });
 
@@ -189,14 +171,30 @@ export default function ProductPage() {
               <div>
                 <h1 className="text-3xl font-light tracking-wide mb-3">{product.name}</h1>
                 <div className="flex items-center gap-3">
-                  <p className="text-2xl font-medium">${selectedVariant.price.toFixed(2)}</p>
-                  {selectedVariant.compare_at_price > 0 && (
-                    <p className="text-lg text-gray-400 line-through">
-                      ${selectedVariant.compare_at_price.toFixed(2)}
-                    </p>
+                  {isMember && selectedVariant.member_price_cents ? (
+                    <>
+                      <p className="text-2xl font-medium text-blue-600">
+                        {formatCents(selectedVariant.member_price_cents)}
+                      </p>
+                      <p className="text-lg text-gray-400 line-through">
+                        ${selectedVariant.price.toFixed(2)}
+                      </p>
+                      <span className="text-sm text-green-600 font-medium">
+                        Member
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-medium">${selectedVariant.price.toFixed(2)}</p>
+                      {selectedVariant.compare_at_price > 0 && (
+                        <p className="text-lg text-gray-400 line-through">
+                          ${selectedVariant.compare_at_price.toFixed(2)}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
-                {selectedVariant.member_price_cents && (
+                {selectedVariant.member_price_cents && !isMember && (
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-base font-medium text-blue-700">
@@ -207,7 +205,7 @@ export default function ProductPage() {
                       </span>
                     </div>
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
-                      {!user && (
+                      {!user ? (
                         <>
                           <Link href={`/login?redirect=${encodeURIComponent(`/product/${slug}`)}`}>
                             <Button variant="outline" size="sm" className="text-blue-600 border-blue-600 hover:bg-blue-50">
@@ -220,20 +218,21 @@ export default function ProductPage() {
                             </Button>
                           </Link>
                         </>
-                      )}
-                      {user && !isMember && (
+                      ) : (
                         <Link href="/pricing">
                           <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
                             Join Now to Save
                           </Button>
                         </Link>
                       )}
-                      {user && isMember && (
-                        <span className="text-sm text-green-600 font-medium">
-                          ✓ Member price will be applied at checkout
-                        </span>
-                      )}
                     </div>
+                  </div>
+                )}
+                {isMember && selectedVariant.member_price_cents && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                    <p className="text-sm text-green-700 font-medium">
+                      You saved {formatCents(calculateSavingsFromCents(Math.round(selectedVariant.price * 100), selectedVariant.member_price_cents))} with your membership
+                    </p>
                   </div>
                 )}
               </div>

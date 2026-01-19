@@ -1,10 +1,12 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
-import { useAuth } from '@/lib/auth-context';
+import { useMembership } from '@/lib/membership-context';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
@@ -35,27 +37,26 @@ interface Membership {
 export default function AccountPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isMember, loading: membershipLoading } = useMembership();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
-  const [membershipLoading, setMembershipLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!membershipLoading && !user) {
       router.push('/login');
     }
-  }, [user, authLoading, router]);
+  }, [user, membershipLoading, router]);
 
   useEffect(() => {
     if (user) {
       loadOrders();
-      loadMembership();
+      loadMembershipDetails();
     }
   }, [user]);
 
-  const loadMembership = async () => {
+  const loadMembershipDetails = async () => {
     try {
       const { data, error } = await supabase
         .from('memberships')
@@ -67,9 +68,7 @@ export default function AccountPage() {
         setMembership(data);
       }
     } catch (error) {
-      console.error('Error loading membership:', error);
-    } finally {
-      setMembershipLoading(false);
+      console.error('Error loading membership details:', error);
     }
   };
 
@@ -145,12 +144,7 @@ export default function AccountPage() {
     }
   };
 
-  const isMemberActive = membership &&
-    ['active', 'trialing'].includes(membership.status) &&
-    membership.current_period_end &&
-    new Date(membership.current_period_end) > new Date();
-
-  if (authLoading || loading) {
+  if (membershipLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -183,11 +177,7 @@ export default function AccountPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-xl font-light tracking-wide mb-4">Membership</h2>
 
-          {membershipLoading ? (
-            <div className="py-4">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : isMemberActive ? (
+          {isMember ? (
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">

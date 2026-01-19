@@ -4,9 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ProductWithVariants } from '@/lib/database.types';
 import { AddToCartButton } from './AddToCartButton';
-import { useAuth } from '@/lib/auth-context';
-import { useState, useEffect } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { useMembership } from '@/lib/membership-context';
 import { formatCents, getMemberPriceRange, getSavingsRange } from '@/lib/pricing';
 
 interface ProductCardProps {
@@ -14,31 +12,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { user } = useAuth();
-  const [isMember, setIsMember] = useState(false);
-  const supabase = createSupabaseBrowserClient();
-
-  useEffect(() => {
-    if (user) {
-      checkMembership();
-    }
-  }, [user]);
-
-  const checkMembership = async () => {
-    if (!user) return;
-
-    const { data: membership } = await supabase
-      .from('memberships')
-      .select('status, current_period_end')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (membership) {
-      const isActive = ['active', 'trialing'].includes(membership.status);
-      const notExpired = membership.current_period_end && new Date(membership.current_period_end) > new Date();
-      setIsMember(isActive && notExpired);
-    }
-  };
+  const { isMember, user } = useMembership();
 
   const defaultVariant = product.variants[0];
 
@@ -47,6 +21,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const memberPriceRange = getMemberPriceRange(product.variants);
   const savingsRange = getSavingsRange(product.variants);
   const hasMemberPrice = memberPriceRange !== null;
+
+  const memberPrice = defaultVariant.member_price_cents ? defaultVariant.member_price_cents / 100 : null;
+  const displayPrice = isMember && memberPrice ? memberPrice : defaultVariant.price;
+  const savings = memberPrice ? defaultVariant.price - memberPrice : 0;
 
   // Only show discount UI when compare_at_price is greater than both 0 AND the actual price
   const hasDiscount =
@@ -93,13 +71,18 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <p className={`text-sm font-medium ${hasDiscount ? 'text-red-600' : ''}`}>
-                ${defaultVariant.price.toFixed(2)}
+              <p className={`text-sm font-medium ${isMember && memberPrice ? 'text-blue-600' : hasDiscount ? 'text-red-600' : ''}`}>
+                ${displayPrice.toFixed(2)}
               </p>
-              {hasDiscount && (
+              {hasDiscount && !isMember && (
                 <p className="text-xs text-gray-400 line-through">
                   ${defaultVariant.compare_at_price.toFixed(2)}
                 </p>
+              )}
+              {isMember && memberPrice && (
+                <span className="text-xs text-gray-400 line-through">
+                  ${defaultVariant.price.toFixed(2)}
+                </span>
               )}
             </div>
             <AddToCartButton
@@ -108,12 +91,12 @@ export function ProductCard({ product }: ProductCardProps) {
               productName={product.name}
               productSlug={product.slug}
               variantName={defaultVariant.name}
-              price={defaultVariant.price}
+              price={displayPrice}
               image={defaultVariant.images[0] || '/placeholder.jpg'}
               stock={defaultVariant.stock}
             />
           </div>
-          {hasMemberPrice && memberPriceRange && savingsRange && (
+          {hasMemberPrice && !isMember && memberPriceRange && savingsRange && (
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-medium text-blue-600">
                 {memberPriceRange.single ? (
@@ -129,23 +112,24 @@ export function ProductCard({ product }: ProductCardProps) {
                   `(save ${formatCents(savingsRange.min)}–${formatCents(savingsRange.max)})`
                 )}
               </span>
-              {!user && (
+              {!user ? (
                 <Link
                   href={`/login?redirect=${encodeURIComponent(`/product/${product.slug}`)}`}
                   className="text-xs text-blue-600 hover:underline"
                 >
                   Log in
                 </Link>
-              )}
-              {user && !isMember && (
+              ) : (
                 <Link href="/pricing" className="text-xs text-blue-600 hover:underline">
-                  Join
+                  Join Now
                 </Link>
               )}
-              {user && isMember && (
-                <span className="text-xs text-green-600">Member price applied</span>
-              )}
             </div>
+          )}
+          {isMember && memberPrice && savings > 0 && (
+            <p className="text-xs text-green-600 font-medium">
+              Member savings: ${savings.toFixed(2)}
+            </p>
           )}
         </div>
       </div>
