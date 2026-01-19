@@ -30,29 +30,16 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       if (!mounted) return;
 
       try {
-        console.log('Checking membership for user:', currentUser.id);
-
-        // Get the current session to authenticate queries
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (!session) {
-          console.log('No session found for membership check');
-          if (mounted) {
-            setIsMember(false);
-            setLoading(false);
-          }
+        if (!session?.access_token) {
+          setIsMember(false);
+          setLoading(false);
           return;
         }
 
-        console.log('Session found, authenticating client with token');
-
-        // Authenticate the existing client with the session token
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        });
-
-        console.log('Querying memberships table for user:', currentUser.id);
+        // Authenticate the existing supabase client
+        supabase.auth.setAuth(session.access_token);
 
         const { data: membership, error } = await supabase
           .from('memberships')
@@ -60,37 +47,30 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
           .eq('user_id', currentUser.id)
           .maybeSingle();
 
-        console.log('Membership query result:', { membership, error });
-
-        if (!mounted) return;
-
-        if (!membership) {
-          console.log('No membership found');
+        if (error) {
+          console.error('Membership query error:', error);
           setIsMember(false);
-          setLoading(false);
           return;
         }
 
-        const isActiveStatus = membership.status === 'active' || membership.status === 'trialing';
-        const isPeriodValid = !membership.current_period_end || new Date(membership.current_period_end) > new Date();
+        if (!membership) {
+          setIsMember(false);
+          return;
+        }
 
-        console.log('Membership validation:', {
-          status: membership.status,
-          isActiveStatus,
-          isPeriodValid,
-          isMember: isActiveStatus && isPeriodValid
-        });
+        const isActiveStatus =
+          membership.status === 'active' || membership.status === 'trialing';
+
+        const isPeriodValid =
+          !membership.current_period_end ||
+          new Date(membership.current_period_end) > new Date();
 
         setIsMember(isActiveStatus && isPeriodValid);
       } catch (error) {
         console.error('Error checking membership:', error);
-        if (mounted) {
-          setIsMember(false);
-        }
+        setIsMember(false);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
