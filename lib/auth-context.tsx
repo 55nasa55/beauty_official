@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { useSupabase } from '@/app/providers';
+import { createContext, useContext, useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
+import { useSupabase } from "@/app/providers";
 
 interface AuthContextType {
   user: User | null;
@@ -20,21 +20,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
+        setUser(user ?? null);
+      } catch (error) {
+        console.error("[AuthProvider] getUser error:", error);
+        if (!mounted) return;
+        setUser(null);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setUser(session?.user ?? null);
-      })();
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!mounted) return;
 
-    return () => subscription.unsubscribe();
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   return (
