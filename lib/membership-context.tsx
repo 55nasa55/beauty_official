@@ -19,7 +19,8 @@ const MembershipContext = createContext<MembershipContextType>({
 });
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useSupabase(); // Use the authenticated singleton client
+  const supabase = useSupabase();
+
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -30,27 +31,20 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     const checkMembership = async (currentUser: User) => {
       if (!mounted) return;
 
-      console.log('[Membership Check] Starting check for user:', currentUser.id);
-
       try {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session?.access_token) {
-          console.log('[Membership Check] No session/access_token found');
           setIsMember(false);
           setLoading(false);
           return;
         }
-
-        console.log('[Membership Check] Session found, querying with authenticated client');
 
         const { data: membership, error } = await supabase
           .from('memberships')
           .select('status, current_period_end')
           .eq('user_id', currentUser.id)
           .maybeSingle();
-
-        console.log('[Membership Check]', { userId: currentUser.id, membership, error });
 
         if (error) {
           console.error('[Membership Error]', error);
@@ -71,17 +65,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
           !membership.current_period_end ||
           new Date(membership.current_period_end) > new Date();
 
-        const finalIsMember = isActiveStatus && isPeriodValid;
-
-        console.log('[Membership Check] Validation:', {
-          status: membership.status,
-          isActiveStatus,
-          isPeriodValid,
-          currentPeriodEnd: membership.current_period_end,
-          finalIsMember
-        });
-
-        setIsMember(finalIsMember);
+        setIsMember(isActiveStatus && isPeriodValid);
       } catch (error) {
         console.error('Error checking membership:', error);
         setIsMember(false);
