@@ -89,13 +89,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ received: true });
         }
 
+        const currentPeriodEnd = (retrievedSubscription as any).current_period_end;
+        const currentPeriodEndISO = currentPeriodEnd
+          ? new Date(currentPeriodEnd * 1000).toISOString()
+          : null;
+
         const membershipData = {
           user_id: userId,
           plan_id: plan.id,
           status: retrievedSubscription.status,
           stripe_customer_id: retrievedSubscription.customer as string,
           stripe_subscription_id: retrievedSubscription.id,
-          current_period_end: new Date((retrievedSubscription as any).current_period_end * 1000).toISOString(),
+          current_period_end: currentPeriodEndISO,
           cancel_at_period_end: (retrievedSubscription as any).cancel_at_period_end || false,
           updated_at: new Date().toISOString(),
         };
@@ -114,17 +119,13 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook] ✓ Membership created/updated successfully');
         console.log('[Webhook]   - User ID:', userId);
         console.log('[Webhook]   - Status:', retrievedSubscription.status);
-        console.log('[Webhook]   - Period End:', membershipData.current_period_end);
+        console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
 
         return NextResponse.json({ received: true });
       } catch (error: any) {
         console.error('[Webhook] Error processing subscription checkout:', error.message);
-        return NextResponse.json({
-          received: true,
-          error: error.message,
-        }, {
-          status: 500,
-        });
+        console.error('[Webhook] Stack trace:', error.stack);
+        return NextResponse.json({ received: true });
       }
     }
 
@@ -352,12 +353,7 @@ export async function POST(req: NextRequest) {
     console.error('[Webhook] Session ID:', session.id);
     console.error('[Webhook] =====================================');
 
-    return NextResponse.json({
-      received: true,
-      error: error.message,
-    }, {
-      status: 500,
-    });
+    return NextResponse.json({ received: true });
   }
   }
 
@@ -416,13 +412,18 @@ export async function POST(req: NextRequest) {
 
       const mappedStatus = statusMap[subscription.status] || subscription.status;
 
+      const currentPeriodEnd = (subscription as any).current_period_end;
+      const currentPeriodEndISO = currentPeriodEnd
+        ? new Date(currentPeriodEnd * 1000).toISOString()
+        : null;
+
       const membershipData = {
         user_id: userId,
         plan_id: plan.id,
         status: mappedStatus,
         stripe_customer_id: subscription.customer as string,
         stripe_subscription_id: subscription.id,
-        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        current_period_end: currentPeriodEndISO,
         cancel_at_period_end: (subscription as any).cancel_at_period_end || false,
         updated_at: new Date().toISOString(),
       };
@@ -441,17 +442,13 @@ export async function POST(req: NextRequest) {
       console.log('[Webhook] ✓ Membership updated successfully');
       console.log('[Webhook]   - User ID:', userId);
       console.log('[Webhook]   - Status:', mappedStatus);
-      console.log('[Webhook]   - Period End:', membershipData.current_period_end);
+      console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
 
       return NextResponse.json({ received: true });
     } catch (error: any) {
       console.error('[Webhook] Error processing subscription:', error.message);
-      return NextResponse.json({
-        received: true,
-        error: error.message,
-      }, {
-        status: 500,
-      });
+      console.error('[Webhook] Stack trace:', error.stack);
+      return NextResponse.json({ received: true });
     }
   }
 
