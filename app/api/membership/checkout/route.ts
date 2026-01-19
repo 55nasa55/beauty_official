@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
+      client_reference_id: user.id,
       line_items: [
         {
           price: priceId,
@@ -57,6 +58,11 @@ export async function POST(req: NextRequest) {
       ],
       success_url: `${origin}/account?membership=success`,
       cancel_url: `${origin}/pricing`,
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+        },
+      },
       metadata: {
         user_id: user.id,
         source: 'membership',
