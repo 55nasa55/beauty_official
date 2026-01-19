@@ -3,7 +3,7 @@
 console.log('MembershipContext mounted')
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, createClient } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 
 interface MembershipContextType {
@@ -30,6 +30,8 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       if (!mounted) return;
 
       try {
+        console.log('Checking membership for user:', currentUser.id);
+
         // Get the current session to authenticate queries
         const { data: { session } } = await supabase.auth.getSession();
 
@@ -42,28 +44,28 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
           return;
         }
 
-        // Create authenticated client with session token
-        const authenticatedClient = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          {
-            global: {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`
-              }
-            }
-          }
-        );
+        console.log('Session found, authenticating client with token');
 
-        const { data: membership } = await authenticatedClient
+        // Authenticate the existing client with the session token
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        });
+
+        console.log('Querying memberships table for user:', currentUser.id);
+
+        const { data: membership, error } = await supabase
           .from('memberships')
           .select('status, current_period_end')
           .eq('user_id', currentUser.id)
           .maybeSingle();
 
+        console.log('Membership query result:', { membership, error });
+
         if (!mounted) return;
 
         if (!membership) {
+          console.log('No membership found');
           setIsMember(false);
           setLoading(false);
           return;
@@ -71,6 +73,13 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
         const isActiveStatus = membership.status === 'active' || membership.status === 'trialing';
         const isPeriodValid = !membership.current_period_end || new Date(membership.current_period_end) > new Date();
+
+        console.log('Membership validation:', {
+          status: membership.status,
+          isActiveStatus,
+          isPeriodValid,
+          isMember: isActiveStatus && isPeriodValid
+        });
 
         setIsMember(isActiveStatus && isPeriodValid);
       } catch (error) {
