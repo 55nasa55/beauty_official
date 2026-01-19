@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useSupabase } from "@/app/providers";
 
 interface MembershipContextType {
   isMember: boolean;
@@ -17,11 +17,11 @@ const MembershipContext = createContext<MembershipContextType>({
 });
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
+  const supabase = useSupabase();
+
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-
-  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     let mounted = true;
@@ -37,11 +37,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         .eq("user_id", currentUser.id)
         .maybeSingle();
 
-      console.log("[Membership Check]", {
-        userId: currentUser.id,
-        membership,
-        error,
-      });
+      console.log("[Membership Check]", { userId: currentUser.id, membership, error });
 
       if (error || !membership) {
         setIsMember(false);
