@@ -3,7 +3,7 @@
 console.log('MembershipContext mounted')
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User, createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 
 interface MembershipContextType {
@@ -30,7 +30,32 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       if (!mounted) return;
 
       try {
-        const { data: membership } = await supabase
+        // Get the current session to authenticate queries
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          console.log('No session found for membership check');
+          if (mounted) {
+            setIsMember(false);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Create authenticated client with session token
+        const authenticatedClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`
+              }
+            }
+          }
+        );
+
+        const { data: membership } = await authenticatedClient
           .from('memberships')
           .select('status, current_period_end')
           .eq('user_id', currentUser.id)
@@ -40,6 +65,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
         if (!membership) {
           setIsMember(false);
+          setLoading(false);
           return;
         }
 
