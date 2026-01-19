@@ -1,10 +1,8 @@
-'use client';
+"use client";
 
-console.log('MembershipContext mounted')
-
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { useSupabase } from '@/app/providers';
+import { createContext, useContext, useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 interface MembershipContextType {
   isMember: boolean;
@@ -19,11 +17,11 @@ const MembershipContext = createContext<MembershipContextType>({
 });
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useSupabase();
-
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     let mounted = true;
@@ -31,91 +29,70 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     const checkMembership = async (currentUser: User) => {
       if (!mounted) return;
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+      setLoading(true);
 
-        if (!session?.access_token) {
-          setIsMember(false);
-          setLoading(false);
-          return;
-        }
+      const { data: membership, error } = await supabase
+        .from("memberships")
+        .select("status, current_period_end")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
 
-        const { data: membership, error } = await supabase
-          .from('memberships')
-          .select('status, current_period_end')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
+      console.log("[Membership Check]", {
+        userId: currentUser.id,
+        membership,
+        error,
+      });
 
-        if (error) {
-          console.error('[Membership Error]', error);
-          setIsMember(false);
-          return;
-        }
-
-        if (!membership) {
-          console.log('[Membership Check] No membership found for user', currentUser.id);
-          setIsMember(false);
-          return;
-        }
-
-        const isActiveStatus =
-          membership.status === 'active' || membership.status === 'trialing';
-
-        const isPeriodValid =
-          !membership.current_period_end ||
-          new Date(membership.current_period_end) > new Date();
-
-        setIsMember(isActiveStatus && isPeriodValid);
-      } catch (error) {
-        console.error('Error checking membership:', error);
+      if (error || !membership) {
         setIsMember(false);
-      } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
+        return;
       }
+
+      const isActive =
+        membership.status === "active" || membership.status === "trialing";
+
+      const isValidPeriod =
+        !membership.current_period_end ||
+        new Date(membership.current_period_end) > new Date();
+
+      setIsMember(isActive && isValidPeriod);
+      setLoading(false);
     };
 
-    const initializeAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
+    const initAuth = async () => {
+      const { data } = await supabase.auth.getUser();
+      const authUser = data.user || null;
 
-        if (!mounted) return;
-
-        if (user) {
-          setUser(user);
-          setLoading(true);
-          await checkMembership(user);
-        } else {
-          setUser(null);
-          setIsMember(false);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (mounted) {
-          setUser(null);
-          setIsMember(false);
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      const authUser = session?.user || null;
+      setUser(authUser);
 
       if (authUser) {
-        setUser(authUser);
-        setLoading(true);
         await checkMembership(authUser);
       } else {
-        setUser(null);
         setIsMember(false);
         setLoading(false);
       }
-    });
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_, session) => {
+        if (!mounted) return;
+
+        const authUser = session?.user || null;
+        setUser(authUser);
+
+        if (authUser) {
+          await checkMembership(authUser);
+        } else {
+          setIsMember(false);
+          setLoading(false);
+        }
+      }
+    );
 
     return () => {
       mounted = false;
@@ -132,8 +109,8 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
 export function useMembership() {
   const context = useContext(MembershipContext);
-  if (context === undefined) {
-    throw new Error('useMembership must be used within a MembershipProvider');
+  if (!context) {
+    throw new Error("useMembership must be used within a MembershipProvider");
   }
   return context;
 }
