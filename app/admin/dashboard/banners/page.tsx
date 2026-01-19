@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useSupabase } from '@/app/providers';
 import { Plus, Edit2, Trash2, Eye, X } from 'lucide-react';
 import Image from 'next/image';
 
@@ -29,6 +29,7 @@ type BannerFormData = {
 };
 
 export default function BannersPage() {
+  const supabase = useSupabase();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

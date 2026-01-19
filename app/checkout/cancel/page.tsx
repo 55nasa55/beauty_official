@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { useSupabase } from '@/app/providers';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Category, Brand, Collection } from '@/lib/database.types';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function CheckoutCancelPage() {
+  const supabase = useSupabase();
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useSupabase } from '@/app/providers';
-import { supabase as supabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +65,7 @@ export default function ImageManagerPage() {
     try {
       setIsLoading(true);
 
-      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
       if (!token) {

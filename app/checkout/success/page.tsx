@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabaseClient';
+import { useSupabase } from '@/app/providers';
 import { useCart } from '@/lib/cart-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -45,6 +45,7 @@ interface Order {
 }
 
 export default function CheckoutSuccessPage() {
+  const supabase = useSupabase();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const { clearCart } = useCart();

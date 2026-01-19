@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { cookies } from 'next/headers';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 export async function GET(request: NextRequest) {
@@ -7,6 +8,9 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   try {
+    const cookieStore = cookies();
+    const supabase = createSupabaseServerClient(cookieStore);
+
     const searchParams = request.nextUrl.searchParams;
 
     // Parse query params with defaults and clamping

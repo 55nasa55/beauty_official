@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useSupabase } from '@/app/providers';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ProductCard } from '@/components/ProductCard';
@@ -39,6 +39,7 @@ interface Product {
 }
 
 export default function CollectionsPage() {
+  const supabase = useSupabase();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
