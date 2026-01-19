@@ -1,8 +1,14 @@
-import { createBrowserClient } from '@supabase/ssr';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// Singleton browser client for use across the app
-// This maintains auth state properly with @supabase/ssr
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+/**
+ * DEPRECATED: Do not use this file for client-side code.
+ *
+ * For client components, use:
+ *   import { useSupabase } from '@/app/providers'
+ *   const supabase = useSupabase()
+ *
+ * For API routes, use:
+ *   import { cookies } from 'next/headers'
+ *   import { createSupabaseServerClient } from '@/lib/supabase/server'
+ *   const supabase = createSupabaseServerClient(cookies())
+ *
+ * This file exists only for backwards compatibility and should not be used.
+ */

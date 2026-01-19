@@ -59,7 +59,8 @@ export default function SignupPage() {
         return;
       }
 
-      router.push(getRedirectUrl());
+      // Don't redirect here - let the auth state change handler (useEffect) do it
+      // This ensures auth state is fully propagated before navigation
     } catch (err: any) {
       setError(err.message || 'An error occurred');
       setLoading(false);
