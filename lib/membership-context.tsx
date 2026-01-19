@@ -29,17 +29,19 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
     const checkMembership = async (currentUser: User) => {
       if (!mounted) return;
 
+      console.log('[Membership Check] Starting check for user:', currentUser.id);
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session?.access_token) {
+          console.log('[Membership Check] No session/access_token found');
           setIsMember(false);
           setLoading(false);
           return;
         }
 
-        // Authenticate the existing supabase client
-        supabase.auth.setAuth(session.access_token);
+        console.log('[Membership Check] Session found, querying with authenticated client');
 
         const { data: membership, error } = await supabase
           .from('memberships')
@@ -47,13 +49,16 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
           .eq('user_id', currentUser.id)
           .maybeSingle();
 
+        console.log('[Membership Check]', { userId: currentUser.id, membership, error });
+
         if (error) {
-          console.error('Membership query error:', error);
+          console.error('[Membership Error]', error);
           setIsMember(false);
           return;
         }
 
         if (!membership) {
+          console.log('[Membership Check] No membership found for user', currentUser.id);
           setIsMember(false);
           return;
         }
@@ -65,7 +70,17 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
           !membership.current_period_end ||
           new Date(membership.current_period_end) > new Date();
 
-        setIsMember(isActiveStatus && isPeriodValid);
+        const finalIsMember = isActiveStatus && isPeriodValid;
+
+        console.log('[Membership Check] Validation:', {
+          status: membership.status,
+          isActiveStatus,
+          isPeriodValid,
+          currentPeriodEnd: membership.current_period_end,
+          finalIsMember
+        });
+
+        setIsMember(finalIsMember);
       } catch (error) {
         console.error('Error checking membership:', error);
         setIsMember(false);
