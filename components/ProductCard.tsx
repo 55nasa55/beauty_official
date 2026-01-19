@@ -12,7 +12,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { isMember, user } = useMembership();
+  const { isMember, user, loading } = useMembership();
 
   const defaultVariant = product.variants[0];
 
@@ -23,7 +23,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const hasMemberPrice = memberPriceRange !== null;
 
   const memberPrice = defaultVariant.member_price_cents ? defaultVariant.member_price_cents / 100 : null;
-  const displayPrice = isMember && memberPrice ? memberPrice : defaultVariant.price;
+  const displayPrice = !loading && isMember && memberPrice ? memberPrice : defaultVariant.price;
   const savings = memberPrice ? defaultVariant.price - memberPrice : 0;
 
   // Only show discount UI when compare_at_price is greater than both 0 AND the actual price
@@ -71,15 +71,15 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <p className={`text-sm font-medium ${isMember && memberPrice ? 'text-blue-600' : hasDiscount ? 'text-red-600' : ''}`}>
+              <p className={`text-sm font-medium ${!loading && isMember && memberPrice ? 'text-blue-600' : hasDiscount ? 'text-red-600' : ''}`}>
                 ${displayPrice.toFixed(2)}
               </p>
-              {hasDiscount && !isMember && (
+              {hasDiscount && (loading || !isMember) && (
                 <p className="text-xs text-gray-400 line-through">
                   ${defaultVariant.compare_at_price.toFixed(2)}
                 </p>
               )}
-              {isMember && memberPrice && (
+              {!loading && isMember && memberPrice && (
                 <span className="text-xs text-gray-400 line-through">
                   ${defaultVariant.price.toFixed(2)}
                 </span>
@@ -96,7 +96,7 @@ export function ProductCard({ product }: ProductCardProps) {
               stock={defaultVariant.stock}
             />
           </div>
-          {hasMemberPrice && !isMember && memberPriceRange && savingsRange && (
+          {hasMemberPrice && !loading && !isMember && memberPriceRange && savingsRange && (
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-medium text-blue-600">
                 {memberPriceRange.single ? (
@@ -126,7 +126,7 @@ export function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
           )}
-          {isMember && memberPrice && savings > 0 && (
+          {!loading && isMember && memberPrice && savings > 0 && (
             <p className="text-xs text-green-600 font-medium">
               Member savings: ${savings.toFixed(2)}
             </p>

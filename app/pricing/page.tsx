@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { useAuth } from "@/lib/auth-context";
+import { useMembership } from "@/lib/membership-context";
 
 interface MembershipPlan {
   id: string;
@@ -22,7 +22,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isMember, loading: membershipLoading } = useMembership();
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
@@ -45,6 +45,11 @@ export default function PricingPage() {
   const handleJoinNow = async (priceId: string) => {
     if (!user) {
       router.push("/login?redirect=/pricing");
+      return;
+    }
+
+    if (!membershipLoading && isMember) {
+      router.push("/account");
       return;
     }
 
@@ -128,6 +133,16 @@ export default function PricingPage() {
 
           <div className="bg-white rounded-2xl border border-[#E6A6B0] shadow-[0_8px_30px_rgba(230,166,176,0.12)] p-8 lg:p-12">
             <div className="space-y-8">
+              {!membershipLoading && isMember && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-green-800 font-medium">
+                    You are already a Cosmetic Club Plus member!
+                  </p>
+                  <p className="text-sm text-green-700 mt-1">
+                    Member pricing is automatically applied to all products.
+                  </p>
+                </div>
+              )}
               <div className="text-center space-y-2">
                 <h2 className="text-2xl lg:text-3xl font-medium text-[#3A3231] tracking-wide">
                   Cosmetic Club Plus
@@ -180,11 +195,13 @@ export default function PricingPage() {
 
               <button
                 onClick={() => handleJoinNow(primaryPlan.stripe_price_id)}
-                disabled={checkingOut === primaryPlan.stripe_price_id}
+                disabled={checkingOut === primaryPlan.stripe_price_id || (!membershipLoading && isMember)}
                 className="w-full py-4 px-6 rounded-full bg-[#E6A6B0] text-white font-medium text-base tracking-wide hover:bg-[#D89AA4] transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#E6A6B0] disabled:hover:shadow-sm"
               >
                 {checkingOut === primaryPlan.stripe_price_id
                   ? "Redirecting to checkout..."
+                  : !membershipLoading && isMember
+                  ? "Already a Member"
                   : user
                   ? "Join Cosmetic Club Plus"
                   : "Log in to Join"}

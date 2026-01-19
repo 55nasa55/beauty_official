@@ -30,7 +30,7 @@ export default function ProductPage() {
   const slug = params.slug as string;
   const { addItem } = useCart();
   const { toast } = useToast();
-  const { isMember, user } = useMembership();
+  const { isMember, user, loading: membershipLoading } = useMembership();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -100,7 +100,7 @@ export default function ProductPage() {
     if (!product || !selectedVariant) return;
 
     const memberPrice = selectedVariant.member_price_cents ? selectedVariant.member_price_cents / 100 : null;
-    const finalPrice = isMember && memberPrice ? memberPrice : selectedVariant.price;
+    const finalPrice = !membershipLoading && isMember && memberPrice ? memberPrice : selectedVariant.price;
 
     addItem({
       variantId: selectedVariant.id,
@@ -171,7 +171,7 @@ export default function ProductPage() {
               <div>
                 <h1 className="text-3xl font-light tracking-wide mb-3">{product.name}</h1>
                 <div className="flex items-center gap-3">
-                  {isMember && selectedVariant.member_price_cents ? (
+                  {!membershipLoading && isMember && selectedVariant.member_price_cents ? (
                     <>
                       <p className="text-2xl font-medium text-blue-600">
                         {formatCents(selectedVariant.member_price_cents)}
@@ -194,7 +194,7 @@ export default function ProductPage() {
                     </>
                   )}
                 </div>
-                {selectedVariant.member_price_cents && !isMember && (
+                {selectedVariant.member_price_cents && !membershipLoading && !isMember && (
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-base font-medium text-blue-700">
@@ -228,7 +228,7 @@ export default function ProductPage() {
                     </div>
                   </div>
                 )}
-                {isMember && selectedVariant.member_price_cents && (
+                {!membershipLoading && isMember && selectedVariant.member_price_cents && (
                   <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-100">
                     <p className="text-sm text-green-700 font-medium">
                       You saved {formatCents(calculateSavingsFromCents(Math.round(selectedVariant.price * 100), selectedVariant.member_price_cents))} with your membership
