@@ -4,7 +4,7 @@ console.log('MembershipContext mounted')
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabaseClient';
+import { useSupabase } from '@/app/providers';
 
 interface MembershipContextType {
   isMember: boolean;
@@ -19,6 +19,7 @@ const MembershipContext = createContext<MembershipContextType>({
 });
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
+  const supabase = useSupabase(); // Use the authenticated singleton client
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -136,7 +137,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <MembershipContext.Provider value={{ isMember, loading, user }}>
