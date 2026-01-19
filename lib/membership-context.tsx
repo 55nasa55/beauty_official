@@ -4,7 +4,8 @@ console.log('MembershipContext mounted')
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 
 interface MembershipContextType {
   isMember: boolean;
