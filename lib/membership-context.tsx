@@ -3,110 +3,82 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useSupabase } from "@/app/providers";
+import { useAuth } from "@/lib/auth-context";
 
 interface MembershipContextType {
   isMember: boolean;
   loading: boolean;
-  user: User | null;
 }
 
 const MembershipContext = createContext<MembershipContextType>({
   isMember: false,
-  loading: false,
-  user: null,
+  loading: true,
 });
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
   const supabase = useSupabase();
+  const { user, loading: authLoading } = useAuth();
 
   const [isMember, setIsMember] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
+    // 🚫 Wait until auth is fully ready
+    if (authLoading) return;
 
-    const checkMembership = async (currentUser: User) => {
-      if (!mounted) return;
+    // 🚫 No user = no membership
+    if (!user) {
+      setIsMember(false);
+      setLoading(false);
+      return;
+    }
 
+    let cancelled = false;
+
+    const loadMembership = async () => {
       setLoading(true);
 
-      const { data: membership, error } = await supabase
+      const { data, error } = await supabase
         .from("memberships")
         .select("status, current_period_end")
-        .eq("user_id", currentUser.id)
+        .eq("user_id", user.id)
         .maybeSingle();
 
-      console.log("[Membership Check]", { userId: currentUser.id, membership, error });
+      console.log("[Membership]", { userId: user.id, data, error });
 
-      if (error || !membership) {
+      if (cancelled) return;
+
+      if (!data || error) {
         setIsMember(false);
         setLoading(false);
         return;
       }
 
-      const isActive =
-        membership.status === "active" || membership.status === "trialing";
+      const active =
+        data.status === "active" || data.status === "trialing";
 
-      const isValidPeriod =
-        !membership.current_period_end ||
-        new Date(membership.current_period_end) > new Date();
+      const validPeriod =
+        !data.current_period_end ||
+        new Date(data.current_period_end) > new Date();
 
-      setIsMember(isActive && isValidPeriod);
+      setIsMember(active && validPeriod);
       setLoading(false);
     };
 
-    const initAuth = async () => {
-      const { data } = await supabase.auth.getUser();
-      const authUser = data.user || null;
-
-      if (!mounted) return;
-
-      setUser(authUser);
-
-      if (authUser) {
-        await checkMembership(authUser);
-      } else {
-        setIsMember(false);
-        setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_, session) => {
-        if (!mounted) return;
-
-        const authUser = session?.user || null;
-        setUser(authUser);
-
-        if (authUser) {
-          await checkMembership(authUser);
-        } else {
-          setIsMember(false);
-          setLoading(false);
-        }
-      }
-    );
+    loadMembership();
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      cancelled = true;
     };
-  }, [supabase]);
+  }, [user?.id, authLoading, supabase]);
 
   return (
-    <MembershipContext.Provider value={{ isMember, loading, user }}>
+    <MembershipContext.Provider value={{ isMember, loading }}>
       {children}
     </MembershipContext.Provider>
   );
 }
 
 export function useMembership() {
-  const context = useContext(MembershipContext);
-  if (!context) {
-    throw new Error("useMembership must be used within a MembershipProvider");
-  }
-  return context;
+  return useContext(MembershipContext);
 }
