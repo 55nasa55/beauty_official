@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ProductWithVariants } from '@/lib/database.types';
 import { AddToCartButton } from './AddToCartButton';
+import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
 import { formatCents, getMemberPriceRange, getSavingsRange } from '@/lib/pricing';
 
@@ -12,7 +13,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { isMember, user, loading } = useMembership();
+  const { user } = useAuth();
+  const { isMember, loading } = useMembership();
 
   const defaultVariant = product.variants[0];
 

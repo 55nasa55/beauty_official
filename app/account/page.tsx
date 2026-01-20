@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
+import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -37,7 +38,8 @@ interface Membership {
 export default function AccountPage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const { user, isMember, loading: membershipLoading } = useMembership();
+  const { user, loading: authLoading } = useAuth();
+  const { isMember, loading: membershipLoading } = useMembership();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);

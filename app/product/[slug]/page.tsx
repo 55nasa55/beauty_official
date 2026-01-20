@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useSupabase } from '@/app/providers';
 import { useCart } from '@/lib/cart-context';
+import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -31,7 +32,8 @@ export default function ProductPage() {
   const slug = params.slug as string;
   const { addItem } = useCart();
   const { toast } = useToast();
-  const { isMember, user, loading: membershipLoading } = useMembership();
+  const { user } = useAuth();
+  const { isMember, loading: membershipLoading } = useMembership();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);

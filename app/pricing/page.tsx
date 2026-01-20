@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useAuth } from "@/lib/auth-context";
 import { useMembership } from "@/lib/membership-context";
 
 interface MembershipPlan {
@@ -22,7 +23,8 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
   const router = useRouter();
-  const { user, isMember, loading: membershipLoading } = useMembership();
+  const { user } = useAuth();
+  const { isMember, loading: membershipLoading } = useMembership();
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
