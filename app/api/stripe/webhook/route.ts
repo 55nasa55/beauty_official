@@ -93,11 +93,20 @@ export async function POST(req: NextRequest) {
         const currentPeriodEndISO = currentPeriodEnd
           ? new Date(currentPeriodEnd * 1000).toISOString()
           : null;
+        const cancelAtPeriodEnd = (retrievedSubscription as any).cancel_at_period_end || false;
 
-        const isActiveSubscription =
-          retrievedSubscription.status === 'active' || retrievedSubscription.status === 'trialing';
+        let membershipStatus = 'inactive';
 
-        const membershipStatus = isActiveSubscription ? 'active' : 'inactive';
+        if (retrievedSubscription.status === 'active' || retrievedSubscription.status === 'trialing') {
+          membershipStatus = 'active';
+        } else if (retrievedSubscription.status === 'canceled' && cancelAtPeriodEnd && currentPeriodEndISO) {
+          const periodEndDate = new Date(currentPeriodEndISO);
+          const now = new Date();
+          if (periodEndDate > now) {
+            membershipStatus = 'active';
+            console.log('[Webhook] Subscription canceled but keeping active until period end:', currentPeriodEndISO);
+          }
+        }
 
         const membershipData = {
           user_id: userId,
@@ -106,7 +115,7 @@ export async function POST(req: NextRequest) {
           stripe_customer_id: retrievedSubscription.customer as string,
           stripe_subscription_id: retrievedSubscription.id,
           current_period_end: currentPeriodEndISO,
-          cancel_at_period_end: (retrievedSubscription as any).cancel_at_period_end || false,
+          cancel_at_period_end: cancelAtPeriodEnd,
           updated_at: new Date().toISOString(),
         };
 
@@ -123,7 +132,9 @@ export async function POST(req: NextRequest) {
 
         console.log('[Webhook] ✓ Membership created/updated successfully');
         console.log('[Webhook]   - User ID:', userId);
-        console.log('[Webhook]   - Status:', retrievedSubscription.status);
+        console.log('[Webhook]   - Stripe Status:', retrievedSubscription.status);
+        console.log('[Webhook]   - Membership Status:', membershipStatus);
+        console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
         console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
 
         return NextResponse.json({ received: true });
@@ -420,15 +431,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      const isActiveSubscription =
-        subscription.status === 'active' || subscription.status === 'trialing';
-
-      const membershipStatus = isActiveSubscription ? 'active' : 'inactive';
-
       const currentPeriodEnd = (subscription as any).current_period_end;
       const currentPeriodEndISO = currentPeriodEnd
         ? new Date(currentPeriodEnd * 1000).toISOString()
         : null;
+      const cancelAtPeriodEnd = (subscription as any).cancel_at_period_end || false;
+
+      let membershipStatus = 'inactive';
+
+      if (subscription.status === 'active' || subscription.status === 'trialing') {
+        membershipStatus = 'active';
+      } else if (subscription.status === 'canceled' && cancelAtPeriodEnd && currentPeriodEndISO) {
+        const periodEndDate = new Date(currentPeriodEndISO);
+        const now = new Date();
+        if (periodEndDate > now) {
+          membershipStatus = 'active';
+          console.log('[Webhook] Subscription canceled but keeping active until period end:', currentPeriodEndISO);
+        }
+      }
 
       const membershipData = {
         user_id: userId,
@@ -437,7 +457,7 @@ export async function POST(req: NextRequest) {
         stripe_customer_id: subscription.customer as string,
         stripe_subscription_id: subscription.id,
         current_period_end: currentPeriodEndISO,
-        cancel_at_period_end: (subscription as any).cancel_at_period_end || false,
+        cancel_at_period_end: cancelAtPeriodEnd,
         updated_at: new Date().toISOString(),
       };
 
@@ -456,6 +476,7 @@ export async function POST(req: NextRequest) {
       console.log('[Webhook]   - User ID:', userId);
       console.log('[Webhook]   - Stripe Status:', subscription.status);
       console.log('[Webhook]   - Membership Status:', membershipStatus);
+      console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
       console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
 
       return NextResponse.json({ received: true });
