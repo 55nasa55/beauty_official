@@ -27,11 +27,12 @@ export async function POST(req: NextRequest) {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (membership) {
-        const isActive = ['active', 'trialing'].includes(membership.status);
-        const notExpired = membership.current_period_end && new Date(membership.current_period_end) > new Date();
-        isMember = isActive && notExpired;
-      }
+      isMember = !!(
+        membership &&
+        (membership.status === 'active' || membership.status === 'trialing') &&
+        (!membership.current_period_end ||
+          new Date(membership.current_period_end) > new Date())
+      );
     }
 
     const variantIds = cartItems.map((item: any) => item.variantId);
