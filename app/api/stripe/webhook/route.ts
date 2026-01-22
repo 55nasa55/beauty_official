@@ -58,17 +58,71 @@ export async function POST(req: NextRequest) {
 
       try {
         const subscriptionId = session.subscription as string;
-        const userId = session.client_reference_id || session.metadata?.user_id;
-
-        if (!userId) {
-          console.error('[Webhook] No user_id found in session');
-          return NextResponse.json({ received: true });
-        }
 
         if (!subscriptionId) {
           console.error('[Webhook] No subscription ID in session');
           return NextResponse.json({ received: true });
         }
+
+        // Attempt to find user_id with multiple fallback methods
+        let userId = session.client_reference_id || session.metadata?.user_id;
+        let userIdSource = 'session';
+
+        if (!userId) {
+          console.log('[Webhook] No user_id in session, attempting fallback methods...');
+
+          // Fallback 1: Fetch Stripe customer and check metadata
+          const customerId = session.customer as string;
+          if (customerId) {
+            console.log('[Webhook] Fetching customer from Stripe:', customerId);
+            try {
+              const customer = await stripe.customers.retrieve(customerId);
+              if ('metadata' in customer && customer.metadata?.user_id) {
+                userId = customer.metadata.user_id;
+                userIdSource = 'customer.metadata';
+                console.log('[Webhook] ✓ Found user_id in customer metadata:', userId);
+              }
+            } catch (error: any) {
+              console.error('[Webhook] Failed to fetch customer:', error.message);
+            }
+          }
+
+          // Fallback 2: Look up user by email in Supabase auth.users
+          if (!userId && session.customer_email) {
+            console.log('[Webhook] Attempting email lookup in auth.users:', session.customer_email);
+            try {
+              const { data: authUser, error: authError } = await supabase.auth.admin.listUsers();
+
+              if (!authError && authUser?.users) {
+                const matchedUser = authUser.users.find(
+                  (user) => user.email?.toLowerCase() === session.customer_email?.toLowerCase()
+                );
+
+                if (matchedUser) {
+                  userId = matchedUser.id;
+                  userIdSource = 'email_lookup';
+                  console.log('[Webhook] ✓ Found user_id via email lookup:', userId);
+                }
+              }
+            } catch (error: any) {
+              console.error('[Webhook] Failed to look up user by email:', error.message);
+            }
+          }
+        } else {
+          console.log('[Webhook] Found user_id in session:', userId);
+        }
+
+        // Only return early if all fallback methods failed
+        if (!userId) {
+          console.error('[Webhook] ❌ Failed to find user_id using all methods:');
+          console.error('[Webhook]   - session.client_reference_id: missing');
+          console.error('[Webhook]   - session.metadata.user_id: missing');
+          console.error('[Webhook]   - customer.metadata.user_id: missing or failed');
+          console.error('[Webhook]   - email lookup: missing or failed');
+          return NextResponse.json({ received: true });
+        }
+
+        console.log('[Webhook] Using user_id from:', userIdSource);
 
         const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
         const subscriptionData = retrievedSubscription as any;
@@ -146,6 +200,7 @@ export async function POST(req: NextRequest) {
 
         console.log('[Webhook] ✓ Membership created/updated successfully');
         console.log('[Webhook]   - User ID:', userId);
+        console.log('[Webhook]   - User ID Source:', userIdSource);
         console.log('[Webhook]   - Stripe Status:', subscriptionData.status);
         console.log('[Webhook]   - Membership Status:', membershipStatus);
         console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
