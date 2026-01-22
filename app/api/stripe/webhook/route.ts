@@ -70,8 +70,15 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ received: true });
         }
 
-        const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
-        const priceId = retrievedSubscription.items.data[0]?.price.id;
+        const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscriptionData = retrievedSubscription as any;
+
+        console.log('[Webhook] Retrieved subscription details:');
+        console.log('[Webhook]   - Subscription ID:', subscriptionData.id);
+        console.log('[Webhook]   - Status:', subscriptionData.status);
+        console.log('[Webhook]   - Current Period End (Unix):', subscriptionData.current_period_end);
+
+        const priceId = subscriptionData.items.data[0]?.price.id;
 
         if (!priceId) {
           console.error('[Webhook] No price ID found in subscription');
@@ -89,17 +96,24 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ received: true });
         }
 
-        const currentPeriodEnd = (retrievedSubscription as any).current_period_end;
-        const currentPeriodEndISO = currentPeriodEnd
-          ? new Date(currentPeriodEnd * 1000).toISOString()
-          : null;
-        const cancelAtPeriodEnd = (retrievedSubscription as any).cancel_at_period_end || false;
+        if (!subscriptionData.current_period_end) {
+          console.error('[Webhook] ERROR: Subscription missing current_period_end');
+          console.error('[Webhook] This should not happen - Stripe subscriptions always have this field');
+          return NextResponse.json({ received: true });
+        }
+
+        const currentPeriodEnd = subscriptionData.current_period_end;
+        const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
+        const cancelAtPeriodEnd = subscriptionData.cancel_at_period_end || false;
+
+        console.log('[Webhook]   - Current Period End (ISO):', currentPeriodEndISO);
+        console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
 
         let membershipStatus = 'inactive';
 
-        if (retrievedSubscription.status === 'active' || retrievedSubscription.status === 'trialing') {
+        if (subscriptionData.status === 'active' || subscriptionData.status === 'trialing') {
           membershipStatus = 'active';
-        } else if (retrievedSubscription.status === 'canceled' && cancelAtPeriodEnd && currentPeriodEndISO) {
+        } else if (subscriptionData.status === 'canceled' && cancelAtPeriodEnd) {
           const periodEndDate = new Date(currentPeriodEndISO);
           const now = new Date();
           if (periodEndDate > now) {
@@ -112,8 +126,8 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           plan_id: plan.id,
           status: membershipStatus,
-          stripe_customer_id: retrievedSubscription.customer as string,
-          stripe_subscription_id: retrievedSubscription.id,
+          stripe_customer_id: subscriptionData.customer as string,
+          stripe_subscription_id: subscriptionData.id,
           current_period_end: currentPeriodEndISO,
           cancel_at_period_end: cancelAtPeriodEnd,
           updated_at: new Date().toISOString(),
@@ -132,7 +146,7 @@ export async function POST(req: NextRequest) {
 
         console.log('[Webhook] ✓ Membership created/updated successfully');
         console.log('[Webhook]   - User ID:', userId);
-        console.log('[Webhook]   - Stripe Status:', retrievedSubscription.status);
+        console.log('[Webhook]   - Stripe Status:', subscriptionData.status);
         console.log('[Webhook]   - Membership Status:', membershipStatus);
         console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
         console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
@@ -378,10 +392,11 @@ export async function POST(req: NextRequest) {
     event.type === 'customer.subscription.updated' ||
     event.type === 'customer.subscription.deleted'
   ) {
-    const subscription = event.data.object as Stripe.Subscription;
+    const subscription = event.data.object as any;
     console.log('[Webhook] Processing subscription event:', event.type);
     console.log('[Webhook] Subscription ID:', subscription.id);
     console.log('[Webhook] Stripe Status:', subscription.status);
+    console.log('[Webhook] Current Period End (Unix):', subscription.current_period_end);
 
     try {
       const priceId = subscription.items.data[0]?.price.id;
@@ -431,17 +446,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      const currentPeriodEnd = (subscription as any).current_period_end;
-      const currentPeriodEndISO = currentPeriodEnd
-        ? new Date(currentPeriodEnd * 1000).toISOString()
-        : null;
-      const cancelAtPeriodEnd = (subscription as any).cancel_at_period_end || false;
+      if (!subscription.current_period_end) {
+        console.error('[Webhook] ERROR: Subscription missing current_period_end');
+        console.error('[Webhook] This should not happen - Stripe subscriptions always have this field');
+        return NextResponse.json({ received: true });
+      }
+
+      const currentPeriodEnd = subscription.current_period_end;
+      const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+
+      console.log('[Webhook] Current Period End (ISO):', currentPeriodEndISO);
+      console.log('[Webhook] Cancel at Period End:', cancelAtPeriodEnd);
 
       let membershipStatus = 'inactive';
 
       if (subscription.status === 'active' || subscription.status === 'trialing') {
         membershipStatus = 'active';
-      } else if (subscription.status === 'canceled' && cancelAtPeriodEnd && currentPeriodEndISO) {
+      } else if (subscription.status === 'canceled' && cancelAtPeriodEnd) {
         const periodEndDate = new Date(currentPeriodEndISO);
         const now = new Date();
         if (periodEndDate > now) {
