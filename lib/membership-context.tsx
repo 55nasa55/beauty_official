@@ -54,14 +54,13 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      const active =
-        data.status === "active" || data.status === "trialing";
+      const isActiveMembership = data.status === "active";
 
       const validPeriod =
         !data.current_period_end ||
         new Date(data.current_period_end) > new Date();
 
-      setIsMember(active && validPeriod);
+      setIsMember(isActiveMembership && validPeriod);
       setLoading(false);
     };
 

@@ -94,10 +94,15 @@ export async function POST(req: NextRequest) {
           ? new Date(currentPeriodEnd * 1000).toISOString()
           : null;
 
+        const isActiveSubscription =
+          retrievedSubscription.status === 'active' || retrievedSubscription.status === 'trialing';
+
+        const membershipStatus = isActiveSubscription ? 'active' : 'inactive';
+
         const membershipData = {
           user_id: userId,
           plan_id: plan.id,
-          status: retrievedSubscription.status,
+          status: membershipStatus,
           stripe_customer_id: retrievedSubscription.customer as string,
           stripe_subscription_id: retrievedSubscription.id,
           current_period_end: currentPeriodEndISO,
@@ -365,7 +370,7 @@ export async function POST(req: NextRequest) {
     const subscription = event.data.object as Stripe.Subscription;
     console.log('[Webhook] Processing subscription event:', event.type);
     console.log('[Webhook] Subscription ID:', subscription.id);
-    console.log('[Webhook] Status:', subscription.status);
+    console.log('[Webhook] Stripe Status:', subscription.status);
 
     try {
       const priceId = subscription.items.data[0]?.price.id;
@@ -397,20 +402,28 @@ export async function POST(req: NextRequest) {
       }
 
       if (!userId) {
-        console.error('[Webhook] No user_id found in subscription or customer metadata');
+        console.log('[Webhook] No user_id found, attempting lookup by stripe_customer_id');
+        const { data: existingMembership } = await supabase
+          .from('memberships')
+          .select('user_id')
+          .eq('stripe_customer_id', subscription.customer as string)
+          .maybeSingle();
+
+        if (existingMembership) {
+          userId = existingMembership.user_id;
+          console.log('[Webhook] Found user_id via stripe_customer_id:', userId);
+        }
+      }
+
+      if (!userId) {
+        console.error('[Webhook] No user_id found - cannot update membership');
         return NextResponse.json({ received: true });
       }
 
-      const statusMap: { [key: string]: string } = {
-        'active': 'active',
-        'trialing': 'trialing',
-        'canceled': 'canceled',
-        'incomplete_expired': 'canceled',
-        'unpaid': 'canceled',
-        'past_due': 'active',
-      };
+      const isActiveSubscription =
+        subscription.status === 'active' || subscription.status === 'trialing';
 
-      const mappedStatus = statusMap[subscription.status] || subscription.status;
+      const membershipStatus = isActiveSubscription ? 'active' : 'inactive';
 
       const currentPeriodEnd = (subscription as any).current_period_end;
       const currentPeriodEndISO = currentPeriodEnd
@@ -420,7 +433,7 @@ export async function POST(req: NextRequest) {
       const membershipData = {
         user_id: userId,
         plan_id: plan.id,
-        status: mappedStatus,
+        status: membershipStatus,
         stripe_customer_id: subscription.customer as string,
         stripe_subscription_id: subscription.id,
         current_period_end: currentPeriodEndISO,
@@ -441,12 +454,78 @@ export async function POST(req: NextRequest) {
 
       console.log('[Webhook] ✓ Membership updated successfully');
       console.log('[Webhook]   - User ID:', userId);
-      console.log('[Webhook]   - Status:', mappedStatus);
+      console.log('[Webhook]   - Stripe Status:', subscription.status);
+      console.log('[Webhook]   - Membership Status:', membershipStatus);
       console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
 
       return NextResponse.json({ received: true });
     } catch (error: any) {
       console.error('[Webhook] Error processing subscription:', error.message);
+      console.error('[Webhook] Stack trace:', error.stack);
+      return NextResponse.json({ received: true });
+    }
+  }
+
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as any;
+    console.log('[Webhook] Processing invoice.payment_failed');
+    console.log('[Webhook] Invoice ID:', invoice.id);
+
+    const subscriptionId = typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription?.id;
+
+    console.log('[Webhook] Subscription ID:', subscriptionId);
+
+    try {
+      if (!subscriptionId) {
+        console.log('[Webhook] No subscription associated with invoice');
+        return NextResponse.json({ received: true });
+      }
+
+      const customerId = typeof invoice.customer === 'string'
+        ? invoice.customer
+        : invoice.customer?.id;
+
+      if (!customerId) {
+        console.error('[Webhook] No customer ID found in invoice');
+        return NextResponse.json({ received: true });
+      }
+
+      const { data: membership, error: lookupError } = await supabase
+        .from('memberships')
+        .select('id, user_id, status')
+        .eq('stripe_customer_id', customerId)
+        .maybeSingle();
+
+      if (lookupError || !membership) {
+        console.error('[Webhook] Failed to find membership for customer:', customerId);
+        return NextResponse.json({ received: true });
+      }
+
+      console.log('[Webhook] Found membership for user:', membership.user_id);
+      console.log('[Webhook] Current status:', membership.status);
+
+      const { error: updateError } = await supabase
+        .from('memberships')
+        .update({
+          status: 'inactive',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', membership.id);
+
+      if (updateError) {
+        console.error('[Webhook] Failed to update membership status:', updateError);
+        throw new Error(`Failed to update membership: ${updateError.message}`);
+      }
+
+      console.log('[Webhook] ✓ Membership marked as inactive due to payment failure');
+      console.log('[Webhook]   - User ID:', membership.user_id);
+      console.log('[Webhook]   - New Status: inactive');
+
+      return NextResponse.json({ received: true });
+    } catch (error: any) {
+      console.error('[Webhook] Error processing payment failure:', error.message);
       console.error('[Webhook] Stack trace:', error.stack);
       return NextResponse.json({ received: true });
     }

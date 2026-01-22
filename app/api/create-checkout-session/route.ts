@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
       isMember = !!(
         membership &&
-        (membership.status === 'active' || membership.status === 'trialing') &&
+        membership.status === 'active' &&
         (!membership.current_period_end ||
           new Date(membership.current_period_end) > new Date())
       );
