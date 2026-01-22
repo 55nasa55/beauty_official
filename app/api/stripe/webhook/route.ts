@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const subscriptionId = session.subscription as string;
+        console.log('[Webhook] 📋 Subscription ID:', subscriptionId || 'MISSING');
 
         if (!subscriptionId) {
           console.error('[Webhook] No subscription ID in session');
@@ -108,6 +109,26 @@ export async function POST(req: NextRequest) {
               console.error('[Webhook] Failed to look up user by email:', error.message);
             }
           }
+
+          // Fallback 3: Look up existing membership by stripe_customer_id
+          if (!userId && customerId) {
+            console.log('[Webhook] Attempting membership lookup by stripe_customer_id:', customerId);
+            try {
+              const { data: existingMembership, error: membershipError } = await supabase
+                .from('memberships')
+                .select('user_id')
+                .eq('stripe_customer_id', customerId)
+                .maybeSingle();
+
+              if (!membershipError && existingMembership) {
+                userId = existingMembership.user_id;
+                userIdSource = 'memberships_table';
+                console.log('[Webhook] ✓ Found user_id via existing membership:', userId);
+              }
+            } catch (error: any) {
+              console.error('[Webhook] Failed to look up membership:', error.message);
+            }
+          }
         } else {
           console.log('[Webhook] Found user_id in session:', userId);
         }
@@ -119,9 +140,11 @@ export async function POST(req: NextRequest) {
           console.error('[Webhook]   - session.metadata.user_id: missing');
           console.error('[Webhook]   - customer.metadata.user_id: missing or failed');
           console.error('[Webhook]   - email lookup: missing or failed');
+          console.error('[Webhook]   - memberships table lookup: missing or failed');
           return NextResponse.json({ received: true });
         }
 
+        console.log('[Webhook] ✓ User ID found:', userId);
         console.log('[Webhook] Using user_id from:', userIdSource);
 
         const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -133,6 +156,7 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook]   - Current Period End (Unix):', subscriptionData.current_period_end);
 
         const priceId = subscriptionData.items.data[0]?.price.id;
+        console.log('[Webhook] 📋 Price ID:', priceId || 'MISSING');
 
         if (!priceId) {
           console.error('[Webhook] No price ID found in subscription');
@@ -205,6 +229,7 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook]   - Membership Status:', membershipStatus);
         console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
         console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
+        console.log('[Webhook] Subscription session complete - returning (not creating order)');
 
         return NextResponse.json({ received: true });
       } catch (error: any) {
