@@ -147,7 +147,9 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook] ✓ User ID found:', userId);
         console.log('[Webhook] Using user_id from:', userIdSource);
 
-        const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId, {
+          expand: ['items.data.price', 'latest_invoice.payment_intent'],
+        });
         const subscriptionData = retrievedSubscription as any;
 
         console.log('[Webhook] Retrieved subscription details:');
@@ -472,13 +474,20 @@ export async function POST(req: NextRequest) {
     event.type === 'customer.subscription.updated' ||
     event.type === 'customer.subscription.deleted'
   ) {
-    const subscription = event.data.object as any;
+    const eventSubscription = event.data.object as any;
     console.log('[Webhook] Processing subscription event:', event.type);
-    console.log('[Webhook] Subscription ID:', subscription.id);
-    console.log('[Webhook] Stripe Status:', subscription.status);
-    console.log('[Webhook] Current Period End (Unix):', subscription.current_period_end);
+    console.log('[Webhook] Subscription ID:', eventSubscription.id);
 
     try {
+      // Retrieve subscription with expansions to ensure complete data
+      const retrievedSubscription = await stripe.subscriptions.retrieve(eventSubscription.id, {
+        expand: ['items.data.price', 'latest_invoice.payment_intent'],
+      });
+      const subscription = retrievedSubscription as any;
+
+      console.log('[Webhook] Stripe Status:', subscription.status);
+      console.log('[Webhook] Current Period End (Unix):', subscription.current_period_end);
+
       const priceId = subscription.items.data[0]?.price.id;
 
       if (!priceId) {
@@ -615,7 +624,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['items.data.price', 'latest_invoice.payment_intent'],
+      });
       const subscriptionData = subscription as any;
 
       if (!subscriptionData.current_period_end) {
