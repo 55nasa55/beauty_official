@@ -47,124 +47,100 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // ============================================================================
+  // checkout.session.completed
+  // Handles both payment mode (orders) and subscription mode (memberships)
+  // ============================================================================
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     console.log('[Webhook] Processing checkout.session.completed');
     console.log('[Webhook] Session ID:', session.id);
     console.log('[Webhook] Mode:', session.mode);
 
+    // Handle subscription checkout - create membership
     if (session.mode === 'subscription') {
-      console.log('[Webhook] Subscription checkout - retrieving subscription details');
+      console.log('[Webhook] Subscription checkout - creating membership');
 
       try {
         const subscriptionId = session.subscription as string;
-        console.log('[Webhook] 📋 Subscription ID:', subscriptionId || 'MISSING');
 
         if (!subscriptionId) {
           console.error('[Webhook] No subscription ID in session');
           return NextResponse.json({ received: true });
         }
 
-        // Attempt to find user_id with multiple fallback methods
+        // Resolve user_id with fallback methods
         let userId = session.client_reference_id || session.metadata?.user_id;
-        let userIdSource = 'session';
 
         if (!userId) {
-          console.log('[Webhook] No user_id in session, attempting fallback methods...');
-
-          // Fallback 1: Fetch Stripe customer and check metadata
           const customerId = session.customer as string;
+
+          // Fallback 1: Customer metadata
           if (customerId) {
-            console.log('[Webhook] Fetching customer from Stripe:', customerId);
             try {
               const customer = await stripe.customers.retrieve(customerId);
               if ('metadata' in customer && customer.metadata?.user_id) {
                 userId = customer.metadata.user_id;
-                userIdSource = 'customer.metadata';
-                console.log('[Webhook] ✓ Found user_id in customer metadata:', userId);
               }
             } catch (error: any) {
-              console.error('[Webhook] Failed to fetch customer:', error.message);
+              console.log('[Webhook] Failed to fetch customer:', error.message);
             }
           }
 
-          // Fallback 2: Look up user by email in Supabase auth.users
+          // Fallback 2: Email lookup
           if (!userId && session.customer_email) {
-            console.log('[Webhook] Attempting email lookup in auth.users:', session.customer_email);
             try {
-              const { data: authUser, error: authError } = await supabase.auth.admin.listUsers();
-
-              if (!authError && authUser?.users) {
-                const matchedUser = authUser.users.find(
-                  (user) => user.email?.toLowerCase() === session.customer_email?.toLowerCase()
-                );
-
-                if (matchedUser) {
-                  userId = matchedUser.id;
-                  userIdSource = 'email_lookup';
-                  console.log('[Webhook] ✓ Found user_id via email lookup:', userId);
-                }
+              const { data: authUser } = await supabase.auth.admin.listUsers();
+              const matchedUser = authUser?.users.find(
+                (user) => user.email?.toLowerCase() === session.customer_email?.toLowerCase()
+              );
+              if (matchedUser) {
+                userId = matchedUser.id;
               }
             } catch (error: any) {
-              console.error('[Webhook] Failed to look up user by email:', error.message);
+              console.log('[Webhook] Failed email lookup:', error.message);
             }
           }
 
-          // Fallback 3: Look up existing membership by stripe_customer_id
+          // Fallback 3: Existing membership lookup
           if (!userId && customerId) {
-            console.log('[Webhook] Attempting membership lookup by stripe_customer_id:', customerId);
             try {
-              const { data: existingMembership, error: membershipError } = await supabase
+              const { data: existingMembership } = await supabase
                 .from('memberships')
                 .select('user_id')
                 .eq('stripe_customer_id', customerId)
                 .maybeSingle();
 
-              if (!membershipError && existingMembership) {
+              if (existingMembership) {
                 userId = existingMembership.user_id;
-                userIdSource = 'memberships_table';
-                console.log('[Webhook] ✓ Found user_id via existing membership:', userId);
               }
             } catch (error: any) {
-              console.error('[Webhook] Failed to look up membership:', error.message);
+              console.log('[Webhook] Failed membership lookup:', error.message);
             }
           }
-        } else {
-          console.log('[Webhook] Found user_id in session:', userId);
         }
 
-        // Only return early if all fallback methods failed
         if (!userId) {
-          console.error('[Webhook] ❌ Failed to find user_id using all methods:');
-          console.error('[Webhook]   - session.client_reference_id: missing');
-          console.error('[Webhook]   - session.metadata.user_id: missing');
-          console.error('[Webhook]   - customer.metadata.user_id: missing or failed');
-          console.error('[Webhook]   - email lookup: missing or failed');
-          console.error('[Webhook]   - memberships table lookup: missing or failed');
+          console.error('[Webhook] Failed to resolve user_id - cannot create membership');
           return NextResponse.json({ received: true });
         }
 
-        console.log('[Webhook] ✓ User ID found:', userId);
-        console.log('[Webhook] Using user_id from:', userIdSource);
+        console.log('[Webhook] ✓ User ID resolved:', userId);
 
+        // Retrieve subscription to get price ID
         const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId, {
-          expand: ['items.data.price', 'latest_invoice.payment_intent'],
+          expand: ['items.data.price'],
         });
-        const subscriptionData = retrievedSubscription as any;
+        const subscription = retrievedSubscription as any;
 
-        console.log('[Webhook] Retrieved subscription details:');
-        console.log('[Webhook]   - Subscription ID:', subscriptionData.id);
-        console.log('[Webhook]   - Status:', subscriptionData.status);
-        console.log('[Webhook]   - Current Period End (Unix):', subscriptionData.current_period_end);
-
-        const priceId = subscriptionData.items.data[0]?.price.id;
-        console.log('[Webhook] 📋 Price ID:', priceId || 'MISSING');
+        const priceId = subscription.items.data[0]?.price.id;
 
         if (!priceId) {
           console.error('[Webhook] No price ID found in subscription');
           return NextResponse.json({ received: true });
         }
 
+        // Find the membership plan
         const { data: plan } = await supabase
           .from('membership_plans')
           .select('id')
@@ -172,66 +148,41 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         if (!plan) {
-          console.log('[Webhook] No matching membership plan found for price:', priceId);
+          console.log('[Webhook] No matching membership plan for price:', priceId);
           return NextResponse.json({ received: true });
         }
 
-        if (!subscriptionData.current_period_end) {
-          console.error('[Webhook] ERROR: Subscription missing current_period_end');
-          console.error('[Webhook] This should not happen - Stripe subscriptions always have this field');
-          return NextResponse.json({ received: true });
-        }
-
-        const currentPeriodEnd = subscriptionData.current_period_end;
-        const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
-        const cancelAtPeriodEnd = subscriptionData.cancel_at_period_end || false;
-
-        console.log('[Webhook]   - Current Period End (ISO):', currentPeriodEndISO);
-        console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
-
-        let membershipStatus = 'inactive';
-
-        if (subscriptionData.status === 'active' || subscriptionData.status === 'trialing') {
-          membershipStatus = 'active';
-        } else if (subscriptionData.status === 'canceled' && cancelAtPeriodEnd) {
-          const periodEndDate = new Date(currentPeriodEndISO);
-          const now = new Date();
-          if (periodEndDate > now) {
-            membershipStatus = 'active';
-            console.log('[Webhook] Subscription canceled but keeping active until period end:', currentPeriodEndISO);
-          }
-        }
-
+        // Create membership with minimal data
+        // current_period_end will be updated by invoice.payment_succeeded
         const membershipData = {
           user_id: userId,
           plan_id: plan.id,
-          status: membershipStatus,
-          stripe_customer_id: subscriptionData.customer as string,
-          stripe_subscription_id: subscriptionData.id,
-          current_period_end: currentPeriodEndISO,
-          cancel_at_period_end: cancelAtPeriodEnd,
+          status: 'active',
+          stripe_customer_id: subscription.customer as string,
+          stripe_subscription_id: subscription.id,
+          stripe_price_id: priceId,
+          current_period_end: null, // Will be set by invoice.payment_succeeded
+          cancel_at_period_end: false,
           updated_at: new Date().toISOString(),
         };
 
         const { error: upsertError } = await supabase
           .from('memberships')
           .upsert(membershipData, {
-            onConflict: 'user_id',
+            onConflict: 'stripe_subscription_id',
           });
 
         if (upsertError) {
           console.error('[Webhook] Failed to upsert membership:', upsertError);
-          throw new Error(`Failed to upsert membership: ${upsertError.message}`);
+          return NextResponse.json({ received: true });
         }
 
-        console.log('[Webhook] ✓ Membership created/updated successfully');
+        console.log('[Webhook] ✓ Membership created successfully');
         console.log('[Webhook]   - User ID:', userId);
-        console.log('[Webhook]   - User ID Source:', userIdSource);
-        console.log('[Webhook]   - Stripe Status:', subscriptionData.status);
-        console.log('[Webhook]   - Membership Status:', membershipStatus);
-        console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
-        console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
-        console.log('[Webhook] Subscription session complete - returning (not creating order)');
+        console.log('[Webhook]   - Plan ID:', plan.id);
+        console.log('[Webhook]   - Subscription ID:', subscription.id);
+        console.log('[Webhook]   - Status: active');
+        console.log('[Webhook]   - Billing period will be set on first invoice');
 
         return NextResponse.json({ received: true });
       } catch (error: any) {
@@ -241,363 +192,146 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Handle payment mode - create order
+    console.log('[Webhook] Payment checkout - creating order');
     console.log('[Webhook] Payment status:', session.payment_status);
 
-  try {
-    console.log('[Webhook] Step 1: Check for duplicate order');
-    const { data: existingOrder, error: checkError } = await supabase
-      .from('orders')
-      .select('id, order_number')
-      .eq('order_number', session.id)
-      .maybeSingle();
-
-    if (checkError) {
-      console.error('[Webhook] ❌ Error checking for existing order:', checkError);
-      throw new Error(`Failed to check existing order: ${checkError.message}`);
-    }
-
-    if (existingOrder) {
-      console.log('[Webhook] ⚠️  Order already exists with order_number:', session.id);
-      console.log('[Webhook] Order ID:', existingOrder.id);
-      console.log('[Webhook] Skipping creation to prevent duplicate');
-      return NextResponse.json({ received: true, orderId: existingOrder.id });
-    }
-
-    console.log('[Webhook] ✓ No existing order found, proceeding with creation');
-
-    console.log('[Webhook] Step 2: Retrieve full session with line items');
-    let fullSession: any;
     try {
-      fullSession = await stripe.checkout.sessions.retrieve(session.id, {
-        expand: ['line_items.data.price.product'],
-      });
-      console.log('[Webhook] ✓ Full session retrieved');
-      console.log('[Webhook] Line items count:', fullSession.line_items?.data.length || 0);
-    } catch (stripeError: any) {
-      console.error('[Webhook] ❌ Failed to retrieve session from Stripe:', stripeError.message);
-      throw new Error(`Failed to retrieve session: ${stripeError.message}`);
-    }
-
-    const lineItems = fullSession.line_items?.data || [];
-
-    if (lineItems.length === 0) {
-      console.error('[Webhook] ❌ No line items found in session');
-      throw new Error('No line items found in checkout session');
-    }
-
-    console.log('[Webhook] Step 3: Extract customer and address information');
-    const customerEmail = fullSession.customer_details?.email || null;
-    const customerName = fullSession.customer_details?.name || null;
-
-    const shippingAddress = fullSession.shipping_details?.address
-      ? {
-          name: fullSession.shipping_details.name || null,
-          line1: fullSession.shipping_details.address.line1 || '',
-          line2: fullSession.shipping_details.address.line2 || null,
-          city: fullSession.shipping_details.address.city || '',
-          state: fullSession.shipping_details.address.state || '',
-          postal_code: fullSession.shipping_details.address.postal_code || '',
-          country: fullSession.shipping_details.address.country || '',
-        }
-      : null;
-
-    const billingAddress = fullSession.customer_details?.address
-      ? {
-          line1: fullSession.customer_details.address.line1 || '',
-          line2: fullSession.customer_details.address.line2 || null,
-          city: fullSession.customer_details.address.city || '',
-          state: fullSession.customer_details.address.state || '',
-          postal_code: fullSession.customer_details.address.postal_code || '',
-          country: fullSession.customer_details.address.country || '',
-        }
-      : null;
-
-    console.log('[Webhook] Customer email:', customerEmail);
-    console.log('[Webhook] Customer name:', customerName);
-    console.log('[Webhook] Shipping address:', shippingAddress ? 'Present' : 'None');
-    console.log('[Webhook] Billing address:', billingAddress ? 'Present' : 'None');
-
-    console.log('[Webhook] Step 4: Calculate amounts');
-    const totalAmount = (fullSession.amount_total || 0) / 100;
-    const taxAmount = (fullSession.total_details?.amount_tax || 0) / 100;
-    const currency = fullSession.currency || 'usd';
-
-    console.log('[Webhook] Total amount:', totalAmount, currency.toUpperCase());
-    console.log('[Webhook] Tax amount:', taxAmount, currency.toUpperCase());
-
-    console.log('[Webhook] Step 5: Prepare order data');
-    const orderData = {
-      order_number: fullSession.id,
-      user_id: fullSession.client_reference_id || null,
-      stripe_session_id: fullSession.id,
-      stripe_payment_intent: fullSession.payment_intent as string | null,
-      status: fullSession.payment_status === 'paid' ? 'paid' : 'pending',
-      payment_status: fullSession.payment_status === 'paid' ? 'paid' : 'pending',
-      shipping_status: 'Processing',
-      tracking_number: null,
-      total_amount: totalAmount,
-      tax_amount: taxAmount,
-      currency: currency,
-      customer_email: customerEmail,
-      customer_name: customerName,
-      shipping_address: shippingAddress,
-      billing_address: billingAddress,
-      tax_details: fullSession.total_details?.breakdown || null,
-    };
-
-    console.log('[Webhook] Order data prepared:');
-    console.log('[Webhook]   - order_number:', orderData.order_number);
-    console.log('[Webhook]   - user_id:', orderData.user_id || 'null (guest checkout)');
-    console.log('[Webhook]   - payment_status:', orderData.payment_status);
-    console.log('[Webhook]   - shipping_status:', orderData.shipping_status);
-    console.log('[Webhook]   - total_amount:', orderData.total_amount);
-
-    console.log('[Webhook] Step 6: Insert order into database');
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert(orderData)
-      .select('id')
-      .single();
-
-    if (orderError) {
-      console.error('[Webhook] ❌ FAILED to insert order into database');
-      console.error('[Webhook] Error code:', orderError.code);
-      console.error('[Webhook] Error message:', orderError.message);
-      console.error('[Webhook] Error details:', orderError.details);
-      console.error('[Webhook] Error hint:', orderError.hint);
-      throw new Error(`Failed to insert order: ${orderError.message}`);
-    }
-
-    if (!order) {
-      console.error('[Webhook] ❌ Order insert succeeded but no order returned');
-      throw new Error('Order insert succeeded but no order data returned');
-    }
-
-    console.log('[Webhook] ✓ Order created successfully');
-    console.log('[Webhook] Order ID:', order.id);
-
-    console.log('[Webhook] Step 7: Prepare order items');
-    const orderItems = lineItems.map((item: any, index: number) => {
-      const product = item.price?.product as Stripe.Product;
-      const productId = product?.metadata?.product_id || null;
-      const variantId = product?.metadata?.variant_id || null;
-      const productName = product?.name || 'Unknown Product';
-      const variantName = item.description || null;
-      const quantity = item.quantity || 1;
-      const itemTotal = (item.amount_total || 0) / 100;
-      const unitPrice = quantity > 0 ? itemTotal / quantity : 0;
-
-      console.log(`[Webhook] Item ${index + 1}:`, {
-        product_name: productName,
-        variant_name: variantName,
-        quantity: quantity,
-        unit_price: unitPrice,
-        item_total: itemTotal,
-        product_id: productId || 'null',
-        variant_id: variantId || 'null',
-      });
-
-      return {
-        order_id: order.id,
-        product_id: productId,
-        variant_id: variantId,
-        product_name: productName,
-        variant_name: variantName,
-        quantity: quantity,
-        price: unitPrice,
-      };
-    });
-
-    console.log('[Webhook] Total order items to insert:', orderItems.length);
-
-    if (orderItems.length === 0) {
-      console.error('[Webhook] ❌ No order items to insert! This should not happen.');
-      throw new Error('No order items prepared for insertion');
-    }
-
-    console.log('[Webhook] Order items to insert:', JSON.stringify(orderItems, null, 2));
-
-    console.log('[Webhook] Step 8: Insert order items into database');
-    const { data: insertedItems, error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems)
-      .select('id');
-
-    if (itemsError) {
-      console.error('[Webhook] ❌ FAILED to insert order items');
-      console.error('[Webhook] Error code:', itemsError.code);
-      console.error('[Webhook] Error message:', itemsError.message);
-      console.error('[Webhook] Error details:', itemsError.details);
-      console.error('[Webhook] Error hint:', itemsError.hint);
-      console.error('[Webhook] Order items that failed:', JSON.stringify(orderItems, null, 2));
-      console.error('[Webhook] ⚠️  Order was created but items failed - orphaned order:', order.id);
-      throw new Error(`Failed to insert order items: ${itemsError.message}`);
-    }
-
-    if (!insertedItems || insertedItems.length === 0) {
-      console.error('[Webhook] ⚠️  Order items insert succeeded but no items returned');
-      console.warn('[Webhook] This might indicate RLS policy issues');
-    }
-
-    console.log('[Webhook] ✓ Order items created successfully');
-    console.log('[Webhook] Items inserted:', insertedItems?.length || 0);
-    console.log('[Webhook] Inserted item IDs:', insertedItems?.map(i => i.id).join(', ') || 'none');
-
-    console.log('[Webhook] ========== ORDER CREATION COMPLETE ==========');
-    console.log('[Webhook] Summary:');
-    console.log('[Webhook]   - Order ID:', order.id);
-    console.log('[Webhook]   - Order Number:', orderData.order_number);
-    console.log('[Webhook]   - Total Amount:', orderData.total_amount, orderData.currency.toUpperCase());
-    console.log('[Webhook]   - Items Count:', orderItems.length);
-    console.log('[Webhook]   - Customer:', customerName || customerEmail || 'Guest');
-    console.log('[Webhook] =================================================');
-
-    return NextResponse.json({
-      received: true,
-      orderId: order.id,
-      orderNumber: orderData.order_number,
-    });
-
-  } catch (error: any) {
-    console.error('[Webhook] ========== FATAL ERROR ==========');
-    console.error('[Webhook] Error processing webhook:', error.message);
-    console.error('[Webhook] Stack trace:', error.stack);
-    console.error('[Webhook] Session ID:', session.id);
-    console.error('[Webhook] =====================================');
-
-    return NextResponse.json({ received: true });
-  }
-  }
-
-  if (
-    event.type === 'customer.subscription.created' ||
-    event.type === 'customer.subscription.updated' ||
-    event.type === 'customer.subscription.deleted'
-  ) {
-    const eventSubscription = event.data.object as any;
-    console.log('[Webhook] Processing subscription event:', event.type);
-    console.log('[Webhook] Subscription ID:', eventSubscription.id);
-
-    try {
-      // Retrieve subscription with expansions to ensure complete data
-      const retrievedSubscription = await stripe.subscriptions.retrieve(eventSubscription.id, {
-        expand: ['items.data.price', 'latest_invoice.payment_intent'],
-      });
-      const subscription = retrievedSubscription as any;
-
-      console.log('[Webhook] Stripe Status:', subscription.status);
-      console.log('[Webhook] Current Period End (Unix):', subscription.current_period_end);
-
-      const priceId = subscription.items.data[0]?.price.id;
-
-      if (!priceId) {
-        console.error('[Webhook] No price ID found in subscription');
-        return NextResponse.json({ received: true });
-      }
-
-      const { data: plan } = await supabase
-        .from('membership_plans')
-        .select('id')
-        .eq('stripe_price_id', priceId)
+      // Check for duplicate order
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('id, order_number')
+        .eq('order_number', session.id)
         .maybeSingle();
 
-      if (!plan) {
-        console.log('[Webhook] No matching membership plan found for price:', priceId);
+      if (existingOrder) {
+        console.log('[Webhook] Order already exists, skipping creation');
+        return NextResponse.json({ received: true, orderId: existingOrder.id });
+      }
+
+      // Retrieve full session with line items
+      const retrievedSession = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['line_items.data.price.product'],
+      });
+      const fullSession = retrievedSession as any;
+
+      const lineItems = fullSession.line_items?.data || [];
+
+      if (lineItems.length === 0) {
+        console.error('[Webhook] No line items found in session');
         return NextResponse.json({ received: true });
       }
 
-      let userId = subscription.metadata?.user_id;
+      // Extract customer and address information
+      const customerEmail = fullSession.customer_details?.email || null;
+      const customerName = fullSession.customer_details?.name || null;
 
-      if (!userId) {
-        console.log('[Webhook] No user_id in subscription metadata, checking customer metadata');
-        const customer = await stripe.customers.retrieve(subscription.customer as string);
-        if ('metadata' in customer) {
-          userId = customer.metadata?.user_id;
-        }
-      }
+      const shippingAddress = fullSession.shipping_details?.address
+        ? {
+            name: fullSession.shipping_details.name || null,
+            line1: fullSession.shipping_details.address.line1 || '',
+            line2: fullSession.shipping_details.address.line2 || null,
+            city: fullSession.shipping_details.address.city || '',
+            state: fullSession.shipping_details.address.state || '',
+            postal_code: fullSession.shipping_details.address.postal_code || '',
+            country: fullSession.shipping_details.address.country || '',
+          }
+        : null;
 
-      if (!userId) {
-        console.log('[Webhook] No user_id found, attempting lookup by stripe_customer_id');
-        const { data: existingMembership } = await supabase
-          .from('memberships')
-          .select('user_id')
-          .eq('stripe_customer_id', subscription.customer as string)
-          .maybeSingle();
+      const billingAddress = fullSession.customer_details?.address
+        ? {
+            line1: fullSession.customer_details.address.line1 || '',
+            line2: fullSession.customer_details.address.line2 || null,
+            city: fullSession.customer_details.address.city || '',
+            state: fullSession.customer_details.address.state || '',
+            postal_code: fullSession.customer_details.address.postal_code || '',
+            country: fullSession.customer_details.address.country || '',
+          }
+        : null;
 
-        if (existingMembership) {
-          userId = existingMembership.user_id;
-          console.log('[Webhook] Found user_id via stripe_customer_id:', userId);
-        }
-      }
+      const totalAmount = (fullSession.amount_total || 0) / 100;
+      const taxAmount = (fullSession.total_details?.amount_tax || 0) / 100;
+      const currency = fullSession.currency || 'usd';
 
-      if (!userId) {
-        console.error('[Webhook] No user_id found - cannot update membership');
-        return NextResponse.json({ received: true });
-      }
-
-      if (!subscription.current_period_end) {
-        console.error('[Webhook] ERROR: Subscription missing current_period_end');
-        console.error('[Webhook] This should not happen - Stripe subscriptions always have this field');
-        return NextResponse.json({ received: true });
-      }
-
-      const currentPeriodEnd = subscription.current_period_end;
-      const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
-      const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
-
-      console.log('[Webhook] Current Period End (ISO):', currentPeriodEndISO);
-      console.log('[Webhook] Cancel at Period End:', cancelAtPeriodEnd);
-
-      let membershipStatus = 'inactive';
-
-      if (subscription.status === 'active' || subscription.status === 'trialing') {
-        membershipStatus = 'active';
-      } else if (subscription.status === 'canceled' && cancelAtPeriodEnd) {
-        const periodEndDate = new Date(currentPeriodEndISO);
-        const now = new Date();
-        if (periodEndDate > now) {
-          membershipStatus = 'active';
-          console.log('[Webhook] Subscription canceled but keeping active until period end:', currentPeriodEndISO);
-        }
-      }
-
-      const membershipData = {
-        user_id: userId,
-        plan_id: plan.id,
-        status: membershipStatus,
-        stripe_customer_id: subscription.customer as string,
-        stripe_subscription_id: subscription.id,
-        current_period_end: currentPeriodEndISO,
-        cancel_at_period_end: cancelAtPeriodEnd,
-        updated_at: new Date().toISOString(),
+      const orderData = {
+        order_number: fullSession.id,
+        user_id: fullSession.client_reference_id || null,
+        stripe_session_id: fullSession.id,
+        stripe_payment_intent: fullSession.payment_intent as string | null,
+        status: fullSession.payment_status === 'paid' ? 'paid' : 'pending',
+        payment_status: fullSession.payment_status === 'paid' ? 'paid' : 'pending',
+        shipping_status: 'Processing',
+        tracking_number: null,
+        total_amount: totalAmount,
+        tax_amount: taxAmount,
+        currency: currency,
+        customer_email: customerEmail,
+        customer_name: customerName,
+        shipping_address: shippingAddress,
+        billing_address: billingAddress,
+        tax_details: fullSession.total_details?.breakdown || null,
       };
 
-      const { error: upsertError } = await supabase
-        .from('memberships')
-        .upsert(membershipData, {
-          onConflict: 'user_id',
-        });
+      // Insert order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderData)
+        .select('id')
+        .single();
 
-      if (upsertError) {
-        console.error('[Webhook] Failed to upsert membership:', upsertError);
-        throw new Error(`Failed to upsert membership: ${upsertError.message}`);
+      if (orderError || !order) {
+        console.error('[Webhook] Failed to insert order:', orderError);
+        return NextResponse.json({ received: true });
       }
 
-      console.log('[Webhook] ✓ Membership updated successfully');
-      console.log('[Webhook]   - User ID:', userId);
-      console.log('[Webhook]   - Stripe Status:', subscription.status);
-      console.log('[Webhook]   - Membership Status:', membershipStatus);
-      console.log('[Webhook]   - Cancel at Period End:', cancelAtPeriodEnd);
-      console.log('[Webhook]   - Period End:', membershipData.current_period_end || 'N/A');
+      console.log('[Webhook] ✓ Order created:', order.id);
 
-      return NextResponse.json({ received: true });
+      // Insert order items
+      const orderItems = lineItems.map((item: any) => {
+        const product = item.price?.product as Stripe.Product;
+        const quantity = item.quantity || 1;
+        const itemTotal = (item.amount_total || 0) / 100;
+        const unitPrice = quantity > 0 ? itemTotal / quantity : 0;
+
+        return {
+          order_id: order.id,
+          product_id: product?.metadata?.product_id || null,
+          variant_id: product?.metadata?.variant_id || null,
+          product_name: product?.name || 'Unknown Product',
+          variant_name: item.description || null,
+          quantity: quantity,
+          price: unitPrice,
+        };
+      });
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('[Webhook] Failed to insert order items:', itemsError);
+        return NextResponse.json({ received: true });
+      }
+
+      console.log('[Webhook] ✓ Order items created:', orderItems.length);
+      console.log('[Webhook] ✓ Order complete');
+
+      return NextResponse.json({
+        received: true,
+        orderId: order.id,
+        orderNumber: orderData.order_number,
+      });
     } catch (error: any) {
-      console.error('[Webhook] Error processing subscription:', error.message);
+      console.error('[Webhook] Error processing payment checkout:', error.message);
       console.error('[Webhook] Stack trace:', error.stack);
       return NextResponse.json({ received: true });
     }
   }
 
+  // ============================================================================
+  // invoice.payment_succeeded
+  // Source of truth for billing periods - handles both initial and renewal
+  // ============================================================================
   if (event.type === 'invoice.payment_succeeded') {
     const invoice = event.data.object as any;
     console.log('[Webhook] Processing invoice.payment_succeeded');
@@ -607,54 +341,33 @@ export async function POST(req: NextRequest) {
       ? invoice.subscription
       : invoice.subscription?.id;
 
-    console.log('[Webhook] Subscription ID:', subscriptionId);
+    if (!subscriptionId) {
+      console.log('[Webhook] No subscription - likely one-time payment');
+      return NextResponse.json({ received: true });
+    }
 
     try {
-      if (!subscriptionId) {
-        console.log('[Webhook] No subscription associated with invoice - likely one-time payment');
-        return NextResponse.json({ received: true });
-      }
-
-      const customerId = typeof invoice.customer === 'string'
-        ? invoice.customer
-        : invoice.customer?.id;
-
-      if (!customerId) {
-        console.error('[Webhook] No customer ID found in invoice');
-        return NextResponse.json({ received: true });
-      }
-
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-        expand: ['items.data.price', 'latest_invoice.payment_intent'],
+      // Retrieve subscription to get current_period_end
+      const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ['items.data.price'],
       });
-      const subscriptionData = subscription as any;
+      const subscription = retrievedSubscription as any;
 
-      if (!subscriptionData.current_period_end) {
-        console.error('[Webhook] ERROR: Subscription missing current_period_end');
+      const currentPeriodEnd = subscription.current_period_end;
+
+      if (!currentPeriodEnd) {
+        console.error('[Webhook] Subscription missing current_period_end');
         return NextResponse.json({ received: true });
       }
 
-      const currentPeriodEnd = subscriptionData.current_period_end;
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
 
       console.log('[Webhook] Payment succeeded for subscription');
+      console.log('[Webhook]   - Subscription ID:', subscriptionId);
       console.log('[Webhook]   - Current Period End:', currentPeriodEndISO);
-      console.log('[Webhook]   - Subscription Status:', subscriptionData.status);
+      console.log('[Webhook]   - Subscription Status:', subscription.status);
 
-      const { data: membership, error: lookupError } = await supabase
-        .from('memberships')
-        .select('id, user_id, status')
-        .eq('stripe_customer_id', customerId)
-        .maybeSingle();
-
-      if (lookupError || !membership) {
-        console.error('[Webhook] Failed to find membership for customer:', customerId);
-        return NextResponse.json({ received: true });
-      }
-
-      console.log('[Webhook] Found membership for user:', membership.user_id);
-      console.log('[Webhook] Current status:', membership.status);
-
+      // Update membership billing period
       const { error: updateError } = await supabase
         .from('memberships')
         .update({
@@ -662,165 +375,63 @@ export async function POST(req: NextRequest) {
           current_period_end: currentPeriodEndISO,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', membership.id);
+        .eq('stripe_subscription_id', subscriptionId);
 
       if (updateError) {
-        console.error('[Webhook] Failed to update membership status:', updateError);
-        throw new Error(`Failed to update membership: ${updateError.message}`);
+        console.error('[Webhook] Failed to update membership:', updateError);
+        return NextResponse.json({ received: true });
       }
 
-      console.log('[Webhook] ✓ Membership renewed successfully');
-      console.log('[Webhook]   - User ID:', membership.user_id);
+      console.log('[Webhook] ✓ Membership billing period updated');
       console.log('[Webhook]   - Status: active');
       console.log('[Webhook]   - Period End:', currentPeriodEndISO);
 
       return NextResponse.json({ received: true });
     } catch (error: any) {
-      console.error('[Webhook] Error processing payment success:', error.message);
+      console.error('[Webhook] Error processing invoice payment:', error.message);
       console.error('[Webhook] Stack trace:', error.stack);
       return NextResponse.json({ received: true });
     }
   }
 
-  if (event.type === 'invoice.payment_failed') {
-    const invoice = event.data.object as any;
-    console.log('[Webhook] Processing invoice.payment_failed');
-    console.log('[Webhook] Invoice ID:', invoice.id);
-    console.log('[Webhook] Attempt Count:', invoice.attempt_count);
-
-    const subscriptionId = typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : invoice.subscription?.id;
-
-    console.log('[Webhook] Subscription ID:', subscriptionId);
+  // ============================================================================
+  // customer.subscription.deleted
+  // Mark membership as canceled when subscription ends
+  // ============================================================================
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as any;
+    console.log('[Webhook] Processing customer.subscription.deleted');
+    console.log('[Webhook] Subscription ID:', subscription.id);
 
     try {
-      if (!subscriptionId) {
-        console.log('[Webhook] No subscription associated with invoice');
-        return NextResponse.json({ received: true });
-      }
-
-      const customerId = typeof invoice.customer === 'string'
-        ? invoice.customer
-        : invoice.customer?.id;
-
-      if (!customerId) {
-        console.error('[Webhook] No customer ID found in invoice');
-        return NextResponse.json({ received: true });
-      }
-
-      const { data: membership, error: lookupError } = await supabase
-        .from('memberships')
-        .select('id, user_id, status')
-        .eq('stripe_customer_id', customerId)
-        .maybeSingle();
-
-      if (lookupError || !membership) {
-        console.error('[Webhook] Failed to find membership for customer:', customerId);
-        return NextResponse.json({ received: true });
-      }
-
-      console.log('[Webhook] Found membership for user:', membership.user_id);
-      console.log('[Webhook] Current status:', membership.status);
-
       const { error: updateError } = await supabase
         .from('memberships')
         .update({
-          status: 'past_due',
+          status: 'canceled',
+          ended_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', membership.id);
+        .eq('stripe_subscription_id', subscription.id);
 
       if (updateError) {
-        console.error('[Webhook] Failed to update membership status:', updateError);
-        throw new Error(`Failed to update membership: ${updateError.message}`);
+        console.error('[Webhook] Failed to update membership:', updateError);
+        return NextResponse.json({ received: true });
       }
 
-      console.log('[Webhook] ✓ Membership marked as past_due due to payment failure');
-      console.log('[Webhook]   - User ID:', membership.user_id);
-      console.log('[Webhook]   - New Status: past_due');
-      console.log('[Webhook]   - Stripe will retry payment automatically');
+      console.log('[Webhook] ✓ Membership marked as canceled');
+      console.log('[Webhook]   - Subscription ID:', subscription.id);
+      console.log('[Webhook]   - Status: canceled');
+      console.log('[Webhook]   - Ended at:', new Date().toISOString());
 
       return NextResponse.json({ received: true });
     } catch (error: any) {
-      console.error('[Webhook] Error processing payment failure:', error.message);
+      console.error('[Webhook] Error processing subscription deletion:', error.message);
       console.error('[Webhook] Stack trace:', error.stack);
       return NextResponse.json({ received: true });
     }
   }
 
-  if (event.type === 'invoice.finalized') {
-    const invoice = event.data.object as any;
-    console.log('[Webhook] Processing invoice.finalized');
-    console.log('[Webhook] Invoice ID:', invoice.id);
-    console.log('[Webhook] Status:', invoice.status);
-    console.log('[Webhook] Billing Reason:', invoice.billing_reason);
-
-    if (invoice.status === 'uncollectible') {
-      console.log('[Webhook] Invoice marked as uncollectible - all payment attempts failed');
-
-      const subscriptionId = typeof invoice.subscription === 'string'
-        ? invoice.subscription
-        : invoice.subscription?.id;
-
-      if (!subscriptionId) {
-        console.log('[Webhook] No subscription associated with invoice');
-        return NextResponse.json({ received: true });
-      }
-
-      const customerId = typeof invoice.customer === 'string'
-        ? invoice.customer
-        : invoice.customer?.id;
-
-      if (!customerId) {
-        console.error('[Webhook] No customer ID found in invoice');
-        return NextResponse.json({ received: true });
-      }
-
-      try {
-        const { data: membership, error: lookupError } = await supabase
-          .from('memberships')
-          .select('id, user_id, status')
-          .eq('stripe_customer_id', customerId)
-          .maybeSingle();
-
-        if (lookupError || !membership) {
-          console.error('[Webhook] Failed to find membership for customer:', customerId);
-          return NextResponse.json({ received: true });
-        }
-
-        console.log('[Webhook] Found membership for user:', membership.user_id);
-        console.log('[Webhook] Current status:', membership.status);
-
-        const { error: updateError } = await supabase
-          .from('memberships')
-          .update({
-            status: 'canceled',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', membership.id);
-
-        if (updateError) {
-          console.error('[Webhook] Failed to update membership status:', updateError);
-          throw new Error(`Failed to update membership: ${updateError.message}`);
-        }
-
-        console.log('[Webhook] ✓ Membership canceled due to uncollectible invoice');
-        console.log('[Webhook]   - User ID:', membership.user_id);
-        console.log('[Webhook]   - New Status: canceled');
-
-        return NextResponse.json({ received: true });
-      } catch (error: any) {
-        console.error('[Webhook] Error processing uncollectible invoice:', error.message);
-        console.error('[Webhook] Stack trace:', error.stack);
-        return NextResponse.json({ received: true });
-      }
-    }
-
-    console.log('[Webhook] Invoice finalized but not uncollectible - no action needed');
-    return NextResponse.json({ received: true });
-  }
-
-  console.log('[Webhook] Ignoring event type:', event.type);
+  // All other events are logged but not processed
+  console.log('[Webhook] Event type not handled:', event.type);
   return NextResponse.json({ received: true });
 }
