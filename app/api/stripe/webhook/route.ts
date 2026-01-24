@@ -205,15 +205,22 @@ export async function POST(req: NextRequest) {
   // ONLY handler for creating new memberships
   // ============================================================================
   if (event.type === 'customer.subscription.created') {
-    const subscription = event.data.object as any;
+    const subscriptionEvent = event.data.object as Stripe.Subscription;
     console.log('[Webhook] ========== SUBSCRIPTION CREATED ==========');
-    console.log('[Webhook] Subscription ID:', subscription.id);
-    console.log('[Webhook] Subscription Status:', subscription.status);
-    console.log('[Webhook] Customer ID:', subscription.customer);
+    console.log('[Webhook] Subscription ID:', subscriptionEvent.id);
 
     try {
-      // Step 1: Extract price ID
-      console.log('[Webhook] Step 1: Extracting price ID');
+      // Step 1: Fetch full subscription from Stripe
+      console.log('[Webhook] Step 1: Fetching full subscription from Stripe');
+      const subscription = await stripe.subscriptions.retrieve(subscriptionEvent.id, {
+        expand: ['latest_invoice'],
+      }) as any;
+      console.log('[Webhook] ✓ Subscription retrieved');
+      console.log('[Webhook] Subscription Status:', subscription.status);
+      console.log('[Webhook] Customer ID:', subscription.customer);
+
+      // Step 2: Extract price ID
+      console.log('[Webhook] Step 2: Extracting price ID');
       const priceId = subscription.items.data[0]?.price.id;
 
       if (!priceId) {
@@ -223,8 +230,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Price ID:', priceId);
 
-      // Step 2: Look up membership plan
-      console.log('[Webhook] Step 2: Looking up membership plan');
+      // Step 3: Look up membership plan
+      console.log('[Webhook] Step 3: Looking up membership plan');
       const { data: plan } = await supabase
         .from('membership_plans')
         .select('id')
@@ -238,8 +245,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Plan ID:', plan.id);
 
-      // Step 3: Resolve user_id
-      console.log('[Webhook] Step 3: Resolving user_id');
+      // Step 4: Resolve user_id
+      console.log('[Webhook] Step 4: Resolving user_id');
       let userId = subscription.metadata?.user_id;
       console.log('[Webhook] Checking subscription metadata:', userId ? `Found: ${userId}` : 'Not found');
 
@@ -277,27 +284,24 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ User ID resolved:', userId);
 
-      // Step 4: Resolve current_period_end with fallbacks
-      console.log('[Webhook] Step 4: Resolving current_period_end');
+      // Step 5: Resolve current_period_end with proper fallbacks
+      console.log('[Webhook] Step 5: Resolving current_period_end');
       let currentPeriodEnd = subscription.current_period_end;
 
       if (!currentPeriodEnd) {
-        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice');
+        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice.period_end');
 
-        if (subscription.latest_invoice) {
-          const invoiceId = typeof subscription.latest_invoice === 'string'
-            ? subscription.latest_invoice
-            : subscription.latest_invoice.id;
-
-          if (typeof subscription.latest_invoice === 'object' && subscription.latest_invoice.period_end) {
-            currentPeriodEnd = subscription.latest_invoice.period_end;
-            console.log('[Webhook] Found period_end in embedded latest_invoice:', currentPeriodEnd);
+        const latestInvoice = subscription.latest_invoice;
+        if (latestInvoice && typeof latestInvoice === 'object') {
+          if (latestInvoice.period_end) {
+            currentPeriodEnd = latestInvoice.period_end;
+            console.log('[Webhook] Found period_end in latest_invoice:', currentPeriodEnd);
           } else {
-            console.log('[Webhook] Fetching invoice:', invoiceId);
+            console.log('[Webhook] latest_invoice.period_end not available, fetching invoice');
             try {
-              const invoice = await stripe.invoices.retrieve(invoiceId);
-              if (invoice.lines?.data?.[0]?.period?.end) {
-                currentPeriodEnd = invoice.lines.data[0].period.end;
+              const invoice = await stripe.invoices.retrieve(latestInvoice.id);
+              if (invoice.period_end) {
+                currentPeriodEnd = invoice.period_end;
                 console.log('[Webhook] Found period_end in fetched invoice:', currentPeriodEnd);
               }
             } catch (error: any) {
@@ -321,8 +325,8 @@ export async function POST(req: NextRequest) {
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
-      // Step 5: Determine membership status
-      console.log('[Webhook] Step 5: Determining membership status');
+      // Step 6: Determine membership status
+      console.log('[Webhook] Step 6: Determining membership status');
       let membershipStatus = 'active';
 
       if (subscription.status === 'trialing' || subscription.status === 'active') {
@@ -339,8 +343,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Membership Status:', membershipStatus);
 
-      // Step 6: Prepare membership data
-      console.log('[Webhook] Step 6: Preparing membership data');
+      // Step 7: Prepare membership data
+      console.log('[Webhook] Step 7: Preparing membership data');
       const membershipData = {
         user_id: userId,
         plan_id: plan.id,
@@ -353,8 +357,8 @@ export async function POST(req: NextRequest) {
       };
       console.log('[Webhook] Membership data:', JSON.stringify(membershipData, null, 2));
 
-      // Step 7: Upsert membership by user_id
-      console.log('[Webhook] Step 7: Upserting membership (by user_id)');
+      // Step 8: Upsert membership by user_id
+      console.log('[Webhook] Step 8: Upserting membership (by user_id)');
       const { error: upsertError } = await supabase
         .from('memberships')
         .upsert(membershipData, {
@@ -388,34 +392,38 @@ export async function POST(req: NextRequest) {
   // ONLY handler for updating existing memberships
   // ============================================================================
   if (event.type === 'customer.subscription.updated') {
-    const subscription = event.data.object as any;
+    const subscriptionEvent = event.data.object as Stripe.Subscription;
     console.log('[Webhook] ========== SUBSCRIPTION UPDATED ==========');
-    console.log('[Webhook] Subscription ID:', subscription.id);
-    console.log('[Webhook] Subscription Status:', subscription.status);
-    console.log('[Webhook] Customer ID:', subscription.customer);
+    console.log('[Webhook] Subscription ID:', subscriptionEvent.id);
 
     try {
-      // Step 1: Resolve current_period_end with fallbacks
-      console.log('[Webhook] Step 1: Resolving current_period_end');
+      // Step 1: Fetch full subscription from Stripe
+      console.log('[Webhook] Step 1: Fetching full subscription from Stripe');
+      const subscription = await stripe.subscriptions.retrieve(subscriptionEvent.id, {
+        expand: ['latest_invoice'],
+      }) as any;
+      console.log('[Webhook] ✓ Subscription retrieved');
+      console.log('[Webhook] Subscription Status:', subscription.status);
+      console.log('[Webhook] Customer ID:', subscription.customer);
+
+      // Step 2: Resolve current_period_end with proper fallbacks
+      console.log('[Webhook] Step 2: Resolving current_period_end');
       let currentPeriodEnd = subscription.current_period_end;
 
       if (!currentPeriodEnd) {
-        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice');
+        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice.period_end');
 
-        if (subscription.latest_invoice) {
-          const invoiceId = typeof subscription.latest_invoice === 'string'
-            ? subscription.latest_invoice
-            : subscription.latest_invoice.id;
-
-          if (typeof subscription.latest_invoice === 'object' && subscription.latest_invoice.period_end) {
-            currentPeriodEnd = subscription.latest_invoice.period_end;
-            console.log('[Webhook] Found period_end in embedded latest_invoice:', currentPeriodEnd);
+        const latestInvoice = subscription.latest_invoice;
+        if (latestInvoice && typeof latestInvoice === 'object') {
+          if (latestInvoice.period_end) {
+            currentPeriodEnd = latestInvoice.period_end;
+            console.log('[Webhook] Found period_end in latest_invoice:', currentPeriodEnd);
           } else {
-            console.log('[Webhook] Fetching invoice:', invoiceId);
+            console.log('[Webhook] latest_invoice.period_end not available, fetching invoice');
             try {
-              const invoice = await stripe.invoices.retrieve(invoiceId);
-              if (invoice.lines?.data?.[0]?.period?.end) {
-                currentPeriodEnd = invoice.lines.data[0].period.end;
+              const invoice = await stripe.invoices.retrieve(latestInvoice.id);
+              if (invoice.period_end) {
+                currentPeriodEnd = invoice.period_end;
                 console.log('[Webhook] Found period_end in fetched invoice:', currentPeriodEnd);
               }
             } catch (error: any) {
@@ -439,8 +447,8 @@ export async function POST(req: NextRequest) {
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
-      // Step 2: Determine membership status
-      console.log('[Webhook] Step 2: Determining membership status');
+      // Step 3: Determine membership status
+      console.log('[Webhook] Step 3: Determining membership status');
       let membershipStatus = 'active';
       let endedAt = null;
 
@@ -460,8 +468,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Membership Status:', membershipStatus);
 
-      // Step 3: Prepare update data
-      console.log('[Webhook] Step 3: Preparing update data');
+      // Step 4: Prepare update data
+      console.log('[Webhook] Step 4: Preparing update data');
       const updateData: any = {
         status: membershipStatus,
         current_period_end: currentPeriodEndISO,
@@ -474,8 +482,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] Update data:', JSON.stringify(updateData, null, 2));
 
-      // Step 4: Update membership by stripe_subscription_id
-      console.log('[Webhook] Step 4: Updating membership (by stripe_subscription_id)');
+      // Step 5: Update membership by stripe_subscription_id
+      console.log('[Webhook] Step 5: Updating membership (by stripe_subscription_id)');
       const { error: updateError } = await supabase
         .from('memberships')
         .update(updateData)
