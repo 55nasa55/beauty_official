@@ -329,6 +329,175 @@ export async function POST(req: NextRequest) {
   }
 
   // ============================================================================
+  // customer.subscription.created
+  // Handle new subscription creation
+  // ============================================================================
+  if (event.type === 'customer.subscription.created') {
+    const subscription = event.data.object as any;
+    console.log('[Webhook] Processing customer.subscription.created');
+    console.log('[Webhook] Subscription ID:', subscription.id);
+    console.log('[Webhook] Subscription Status:', subscription.status);
+
+    try {
+      const priceId = subscription.items.data[0]?.price.id;
+
+      if (!priceId) {
+        console.error('[Webhook] No price ID found in subscription');
+        return NextResponse.json({ received: true });
+      }
+
+      const { data: plan } = await supabase
+        .from('membership_plans')
+        .select('id')
+        .eq('stripe_price_id', priceId)
+        .maybeSingle();
+
+      if (!plan) {
+        console.log('[Webhook] No matching membership plan for price:', priceId);
+        return NextResponse.json({ received: true });
+      }
+
+      let userId = subscription.metadata?.user_id;
+
+      if (!userId) {
+        const customer = await stripe.customers.retrieve(subscription.customer as string);
+        if ('metadata' in customer) {
+          userId = customer.metadata?.user_id;
+        }
+      }
+
+      if (!userId) {
+        const { data: existingMembership } = await supabase
+          .from('memberships')
+          .select('user_id')
+          .eq('stripe_customer_id', subscription.customer as string)
+          .maybeSingle();
+
+        if (existingMembership) {
+          userId = existingMembership.user_id;
+        }
+      }
+
+      if (!userId) {
+        console.error('[Webhook] No user_id found - cannot create membership');
+        return NextResponse.json({ received: true });
+      }
+
+      const currentPeriodEndISO = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
+
+      let membershipStatus = 'active';
+      if (subscription.status === 'trialing') {
+        membershipStatus = 'trialing';
+      } else if (['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status)) {
+        membershipStatus = 'canceled';
+      }
+
+      const membershipData = {
+        user_id: userId,
+        plan_id: plan.id,
+        status: membershipStatus,
+        stripe_customer_id: subscription.customer as string,
+        stripe_subscription_id: subscription.id,
+        stripe_price_id: priceId,
+        current_period_end: currentPeriodEndISO,
+        cancel_at_period_end: subscription.cancel_at_period_end || false,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: upsertError } = await supabase
+        .from('memberships')
+        .upsert(membershipData, {
+          onConflict: 'stripe_subscription_id',
+        });
+
+      if (upsertError) {
+        console.error('[Webhook] Failed to upsert membership:', upsertError);
+        return NextResponse.json({ received: true });
+      }
+
+      console.log('[Webhook] ✓ Membership created/updated via subscription.created');
+      console.log('[Webhook]   - User ID:', userId);
+      console.log('[Webhook]   - Status:', membershipStatus);
+
+      return NextResponse.json({ received: true });
+    } catch (error: any) {
+      console.error('[Webhook] Error processing subscription.created:', error.message);
+      console.error('[Webhook] Stack trace:', error.stack);
+      return NextResponse.json({ received: true });
+    }
+  }
+
+  // ============================================================================
+  // customer.subscription.updated
+  // Handle subscription status changes
+  // ============================================================================
+  if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as any;
+    console.log('[Webhook] Processing customer.subscription.updated');
+    console.log('[Webhook] Subscription ID:', subscription.id);
+    console.log('[Webhook] Subscription Status:', subscription.status);
+
+    try {
+      const currentPeriodEndISO = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
+
+      const now = new Date();
+      const periodEndDate = currentPeriodEndISO ? new Date(currentPeriodEndISO) : null;
+
+      let membershipStatus = 'active';
+      let endedAt = null;
+
+      if (subscription.status === 'trialing') {
+        membershipStatus = 'trialing';
+      } else if (['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status)) {
+        membershipStatus = 'canceled';
+        endedAt = new Date().toISOString();
+      } else if (subscription.status === 'active') {
+        if (periodEndDate && periodEndDate < now) {
+          membershipStatus = 'expired';
+          endedAt = new Date().toISOString();
+        } else {
+          membershipStatus = 'active';
+        }
+      }
+
+      const updateData: any = {
+        status: membershipStatus,
+        current_period_end: currentPeriodEndISO,
+        cancel_at_period_end: subscription.cancel_at_period_end || false,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (endedAt) {
+        updateData.ended_at = endedAt;
+      }
+
+      const { error: updateError } = await supabase
+        .from('memberships')
+        .update(updateData)
+        .eq('stripe_subscription_id', subscription.id);
+
+      if (updateError) {
+        console.error('[Webhook] Failed to update membership:', updateError);
+        return NextResponse.json({ received: true });
+      }
+
+      console.log('[Webhook] ✓ Membership updated via subscription.updated');
+      console.log('[Webhook]   - Status:', membershipStatus);
+      console.log('[Webhook]   - Period End:', currentPeriodEndISO);
+
+      return NextResponse.json({ received: true });
+    } catch (error: any) {
+      console.error('[Webhook] Error processing subscription.updated:', error.message);
+      console.error('[Webhook] Stack trace:', error.stack);
+      return NextResponse.json({ received: true });
+    }
+  }
+
+  // ============================================================================
   // invoice.payment_succeeded
   // Source of truth for billing periods - handles both initial and renewal
   // ============================================================================
@@ -347,7 +516,6 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Retrieve subscription to get current_period_end
       const retrievedSubscription = await stripe.subscriptions.retrieve(subscriptionId, {
         expand: ['items.data.price'],
       });
@@ -361,20 +529,43 @@ export async function POST(req: NextRequest) {
       }
 
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
+      const now = new Date();
+      const periodEndDate = new Date(currentPeriodEndISO);
 
       console.log('[Webhook] Payment succeeded for subscription');
       console.log('[Webhook]   - Subscription ID:', subscriptionId);
       console.log('[Webhook]   - Current Period End:', currentPeriodEndISO);
       console.log('[Webhook]   - Subscription Status:', subscription.status);
 
-      // Update membership billing period
+      let membershipStatus = 'active';
+      let endedAt = null;
+
+      if (subscription.status === 'trialing') {
+        membershipStatus = 'trialing';
+      } else if (['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status)) {
+        membershipStatus = 'canceled';
+        endedAt = new Date().toISOString();
+      } else if (subscription.status === 'active') {
+        if (periodEndDate < now) {
+          membershipStatus = 'expired';
+          endedAt = new Date().toISOString();
+          console.log('[Webhook]   - Period has expired, marking as expired');
+        }
+      }
+
+      const updateData: any = {
+        status: membershipStatus,
+        current_period_end: currentPeriodEndISO,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (endedAt) {
+        updateData.ended_at = endedAt;
+      }
+
       const { error: updateError } = await supabase
         .from('memberships')
-        .update({
-          status: 'active',
-          current_period_end: currentPeriodEndISO,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('stripe_subscription_id', subscriptionId);
 
       if (updateError) {
@@ -383,7 +574,7 @@ export async function POST(req: NextRequest) {
       }
 
       console.log('[Webhook] ✓ Membership billing period updated');
-      console.log('[Webhook]   - Status: active');
+      console.log('[Webhook]   - Status:', membershipStatus);
       console.log('[Webhook]   - Period End:', currentPeriodEndISO);
 
       return NextResponse.json({ received: true });
