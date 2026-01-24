@@ -277,16 +277,48 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ User ID resolved:', userId);
 
-      // Step 4: Validate current_period_end
-      console.log('[Webhook] Step 4: Validating current_period_end');
-      if (!subscription.current_period_end) {
-        console.error('[Webhook] ❌ ERROR: Missing current_period_end');
+      // Step 4: Resolve current_period_end with fallbacks
+      console.log('[Webhook] Step 4: Resolving current_period_end');
+      let currentPeriodEnd = subscription.current_period_end;
+
+      if (!currentPeriodEnd) {
+        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice');
+
+        if (subscription.latest_invoice) {
+          const invoiceId = typeof subscription.latest_invoice === 'string'
+            ? subscription.latest_invoice
+            : subscription.latest_invoice.id;
+
+          if (typeof subscription.latest_invoice === 'object' && subscription.latest_invoice.period_end) {
+            currentPeriodEnd = subscription.latest_invoice.period_end;
+            console.log('[Webhook] Found period_end in embedded latest_invoice:', currentPeriodEnd);
+          } else {
+            console.log('[Webhook] Fetching invoice:', invoiceId);
+            try {
+              const invoice = await stripe.invoices.retrieve(invoiceId);
+              if (invoice.lines?.data?.[0]?.period?.end) {
+                currentPeriodEnd = invoice.lines.data[0].period.end;
+                console.log('[Webhook] Found period_end in fetched invoice:', currentPeriodEnd);
+              }
+            } catch (error: any) {
+              console.log('[Webhook] Failed to fetch invoice:', error.message);
+            }
+          }
+        }
+      }
+
+      if (!currentPeriodEnd) {
+        console.error('[Webhook] ❌ ERROR: Missing current_period_end after all fallback attempts');
         console.error('[Webhook] Cannot create membership without billing period');
-        console.error('[Webhook] Subscription data:', JSON.stringify(subscription, null, 2));
+        console.error('[Webhook] Subscription data:', JSON.stringify({
+          id: subscription.id,
+          current_period_end: subscription.current_period_end,
+          latest_invoice: subscription.latest_invoice,
+        }, null, 2));
         return NextResponse.json({ received: true });
       }
 
-      const currentPeriodEndISO = new Date(subscription.current_period_end * 1000).toISOString();
+      const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
       // Step 5: Determine membership status
@@ -298,7 +330,6 @@ export async function POST(req: NextRequest) {
       } else if (subscription.status === 'past_due' || subscription.status === 'unpaid') {
         membershipStatus = 'past_due';
       } else if (['canceled', 'incomplete_expired'].includes(subscription.status)) {
-        // If subscription is canceled but cancel_at_period_end is true, keep active until period ends
         if (subscription.cancel_at_period_end) {
           membershipStatus = 'active';
           console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active');
@@ -364,16 +395,48 @@ export async function POST(req: NextRequest) {
     console.log('[Webhook] Customer ID:', subscription.customer);
 
     try {
-      // Step 1: Validate current_period_end
-      console.log('[Webhook] Step 1: Validating current_period_end');
-      if (!subscription.current_period_end) {
-        console.error('[Webhook] ❌ ERROR: Missing current_period_end');
+      // Step 1: Resolve current_period_end with fallbacks
+      console.log('[Webhook] Step 1: Resolving current_period_end');
+      let currentPeriodEnd = subscription.current_period_end;
+
+      if (!currentPeriodEnd) {
+        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice');
+
+        if (subscription.latest_invoice) {
+          const invoiceId = typeof subscription.latest_invoice === 'string'
+            ? subscription.latest_invoice
+            : subscription.latest_invoice.id;
+
+          if (typeof subscription.latest_invoice === 'object' && subscription.latest_invoice.period_end) {
+            currentPeriodEnd = subscription.latest_invoice.period_end;
+            console.log('[Webhook] Found period_end in embedded latest_invoice:', currentPeriodEnd);
+          } else {
+            console.log('[Webhook] Fetching invoice:', invoiceId);
+            try {
+              const invoice = await stripe.invoices.retrieve(invoiceId);
+              if (invoice.lines?.data?.[0]?.period?.end) {
+                currentPeriodEnd = invoice.lines.data[0].period.end;
+                console.log('[Webhook] Found period_end in fetched invoice:', currentPeriodEnd);
+              }
+            } catch (error: any) {
+              console.log('[Webhook] Failed to fetch invoice:', error.message);
+            }
+          }
+        }
+      }
+
+      if (!currentPeriodEnd) {
+        console.error('[Webhook] ❌ ERROR: Missing current_period_end after all fallback attempts');
         console.error('[Webhook] Cannot update membership without billing period');
-        console.error('[Webhook] Subscription data:', JSON.stringify(subscription, null, 2));
+        console.error('[Webhook] Subscription data:', JSON.stringify({
+          id: subscription.id,
+          current_period_end: subscription.current_period_end,
+          latest_invoice: subscription.latest_invoice,
+        }, null, 2));
         return NextResponse.json({ received: true });
       }
 
-      const currentPeriodEndISO = new Date(subscription.current_period_end * 1000).toISOString();
+      const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
       // Step 2: Determine membership status
@@ -386,7 +449,6 @@ export async function POST(req: NextRequest) {
       } else if (subscription.status === 'past_due' || subscription.status === 'unpaid') {
         membershipStatus = 'past_due';
       } else if (['canceled', 'incomplete_expired'].includes(subscription.status)) {
-        // If subscription is canceled but cancel_at_period_end is true, keep active until period ends
         if (subscription.cancel_at_period_end) {
           membershipStatus = 'active';
           console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active until period end');
