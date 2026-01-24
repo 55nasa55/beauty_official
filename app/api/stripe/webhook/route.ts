@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   // ============================================================================
   // checkout.session.completed
-  // Handles payment mode (orders only - subscriptions handled by subscription events)
+  // Handles payment mode (orders only - NOT subscriptions)
   // ============================================================================
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
     // Subscriptions are handled by customer.subscription.created
     if (session.mode === 'subscription') {
       console.log('[Webhook] Subscription checkout - will be handled by subscription.created event');
+      console.log('[Webhook] Skipping membership creation from checkout session');
       return NextResponse.json({ received: true });
     }
 
@@ -201,22 +202,29 @@ export async function POST(req: NextRequest) {
 
   // ============================================================================
   // customer.subscription.created
-  // Handle new subscription creation
+  // ONLY handler for creating new memberships
   // ============================================================================
   if (event.type === 'customer.subscription.created') {
     const subscription = event.data.object as any;
-    console.log('[Webhook] Processing customer.subscription.created');
+    console.log('[Webhook] ========== SUBSCRIPTION CREATED ==========');
     console.log('[Webhook] Subscription ID:', subscription.id);
     console.log('[Webhook] Subscription Status:', subscription.status);
+    console.log('[Webhook] Customer ID:', subscription.customer);
 
     try {
+      // Step 1: Extract price ID
+      console.log('[Webhook] Step 1: Extracting price ID');
       const priceId = subscription.items.data[0]?.price.id;
 
       if (!priceId) {
-        console.error('[Webhook] No price ID found in subscription');
+        console.error('[Webhook] ❌ ERROR: No price ID found in subscription');
+        console.error('[Webhook] Cannot create membership without price ID');
         return NextResponse.json({ received: true });
       }
+      console.log('[Webhook] ✓ Price ID:', priceId);
 
+      // Step 2: Look up membership plan
+      console.log('[Webhook] Step 2: Looking up membership plan');
       const { data: plan } = await supabase
         .from('membership_plans')
         .select('id')
@@ -224,17 +232,24 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (!plan) {
-        console.log('[Webhook] No matching membership plan for price:', priceId);
+        console.error('[Webhook] ❌ ERROR: No matching membership plan for price:', priceId);
+        console.error('[Webhook] Cannot create membership without valid plan');
         return NextResponse.json({ received: true });
       }
+      console.log('[Webhook] ✓ Plan ID:', plan.id);
 
+      // Step 3: Resolve user_id
+      console.log('[Webhook] Step 3: Resolving user_id');
       let userId = subscription.metadata?.user_id;
+      console.log('[Webhook] Checking subscription metadata:', userId ? `Found: ${userId}` : 'Not found');
 
       if (!userId) {
+        console.log('[Webhook] Attempting customer metadata lookup');
         try {
           const customer = await stripe.customers.retrieve(subscription.customer as string);
           if ('metadata' in customer) {
             userId = customer.metadata?.user_id;
+            console.log('[Webhook] Customer metadata:', userId ? `Found: ${userId}` : 'Not found');
           }
         } catch (error: any) {
           console.log('[Webhook] Failed to retrieve customer:', error.message);
@@ -242,6 +257,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (!userId) {
+        console.log('[Webhook] Attempting existing membership lookup');
         const { data: existingMembership } = await supabase
           .from('memberships')
           .select('user_id')
@@ -250,27 +266,50 @@ export async function POST(req: NextRequest) {
 
         if (existingMembership) {
           userId = existingMembership.user_id;
+          console.log('[Webhook] Existing membership:', `Found: ${userId}`);
         }
       }
 
       if (!userId) {
-        console.error('[Webhook] No user_id found - cannot create membership');
+        console.error('[Webhook] ❌ ERROR: No user_id found - cannot create membership');
+        console.error('[Webhook] Tried: subscription metadata, customer metadata, existing membership lookup');
+        return NextResponse.json({ received: true });
+      }
+      console.log('[Webhook] ✓ User ID resolved:', userId);
+
+      // Step 4: Validate current_period_end
+      console.log('[Webhook] Step 4: Validating current_period_end');
+      if (!subscription.current_period_end) {
+        console.error('[Webhook] ❌ ERROR: Missing current_period_end');
+        console.error('[Webhook] Cannot create membership without billing period');
+        console.error('[Webhook] Subscription data:', JSON.stringify(subscription, null, 2));
         return NextResponse.json({ received: true });
       }
 
-      const currentPeriodEndISO = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
+      const currentPeriodEndISO = new Date(subscription.current_period_end * 1000).toISOString();
+      console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
+      // Step 5: Determine membership status
+      console.log('[Webhook] Step 5: Determining membership status');
       let membershipStatus = 'active';
-      if (subscription.status === 'trialing') {
-        membershipStatus = 'active';
-      } else if (subscription.status === 'past_due') {
-        membershipStatus = 'past_due';
-      } else if (['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status)) {
-        membershipStatus = 'canceled';
-      }
 
+      if (subscription.status === 'trialing' || subscription.status === 'active') {
+        membershipStatus = 'active';
+      } else if (subscription.status === 'past_due' || subscription.status === 'unpaid') {
+        membershipStatus = 'past_due';
+      } else if (['canceled', 'incomplete_expired'].includes(subscription.status)) {
+        // If subscription is canceled but cancel_at_period_end is true, keep active until period ends
+        if (subscription.cancel_at_period_end) {
+          membershipStatus = 'active';
+          console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active');
+        } else {
+          membershipStatus = 'canceled';
+        }
+      }
+      console.log('[Webhook] ✓ Membership Status:', membershipStatus);
+
+      // Step 6: Prepare membership data
+      console.log('[Webhook] Step 6: Preparing membership data');
       const membershipData = {
         user_id: userId,
         plan_id: plan.id,
@@ -281,26 +320,33 @@ export async function POST(req: NextRequest) {
         cancel_at_period_end: subscription.cancel_at_period_end || false,
         updated_at: new Date().toISOString(),
       };
+      console.log('[Webhook] Membership data:', JSON.stringify(membershipData, null, 2));
 
+      // Step 7: Upsert membership by user_id
+      console.log('[Webhook] Step 7: Upserting membership (by user_id)');
       const { error: upsertError } = await supabase
         .from('memberships')
         .upsert(membershipData, {
-          onConflict: 'stripe_subscription_id',
+          onConflict: 'user_id',
         });
 
       if (upsertError) {
-        console.error('[Webhook] Failed to upsert membership:', upsertError);
+        console.error('[Webhook] ❌ ERROR: Failed to upsert membership:', upsertError);
+        console.error('[Webhook] Error details:', JSON.stringify(upsertError, null, 2));
         return NextResponse.json({ received: true });
       }
 
-      console.log('[Webhook] ✓ Membership created/updated via subscription.created');
-      console.log('[Webhook]   - User ID:', userId);
-      console.log('[Webhook]   - Status:', membershipStatus);
-      console.log('[Webhook]   - Period End:', currentPeriodEndISO);
+      console.log('[Webhook] ========== ✓ MEMBERSHIP CREATED ==========');
+      console.log('[Webhook]   User ID:', userId);
+      console.log('[Webhook]   Plan ID:', plan.id);
+      console.log('[Webhook]   Status:', membershipStatus);
+      console.log('[Webhook]   Period End:', currentPeriodEndISO);
+      console.log('[Webhook]   Cancel at Period End:', subscription.cancel_at_period_end || false);
+      console.log('[Webhook] ================================================');
 
       return NextResponse.json({ received: true });
     } catch (error: any) {
-      console.error('[Webhook] Error processing subscription.created:', error.message);
+      console.error('[Webhook] ❌ FATAL ERROR processing subscription.created:', error.message);
       console.error('[Webhook] Stack trace:', error.stack);
       return NextResponse.json({ received: true });
     }
@@ -308,31 +354,52 @@ export async function POST(req: NextRequest) {
 
   // ============================================================================
   // customer.subscription.updated
-  // Handle subscription status changes
+  // ONLY handler for updating existing memberships
   // ============================================================================
   if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object as any;
-    console.log('[Webhook] Processing customer.subscription.updated');
+    console.log('[Webhook] ========== SUBSCRIPTION UPDATED ==========');
     console.log('[Webhook] Subscription ID:', subscription.id);
     console.log('[Webhook] Subscription Status:', subscription.status);
+    console.log('[Webhook] Customer ID:', subscription.customer);
 
     try {
-      const currentPeriodEndISO = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
+      // Step 1: Validate current_period_end
+      console.log('[Webhook] Step 1: Validating current_period_end');
+      if (!subscription.current_period_end) {
+        console.error('[Webhook] ❌ ERROR: Missing current_period_end');
+        console.error('[Webhook] Cannot update membership without billing period');
+        console.error('[Webhook] Subscription data:', JSON.stringify(subscription, null, 2));
+        return NextResponse.json({ received: true });
+      }
 
+      const currentPeriodEndISO = new Date(subscription.current_period_end * 1000).toISOString();
+      console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
+
+      // Step 2: Determine membership status
+      console.log('[Webhook] Step 2: Determining membership status');
       let membershipStatus = 'active';
       let endedAt = null;
 
       if (subscription.status === 'trialing' || subscription.status === 'active') {
         membershipStatus = 'active';
-      } else if (subscription.status === 'past_due') {
+      } else if (subscription.status === 'past_due' || subscription.status === 'unpaid') {
         membershipStatus = 'past_due';
-      } else if (['canceled', 'unpaid', 'incomplete_expired'].includes(subscription.status)) {
-        membershipStatus = 'canceled';
-        endedAt = new Date().toISOString();
+      } else if (['canceled', 'incomplete_expired'].includes(subscription.status)) {
+        // If subscription is canceled but cancel_at_period_end is true, keep active until period ends
+        if (subscription.cancel_at_period_end) {
+          membershipStatus = 'active';
+          console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active until period end');
+        } else {
+          membershipStatus = 'canceled';
+          endedAt = new Date().toISOString();
+          console.log('[Webhook] Subscription canceled immediately, setting ended_at');
+        }
       }
+      console.log('[Webhook] ✓ Membership Status:', membershipStatus);
 
+      // Step 3: Prepare update data
+      console.log('[Webhook] Step 3: Preparing update data');
       const updateData: any = {
         status: membershipStatus,
         current_period_end: currentPeriodEndISO,
@@ -343,179 +410,33 @@ export async function POST(req: NextRequest) {
       if (endedAt) {
         updateData.ended_at = endedAt;
       }
+      console.log('[Webhook] Update data:', JSON.stringify(updateData, null, 2));
 
+      // Step 4: Update membership by stripe_subscription_id
+      console.log('[Webhook] Step 4: Updating membership (by stripe_subscription_id)');
       const { error: updateError } = await supabase
         .from('memberships')
         .update(updateData)
         .eq('stripe_subscription_id', subscription.id);
 
       if (updateError) {
-        console.error('[Webhook] Failed to update membership:', updateError);
+        console.error('[Webhook] ❌ ERROR: Failed to update membership:', updateError);
+        console.error('[Webhook] Error details:', JSON.stringify(updateError, null, 2));
         return NextResponse.json({ received: true });
       }
 
-      console.log('[Webhook] ✓ Membership updated via subscription.updated');
-      console.log('[Webhook]   - Status:', membershipStatus);
-      console.log('[Webhook]   - Period End:', currentPeriodEndISO);
+      console.log('[Webhook] ========== ✓ MEMBERSHIP UPDATED ==========');
+      console.log('[Webhook]   Status:', membershipStatus);
+      console.log('[Webhook]   Period End:', currentPeriodEndISO);
+      console.log('[Webhook]   Cancel at Period End:', subscription.cancel_at_period_end || false);
+      if (endedAt) {
+        console.log('[Webhook]   Ended At:', endedAt);
+      }
+      console.log('[Webhook] ================================================');
 
       return NextResponse.json({ received: true });
     } catch (error: any) {
-      console.error('[Webhook] Error processing subscription.updated:', error.message);
-      console.error('[Webhook] Stack trace:', error.stack);
-      return NextResponse.json({ received: true });
-    }
-  }
-
-  // ============================================================================
-  // invoice.payment_succeeded
-  // Update membership to active status after successful payment
-  // ============================================================================
-  if (event.type === 'invoice.payment_succeeded') {
-    const invoice = event.data.object as any;
-    console.log('[Webhook] Processing invoice.payment_succeeded');
-    console.log('[Webhook] Invoice ID:', invoice.id);
-
-    const customerId = invoice.customer;
-
-    if (!customerId) {
-      console.log('[Webhook] No customer ID in invoice');
-      return NextResponse.json({ received: true });
-    }
-
-    const subscriptionId = typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : invoice.subscription?.id;
-
-    if (!subscriptionId) {
-      console.log('[Webhook] No subscription - likely one-time payment');
-      return NextResponse.json({ received: true });
-    }
-
-    try {
-      const currentPeriodEndISO = invoice.lines?.data?.[0]?.period?.end
-        ? new Date(invoice.lines.data[0].period.end * 1000).toISOString()
-        : null;
-
-      console.log('[Webhook] Payment succeeded for subscription');
-      console.log('[Webhook]   - Customer ID:', customerId);
-      console.log('[Webhook]   - Subscription ID:', subscriptionId);
-      console.log('[Webhook]   - Period End:', currentPeriodEndISO);
-
-      const updateData: any = {
-        status: 'active',
-        updated_at: new Date().toISOString(),
-      };
-
-      if (currentPeriodEndISO) {
-        updateData.current_period_end = currentPeriodEndISO;
-      }
-
-      const { error: updateError } = await supabase
-        .from('memberships')
-        .update(updateData)
-        .eq('stripe_customer_id', customerId);
-
-      if (updateError) {
-        console.error('[Webhook] Failed to update membership:', updateError);
-        return NextResponse.json({ received: true });
-      }
-
-      console.log('[Webhook] ✓ Membership updated to active');
-
-      return NextResponse.json({ received: true });
-    } catch (error: any) {
-      console.error('[Webhook] Error processing invoice payment:', error.message);
-      console.error('[Webhook] Stack trace:', error.stack);
-      return NextResponse.json({ received: true });
-    }
-  }
-
-  // ============================================================================
-  // invoice.payment_failed
-  // Update membership to past_due status after failed payment
-  // ============================================================================
-  if (event.type === 'invoice.payment_failed') {
-    const invoice = event.data.object as any;
-    console.log('[Webhook] Processing invoice.payment_failed');
-    console.log('[Webhook] Invoice ID:', invoice.id);
-
-    const customerId = invoice.customer;
-
-    if (!customerId) {
-      console.log('[Webhook] No customer ID in invoice');
-      return NextResponse.json({ received: true });
-    }
-
-    try {
-      console.log('[Webhook] Payment failed for customer:', customerId);
-
-      const { error: updateError } = await supabase
-        .from('memberships')
-        .update({
-          status: 'past_due',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('stripe_customer_id', customerId);
-
-      if (updateError) {
-        console.error('[Webhook] Failed to update membership:', updateError);
-        return NextResponse.json({ received: true });
-      }
-
-      console.log('[Webhook] ✓ Membership updated to past_due');
-
-      return NextResponse.json({ received: true });
-    } catch (error: any) {
-      console.error('[Webhook] Error processing payment failure:', error.message);
-      console.error('[Webhook] Stack trace:', error.stack);
-      return NextResponse.json({ received: true });
-    }
-  }
-
-  // ============================================================================
-  // invoice.finalized
-  // Handle uncollectible invoices
-  // ============================================================================
-  if (event.type === 'invoice.finalized') {
-    const invoice = event.data.object as any;
-    console.log('[Webhook] Processing invoice.finalized');
-    console.log('[Webhook] Invoice ID:', invoice.id);
-    console.log('[Webhook] Status:', invoice.status);
-
-    if (invoice.status !== 'uncollectible') {
-      console.log('[Webhook] Invoice not uncollectible, skipping');
-      return NextResponse.json({ received: true });
-    }
-
-    const customerId = invoice.customer;
-
-    if (!customerId) {
-      console.log('[Webhook] No customer ID in invoice');
-      return NextResponse.json({ received: true });
-    }
-
-    try {
-      console.log('[Webhook] Invoice uncollectible for customer:', customerId);
-
-      const { error: updateError } = await supabase
-        .from('memberships')
-        .update({
-          status: 'canceled',
-          ended_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('stripe_customer_id', customerId);
-
-      if (updateError) {
-        console.error('[Webhook] Failed to update membership:', updateError);
-        return NextResponse.json({ received: true });
-      }
-
-      console.log('[Webhook] ✓ Membership canceled due to uncollectible invoice');
-
-      return NextResponse.json({ received: true });
-    } catch (error: any) {
-      console.error('[Webhook] Error processing uncollectible invoice:', error.message);
+      console.error('[Webhook] ❌ FATAL ERROR processing subscription.updated:', error.message);
       console.error('[Webhook] Stack trace:', error.stack);
       return NextResponse.json({ received: true });
     }
