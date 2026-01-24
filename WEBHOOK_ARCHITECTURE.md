@@ -1,134 +1,162 @@
 # Stripe Webhook Architecture
 
-This document explains the webhook logic for handling subscriptions and memberships.
+This document explains the simplified webhook logic for handling subscriptions and memberships.
 
 ## Overview
 
-The webhook handles five critical events to maintain accurate membership state:
+The webhook handles five essential events to maintain accurate membership state:
 
-1. **checkout.session.completed** - Creates orders and initiates memberships
-2. **customer.subscription.created** - Creates/updates membership records
-3. **customer.subscription.updated** - Handles subscription status changes
-4. **invoice.payment_succeeded** - Updates billing periods and validates status
-5. **customer.subscription.deleted** - Marks memberships as canceled
+1. **customer.subscription.created** - Creates memberships with billing period
+2. **customer.subscription.updated** - Updates subscription status changes
+3. **invoice.payment_succeeded** - Confirms payment and updates billing period
+4. **invoice.payment_failed** - Marks membership as past_due
+5. **invoice.finalized** - Cancels membership when invoice is uncollectible
 
-All other Stripe events are logged but not processed.
+Additionally, `checkout.session.completed` handles order creation (payment mode only).
+
+## Key Design Principles
+
+1. **No External API Calls**: Never call `stripe.subscriptions.retrieve()` - use event data directly
+2. **Event Data Only**: All data comes from `event.data.object`
+3. **current_period_end Always Set**: Billing periods are set immediately from subscription/invoice data
+4. **Simple Status Mapping**: Three primary statuses (active, past_due, canceled)
+5. **Idempotent Operations**: Safe to receive duplicate events
 
 ## Event Handlers
 
 ### 1. checkout.session.completed
 
-**Purpose:** Handle completed checkout sessions for both orders and subscriptions
+**Purpose:** Handle completed checkout sessions for orders only
 
-**For Subscription Mode:**
-- Resolves `user_id` using multiple fallback methods:
-  1. Session `client_reference_id` or `metadata.user_id`
-  2. Customer metadata lookup
-  3. Email lookup in Supabase auth
-  4. Existing membership lookup by `stripe_customer_id`
-- Retrieves subscription to get `stripe_price_id`
-- Creates membership with:
-  - `status = 'active'`
-  - `cancel_at_period_end = false`
-  - `current_period_end = null` (will be set by invoice or subscription events)
-- Uses `stripe_subscription_id` as upsert key (idempotent)
+**Process:**
+- Subscription checkouts are ignored (handled by `customer.subscription.created`)
+- Payment mode creates order records with items
+- Includes customer info, shipping address, and billing address
 
-**For Payment Mode:**
-- Creates order record with items
-- Handles product purchases
+**Key Points:**
+- Subscriptions are NOT handled here
+- Only processes payment mode sessions
+- Creates order and order_items records
 
 ### 2. customer.subscription.created
 
-**Purpose:** Create or update membership when a subscription is first created
+**Purpose:** Create membership when subscription is first created
 
 **Process:**
-- Extracts price ID from subscription
-- Looks up membership plan
-- Resolves user_id through metadata or existing records
-- Maps Stripe subscription status to membership status:
-  - `active` → `active`
-  - `trialing` → `trialing`
+- Extracts `price_id` from `subscription.items.data[0].price.id`
+- Looks up membership plan by `stripe_price_id`
+- Resolves `user_id` through:
+  1. `subscription.metadata.user_id`
+  2. Customer metadata (`customer.metadata.user_id`)
+  3. Existing membership lookup by `stripe_customer_id`
+- Maps Stripe status to membership status:
+  - `active` or `trialing` → `active`
+  - `past_due` → `past_due`
   - `canceled`, `unpaid`, `incomplete_expired` → `canceled`
-- Creates/updates membership with billing period
+- Sets `current_period_end` from `subscription.current_period_end` (converted to ISO string)
+- Upserts membership by `stripe_subscription_id`
 
 **Key Design Decisions:**
-- Handles initial subscription creation
-- Sets current_period_end if available
-- Upserts by `stripe_subscription_id` for idempotency
+- Always sets `current_period_end` (never null)
+- Treats `trialing` as `active`
+- Uses event data only - no API calls
+- Idempotent via upsert
+
+**Example:**
+```typescript
+const currentPeriodEndISO = subscription.current_period_end
+  ? new Date(subscription.current_period_end * 1000).toISOString()
+  : null;
+```
 
 ### 3. customer.subscription.updated
 
-**Purpose:** Handle subscription changes (status updates, cancellations, etc.)
+**Purpose:** Handle subscription changes (cancellations, status updates)
 
 **Process:**
-- Gets current_period_end from subscription
-- Determines membership status based on:
-  - Stripe subscription status
-  - Whether period has expired (current_period_end < now)
-- Status mapping:
-  - `trialing` → `trialing`
-  - `canceled`, `unpaid`, `incomplete_expired` → `canceled`
-  - `active` with expired period → `expired`
-  - `active` with valid period → `active`
-- Sets `ended_at` for canceled/expired statuses
+- Gets `current_period_end` from subscription
+- Maps Stripe status to membership status:
+  - `active` or `trialing` → `active`
+  - `past_due` → `past_due`
+  - `canceled`, `unpaid`, `incomplete_expired` → `canceled` (sets `ended_at`)
 - Updates `cancel_at_period_end` flag
+- Updates membership by `stripe_subscription_id`
 
 **Key Design Decisions:**
-- Includes expiry logic
-- Tracks when membership ended
-- Handles subscription cancellations
+- Updates billing period if changed
+- Sets `ended_at` for canceled subscriptions
+- Uses event data only - no API calls
+- Handles all status transitions
 
 ### 4. invoice.payment_succeeded
 
-**Purpose:** Source of truth for billing periods - handles both initial and renewal payments
+**Purpose:** Confirm successful payment and update billing period
 
 **Process:**
-- Extracts subscription_id from invoice
-- Retrieves subscription to get current_period_end
-- Checks if period has expired (current_period_end < now)
-- Determines membership status:
-  - `trialing` → `trialing`
-  - `canceled`, `unpaid`, `incomplete_expired` → `canceled`
-  - `active` with expired period → `expired`
-  - `active` with valid period → `active`
-- Updates membership by `stripe_subscription_id`
-- Sets `ended_at` for expired/canceled statuses
-
-**Handles Both:**
-- Initial subscription invoice (first billing period)
-- All renewal invoices (subsequent billing periods)
+- Extracts `customer_id` and `subscription_id` from invoice
+- Gets `current_period_end` from `invoice.lines.data[0].period.end`
+- Updates membership to `status = 'active'`
+- Updates `current_period_end` if available
+- Updates by `stripe_customer_id`
 
 **Key Design Decisions:**
-- Always updates current_period_end with accurate date
-- Validates expiry on every payment
-- Idempotent - safe to receive duplicate events
+- Always sets status to `active` on successful payment
+- Updates billing period from invoice line items
+- Uses `stripe_customer_id` for lookup (more reliable than subscription_id)
+- Handles both initial and renewal payments
 
-### 5. customer.subscription.deleted
+**Example:**
+```typescript
+const currentPeriodEndISO = invoice.lines?.data?.[0]?.period?.end
+  ? new Date(invoice.lines.data[0].period.end * 1000).toISOString()
+  : null;
+```
 
-**Purpose:** Mark membership as canceled when subscription is deleted
+### 5. invoice.payment_failed
+
+**Purpose:** Mark membership as past_due when payment fails
 
 **Process:**
-- Updates membership by `stripe_subscription_id`:
+- Extracts `customer_id` from invoice
+- Updates membership to `status = 'past_due'`
+- Updates by `stripe_customer_id`
+
+**Key Design Decisions:**
+- Does NOT cancel membership immediately
+- Allows for retry attempts
+- User can still access during grace period (if configured)
+
+### 6. invoice.finalized
+
+**Purpose:** Cancel membership when invoice becomes uncollectible
+
+**Process:**
+- Checks if invoice status is `uncollectible`
+- If yes, updates membership to:
   - `status = 'canceled'`
   - `ended_at = now()`
-  - `updated_at = now()`
+- Updates by `stripe_customer_id`
 
 **Key Design Decisions:**
-- Does NOT delete membership records (preserves history)
-- Uses timestamp to track when cancellation occurred
-- Idempotent operation
+- Only processes uncollectible invoices
+- Other finalized invoices are ignored
+- Marks exact time of cancellation
 
 ## Membership Status Values
 
 The `status` field can have the following values:
 
 - **active**: Membership is currently active and paid
-- **trialing**: Membership is in trial period
-- **canceled**: Membership has been canceled by user or payment failure
-- **expired**: Membership period has ended (current_period_end is in the past)
-- **inactive**: Initial state or temporary state (rarely used)
+- **past_due**: Payment failed but subscription still active (grace period)
+- **canceled**: Membership has been canceled or payment is uncollectible
+- **trialing**: Legacy status (now treated as active)
+- **expired**: Legacy status (no longer used)
+- **inactive**: Initial state (rare)
 
-These values are enforced by a database check constraint.
+These values are enforced by a database check constraint:
+```sql
+CHECK (status IN ('active', 'trialing', 'past_due', 'canceled', 'expired', 'inactive'))
+```
 
 ## Database Schema
 
@@ -142,72 +170,40 @@ CREATE TABLE memberships (
   status text DEFAULT 'inactive',
   stripe_customer_id text,
   stripe_subscription_id text UNIQUE,
-  stripe_price_id text,
   current_period_end timestamptz,
   cancel_at_period_end boolean DEFAULT false,
   ended_at timestamptz,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   CONSTRAINT memberships_status_check
-    CHECK (status IN ('active', 'trialing', 'canceled', 'expired', 'inactive'))
+    CHECK (status IN ('active', 'trialing', 'past_due', 'canceled', 'expired', 'inactive'))
 );
 ```
 
-**Constraints:**
-- `user_id` - Unique (one membership per user)
-- `stripe_subscription_id` - Unique (used for idempotent upserts)
-- `status` - Check constraint for valid values
-
-**Indexes:**
-- `user_id` - Fast user lookups
-- `stripe_customer_id` - Customer-based queries
-- `stripe_subscription_id` - Webhook updates
-- `status` - Filtering by status
-- `current_period_end` - Expiry checks
-
-## Expiry Logic
-
-Memberships are checked for expiry in two places:
-
-1. **customer.subscription.updated**: When subscription changes are detected
-2. **invoice.payment_succeeded**: On every payment (initial and renewal)
-
-**Expiry Check:**
-```typescript
-const now = new Date();
-const periodEndDate = new Date(currentPeriodEndISO);
-
-if (periodEndDate < now) {
-  membershipStatus = 'expired';
-  endedAt = new Date().toISOString();
-}
-```
-
-This ensures memberships are marked as expired when their billing period has passed.
+**Key Fields:**
+- `current_period_end`: Always set (never null after creation)
+- `stripe_customer_id`: Used for lookups in invoice events
+- `stripe_subscription_id`: Used for lookups in subscription events
+- `cancel_at_period_end`: Indicates if subscription will cancel at period end
+- `ended_at`: Records when membership ended (for canceled status)
 
 ## Event Flow Examples
 
 ### New Subscription Flow
 
-1. User completes checkout → `checkout.session.completed`
+1. User completes checkout → `checkout.session.completed` (ignored for subscriptions)
+2. Subscription created → `customer.subscription.created`
    ```
    Membership created:
    - status: active
-   - current_period_end: null
+   - current_period_end: 2026-02-24T00:00:00Z
+   - cancel_at_period_end: false
    ```
-
-2. Subscription created → `customer.subscription.created`
-   ```
-   Membership updated:
-   - status: active
-   - current_period_end: 2026-01-22T00:00:00Z
-   ```
-
 3. First invoice paid → `invoice.payment_succeeded`
    ```
    Membership confirmed:
    - status: active
-   - current_period_end: 2026-01-22T00:00:00Z
+   - current_period_end: 2026-02-24T00:00:00Z (updated if different)
    ```
 
 ### Renewal Flow
@@ -216,7 +212,26 @@ This ensures memberships are marked as expired when their billing period has pas
    ```
    Membership updated:
    - status: active
-   - current_period_end: 2027-01-22T00:00:00Z
+   - current_period_end: 2027-02-24T00:00:00Z
+   ```
+
+### Failed Payment Flow
+
+1. Payment fails → `invoice.payment_failed`
+   ```
+   Membership updated:
+   - status: past_due
+   ```
+2. If retry succeeds → `invoice.payment_succeeded`
+   ```
+   Membership updated:
+   - status: active
+   ```
+3. If invoice becomes uncollectible → `invoice.finalized`
+   ```
+   Membership updated:
+   - status: canceled
+   - ended_at: 2026-03-15T12:34:56Z
    ```
 
 ### Cancellation Flow
@@ -224,37 +239,27 @@ This ensures memberships are marked as expired when their billing period has pas
 1. User cancels → `customer.subscription.updated`
    ```
    Membership updated:
-   - status: canceled (or active if cancel_at_period_end)
+   - status: active (if cancel_at_period_end)
    - cancel_at_period_end: true
    ```
-
-2. Subscription ends → `customer.subscription.deleted`
+2. Period ends → `customer.subscription.updated`
    ```
    Membership updated:
    - status: canceled
-   - ended_at: 2026-06-15T12:34:56Z
-   ```
-
-### Expiry Flow
-
-1. Period ends without renewal → `customer.subscription.updated`
-   ```
-   Membership updated:
-   - status: expired
-   - ended_at: 2026-01-22T00:00:00Z
+   - ended_at: 2026-03-24T00:00:00Z
    ```
 
 ## Idempotency
 
-All webhook operations are designed to be idempotent:
+All webhook operations are idempotent:
 
-- **checkout.session.completed**: Upsert by `stripe_subscription_id` or `order_number`
 - **customer.subscription.created**: Upsert by `stripe_subscription_id`
 - **customer.subscription.updated**: Update by `stripe_subscription_id`
-- **invoice.payment_succeeded**: Update by `stripe_subscription_id`
-- **customer.subscription.deleted**: Update by `stripe_subscription_id`
+- **invoice.payment_succeeded**: Update by `stripe_customer_id`
+- **invoice.payment_failed**: Update by `stripe_customer_id`
+- **invoice.finalized**: Update by `stripe_customer_id`
 
-Receiving duplicate events will not cause data corruption or errors.
+Receiving duplicate events will not cause data corruption.
 
 ## Error Handling
 
@@ -274,33 +279,72 @@ try {
 
 **Key Points:**
 - Always return 200 status to acknowledge receipt
-- Log errors for debugging but don't retry
-- Trust Stripe's webhook retry mechanism
-- Errors don't crash the webhook
+- Log errors but don't crash
+- Let Stripe retry on actual failures
+- Prevents webhook event buildup
 
 ## Benefits of This Architecture
 
-1. **Comprehensive Coverage**: Handles all subscription lifecycle events
-2. **Expiry Detection**: Automatically marks expired memberships
-3. **Status Validation**: Database constraints prevent invalid statuses
-4. **Reliability**: Multiple fallback methods for user resolution
-5. **Idempotency**: Safe to receive duplicate events
-6. **Clear Status Mapping**: Stripe statuses map cleanly to membership statuses
-7. **History Preservation**: Never deletes membership records
-8. **Maintainability**: Clear, well-documented handlers
+1. **Simplicity**: Minimal event handlers, clear logic
+2. **No API Calls**: Uses event data only - faster and more reliable
+3. **current_period_end Always Set**: No null billing periods
+4. **Clear Status Model**: Three primary statuses (active, past_due, canceled)
+5. **Idempotent**: Safe to receive duplicate events
+6. **Maintainable**: Easy to understand and modify
+7. **Reliable**: No external dependencies within handlers
 
 ## Testing Checklist
 
-- [ ] New subscription creates membership immediately
-- [ ] Subscription.created sets billing period correctly
-- [ ] First invoice confirms active status
-- [ ] Renewal invoices update billing period correctly
-- [ ] Subscription cancellation marks membership appropriately
-- [ ] Subscription deletion marks membership as canceled
-- [ ] Expired periods set status to expired
-- [ ] Trial periods show trialing status
-- [ ] Failed payments mark as canceled
-- [ ] Duplicate events don't cause errors
+### Subscription Creation
+- [ ] New subscription creates membership with `current_period_end` set
+- [ ] Status is set to `active`
 - [ ] User ID resolution works through all fallback methods
-- [ ] Invalid events are logged and ignored safely
+- [ ] Price lookup finds correct membership plan
+
+### Subscription Updates
+- [ ] Status changes update membership correctly
+- [ ] `cancel_at_period_end` flag updates properly
+- [ ] Canceled subscriptions set `ended_at`
+- [ ] `current_period_end` updates when changed
+
+### Invoice Success
+- [ ] Payment success sets status to `active`
+- [ ] `current_period_end` updates from invoice
+- [ ] Works for both initial and renewal invoices
+- [ ] Lookup by `stripe_customer_id` works
+
+### Invoice Failure
+- [ ] Failed payment sets status to `past_due`
+- [ ] Membership remains accessible during grace period
+- [ ] Subsequent success resets to `active`
+
+### Invoice Uncollectible
+- [ ] Uncollectible invoice sets status to `canceled`
+- [ ] Sets `ended_at` timestamp
+- [ ] Non-uncollectible finalized invoices are ignored
+
+### General
+- [ ] Duplicate events don't cause errors
+- [ ] All handlers return 200 status
+- [ ] Errors are logged but don't crash webhook
 - [ ] Database constraints prevent invalid statuses
+
+## Common Issues & Solutions
+
+### Issue: current_period_end is null
+**Solution**: This is now fixed. All subscription events set `current_period_end` from event data.
+
+### Issue: Membership not created
+**Solution**: Check that:
+- Price ID exists in `membership_plans` table
+- User ID can be resolved through metadata or lookup
+- Webhook events are being received
+
+### Issue: Status not updating
+**Solution**: Verify that:
+- Webhook is receiving the correct events
+- Event types are in the handler list
+- Database updates are not failing
+
+### Issue: Duplicate memberships
+**Solution**: Upsert by `stripe_subscription_id` prevents this. Check for orphaned records.
