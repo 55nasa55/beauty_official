@@ -245,44 +245,21 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Plan ID:', plan.id);
 
-      // Step 4: Resolve user_id
-      console.log('[Webhook] Step 4: Resolving user_id');
-      let userId = subscription.metadata?.user_id;
-      console.log('[Webhook] Checking subscription metadata:', userId ? `Found: ${userId}` : 'Not found');
+      // Step 4: Look up user_id from users table
+      console.log('[Webhook] Step 4: Looking up user_id from users table');
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('stripe_customer_id', subscription.customer as string)
+        .maybeSingle();
 
-      if (!userId) {
-        console.log('[Webhook] Attempting customer metadata lookup');
-        try {
-          const customer = await stripe.customers.retrieve(subscription.customer as string);
-          if ('metadata' in customer) {
-            userId = customer.metadata?.user_id;
-            console.log('[Webhook] Customer metadata:', userId ? `Found: ${userId}` : 'Not found');
-          }
-        } catch (error: any) {
-          console.log('[Webhook] Failed to retrieve customer:', error.message);
-        }
-      }
-
-      if (!userId) {
-        console.log('[Webhook] Attempting existing membership lookup');
-        const { data: existingMembership } = await supabase
-          .from('memberships')
-          .select('user_id')
-          .eq('stripe_customer_id', subscription.customer as string)
-          .maybeSingle();
-
-        if (existingMembership) {
-          userId = existingMembership.user_id;
-          console.log('[Webhook] Existing membership:', `Found: ${userId}`);
-        }
-      }
-
-      if (!userId) {
-        console.error('[Webhook] ❌ ERROR: No user_id found - cannot create membership');
-        console.error('[Webhook] Tried: subscription metadata, customer metadata, existing membership lookup');
+      if (!user) {
+        console.error('[Webhook] ❌ ERROR: No user found with stripe_customer_id:', subscription.customer);
+        console.error('[Webhook] Cannot create membership without valid user');
         return NextResponse.json({ received: true });
       }
-      console.log('[Webhook] ✓ User ID resolved:', userId);
+      const userId = user.id;
+      console.log('[Webhook] ✓ User ID:', userId);
 
       // Step 5: Resolve current_period_end with proper fallbacks
       console.log('[Webhook] Step 5: Resolving current_period_end');
@@ -340,7 +317,7 @@ export async function POST(req: NextRequest) {
           console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active');
         } else {
           membershipStatus = 'canceled';
-          endedAt = currentPeriodEndISO;
+          endedAt = new Date().toISOString();
         }
       }
       console.log('[Webhook] ✓ Membership Status:', membershipStatus);
@@ -365,12 +342,12 @@ export async function POST(req: NextRequest) {
 
       console.log('[Webhook] Membership data:', JSON.stringify(membershipData, null, 2));
 
-      // Step 8: Upsert membership by stripe_subscription_id
-      console.log('[Webhook] Step 8: Upserting membership (by stripe_subscription_id)');
+      // Step 8: Upsert membership by user_id
+      console.log('[Webhook] Step 8: Upserting membership (by user_id)');
       const { error: upsertError } = await supabase
         .from('memberships')
         .upsert(membershipData, {
-          onConflict: 'stripe_subscription_id',
+          onConflict: 'user_id',
         });
 
       if (upsertError) {
@@ -444,8 +421,24 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Plan ID:', plan.id);
 
-      // Step 4: Resolve current_period_end with proper fallbacks
-      console.log('[Webhook] Step 4: Resolving current_period_end');
+      // Step 4: Look up user_id from users table
+      console.log('[Webhook] Step 4: Looking up user_id from users table');
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('stripe_customer_id', subscription.customer as string)
+        .maybeSingle();
+
+      if (!user) {
+        console.error('[Webhook] ❌ ERROR: No user found with stripe_customer_id:', subscription.customer);
+        console.error('[Webhook] Cannot update membership without valid user');
+        return NextResponse.json({ received: true });
+      }
+      const userId = user.id;
+      console.log('[Webhook] ✓ User ID:', userId);
+
+      // Step 5: Resolve current_period_end with proper fallbacks
+      console.log('[Webhook] Step 5: Resolving current_period_end');
       let currentPeriodEnd = subscription.current_period_end;
 
       if (!currentPeriodEnd) {
@@ -485,8 +478,8 @@ export async function POST(req: NextRequest) {
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
-      // Step 5: Determine membership status
-      console.log('[Webhook] Step 5: Determining membership status');
+      // Step 6: Determine membership status
+      console.log('[Webhook] Step 6: Determining membership status');
       let membershipStatus = 'active';
       let endedAt = null;
 
@@ -500,17 +493,19 @@ export async function POST(req: NextRequest) {
           console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active until period end');
         } else {
           membershipStatus = 'canceled';
-          endedAt = currentPeriodEndISO;
+          endedAt = new Date().toISOString();
           console.log('[Webhook] Subscription canceled immediately, setting ended_at');
         }
       }
       console.log('[Webhook] ✓ Membership Status:', membershipStatus);
 
-      // Step 6: Prepare update data
-      console.log('[Webhook] Step 6: Preparing update data');
+      // Step 7: Prepare update data
+      console.log('[Webhook] Step 7: Preparing update data');
       const updateData: any = {
+        user_id: userId,
         plan_id: plan.id,
         status: membershipStatus,
+        stripe_customer_id: subscription.customer as string,
         stripe_price_id: stripePriceId,
         current_period_end: currentPeriodEndISO,
         cancel_at_period_end: subscription.cancel_at_period_end || false,
@@ -522,8 +517,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] Update data:', JSON.stringify(updateData, null, 2));
 
-      // Step 7: Update membership by stripe_subscription_id
-      console.log('[Webhook] Step 7: Updating membership (by stripe_subscription_id)');
+      // Step 8: Update membership by stripe_subscription_id
+      console.log('[Webhook] Step 8: Updating membership (by stripe_subscription_id)');
       const { error: updateError } = await supabase
         .from('memberships')
         .update(updateData)
@@ -536,6 +531,7 @@ export async function POST(req: NextRequest) {
       }
 
       console.log('[Webhook] ========== ✓ MEMBERSHIP UPDATED ==========');
+      console.log('[Webhook]   User ID:', userId);
       console.log('[Webhook]   Plan ID:', plan.id);
       console.log('[Webhook]   Stripe Price ID:', stripePriceId);
       console.log('[Webhook]   Status:', membershipStatus);
