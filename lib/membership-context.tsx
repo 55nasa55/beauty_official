@@ -31,6 +31,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       });
     }
 
+    // Wait until auth is fully ready
     if (authLoading) {
       if (DEBUG) {
         console.log("[Membership Debug] Auth still loading, waiting...");
@@ -38,6 +39,7 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
+    // No user = no membership
     if (!user) {
       if (DEBUG) {
         console.log("[Membership Debug] No user, setting isMember=false");
@@ -48,11 +50,11 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    console.log("USER ID FROM APP:", user?.id);
-
+    // Prevent stale async updates
     let cancelled = false;
 
     const loadMembership = async () => {
+      // Only set loading to true if we haven't successfully loaded yet
       if (!hasLoadedRef.current) {
         setLoading(true);
       }
@@ -67,13 +69,15 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // 🔥 NEW FULL LOG
-      console.log("[Membership Debug] Query result:", {
-        userId: user.id,
-        data,
-        error,
-      });
+      if (DEBUG) {
+        console.log("[Membership Debug] Query result:", {
+          userId: user.id,
+          data,
+          error: error?.message || null
+        });
+      }
 
+      // Abort if the component unmounted or effect re-ran
       if (cancelled) {
         if (DEBUG) {
           console.log("[Membership Debug] Update cancelled (component unmounted)");
@@ -81,9 +85,10 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
+      // No membership row or query error
       if (!data || error) {
         if (DEBUG) {
-          console.log("[Membership Debug] No active membership found or error occurred");
+          console.log("[Membership Debug] No active membership found");
         }
         setIsMember(false);
         setLoading(false);
@@ -91,21 +96,26 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      const isActiveMembership = data.status === "active";
+      // Check if membership is active (including past_due)
+      const isActiveMembership =
+        data.status === "active" || data.status === "past_due";
+
+      // Check if current_period_end is valid (null or in the future)
       const validPeriod =
         !data.current_period_end ||
-        new Date(data.current_period_end) > new Date();
+        new Date(data.current_period_end).getTime() > Date.now();
 
       const membershipActive = isActiveMembership && validPeriod;
 
-      // 🔥 NEW LOG: show final membership decision
-      console.log("[Membership Debug] Membership computed:", {
-        status: data.status,
-        current_period_end: data.current_period_end,
-        isActiveMembership,
-        validPeriod,
-        membershipActive,
-      });
+      if (DEBUG) {
+        console.log("[Membership Debug] Computed values:", {
+          status: data.status,
+          current_period_end: data.current_period_end,
+          isActiveMembership,
+          validPeriod,
+          membershipActive,
+        });
+      }
 
       setIsMember(membershipActive);
       setLoading(false);
