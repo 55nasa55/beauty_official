@@ -22,14 +22,30 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
+  const DEBUG = process.env.NEXT_PUBLIC_DEBUG === "true";
+
   useEffect(() => {
+    if (DEBUG) {
+      console.log("[Membership Debug] Effect triggered", {
+        userId: user?.id,
+        authLoading,
+        supabaseExists: !!supabase,
+      });
+    }
+
     // Wait until auth is fully ready
     if (authLoading) {
+      if (DEBUG) {
+        console.log("[Membership Debug] Auth still loading, waiting...");
+      }
       return;
     }
 
     // No user = no membership
     if (!user) {
+      if (DEBUG) {
+        console.log("[Membership Debug] No user, setting isMember=false");
+      }
       setIsMember(false);
       setLoading(false);
       hasLoadedRef.current = false;
@@ -45,7 +61,9 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         setLoading(true);
       }
 
-      console.log("[Membership] Fetching membership for user:", user.id);
+      if (DEBUG) {
+        console.log("[Membership Debug] Fetching membership for user:", user.id);
+      }
 
       const { data, error } = await supabase
         .from("memberships")
@@ -53,17 +71,27 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         .eq("user_id", user.id)
         .maybeSingle();
 
-      console.log("[Membership] Query result:", { userId: user.id, data, error });
+      if (DEBUG) {
+        console.log("[Membership Debug] Query result:", {
+          userId: user.id,
+          data,
+          error: error?.message || null
+        });
+      }
 
       // Abort if the component unmounted or effect re-ran
       if (cancelled) {
-        console.log("[Membership] Update cancelled (component unmounted)");
+        if (DEBUG) {
+          console.log("[Membership Debug] Update cancelled (component unmounted)");
+        }
         return;
       }
 
       // No membership row or query error
       if (!data || error) {
-        console.log("[Membership] No active membership found");
+        if (DEBUG) {
+          console.log("[Membership Debug] No active membership found");
+        }
         setIsMember(false);
         setLoading(false);
         hasLoadedRef.current = true;
@@ -80,17 +108,26 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
       const membershipActive = isActiveMembership && validPeriod;
 
-      console.log("[Membership] Membership status:", {
-        status: data.status,
-        current_period_end: data.current_period_end,
-        isActiveMembership,
-        validPeriod,
-        membershipActive,
-      });
+      if (DEBUG) {
+        console.log("[Membership Debug] Computed values:", {
+          status: data.status,
+          current_period_end: data.current_period_end,
+          isActiveMembership,
+          validPeriod,
+          membershipActive,
+        });
+      }
 
       setIsMember(membershipActive);
       setLoading(false);
       hasLoadedRef.current = true;
+
+      if (DEBUG) {
+        console.log("[Membership Debug] Final state:", {
+          isMember: membershipActive,
+          loading: false,
+        });
+      }
     };
 
     loadMembership();
