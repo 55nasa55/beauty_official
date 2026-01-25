@@ -205,19 +205,24 @@ export async function POST(req: NextRequest) {
   // ONLY handler for creating new memberships
   // ============================================================================
   if (event.type === 'customer.subscription.created') {
-    const subscriptionEvent = event.data.object as Stripe.Subscription;
+    const subscription = event.data.object as any;
     console.log('[Webhook] ========== SUBSCRIPTION CREATED ==========');
-    console.log('[Webhook] Subscription ID:', subscriptionEvent.id);
+    console.log('[Webhook] Subscription ID:', subscription.id);
+    console.log('[Webhook] Subscription Status:', subscription.status);
+    console.log('[Webhook] Customer ID:', subscription.customer);
 
     try {
-      // Step 1: Fetch full subscription from Stripe
-      console.log('[Webhook] Step 1: Fetching full subscription from Stripe');
-      const subscription = await stripe.subscriptions.retrieve(subscriptionEvent.id, {
-        expand: ['latest_invoice'],
-      }) as any;
-      console.log('[Webhook] ✓ Subscription retrieved');
-      console.log('[Webhook] Subscription Status:', subscription.status);
-      console.log('[Webhook] Customer ID:', subscription.customer);
+      // Step 1: Extract user_id from metadata
+      console.log('[Webhook] Step 1: Extracting user_id from metadata');
+      const userId = subscription.metadata?.user_id;
+
+      if (!userId) {
+        console.error('[Webhook] ❌ ERROR: No user_id found in subscription metadata');
+        console.error('[Webhook] Subscription metadata:', JSON.stringify(subscription.metadata, null, 2));
+        console.error('[Webhook] Cannot create membership without user_id');
+        return NextResponse.json({ received: true });
+      }
+      console.log('[Webhook] ✓ User ID:', userId);
 
       // Step 2: Extract price ID
       console.log('[Webhook] Step 2: Extracting price ID');
@@ -245,65 +250,21 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Plan ID:', plan.id);
 
-      // Step 4: Look up user_id from users table
-      console.log('[Webhook] Step 4: Looking up user_id from users table');
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('stripe_customer_id', subscription.customer as string)
-        .maybeSingle();
-
-      if (!user) {
-        console.error('[Webhook] ❌ ERROR: No user found with stripe_customer_id:', subscription.customer);
-        console.error('[Webhook] Cannot create membership without valid user');
-        return NextResponse.json({ received: true });
-      }
-      const userId = user.id;
-      console.log('[Webhook] ✓ User ID:', userId);
-
-      // Step 5: Resolve current_period_end with proper fallbacks
-      console.log('[Webhook] Step 5: Resolving current_period_end');
-      let currentPeriodEnd = subscription.current_period_end;
+      // Step 4: Get current_period_end
+      console.log('[Webhook] Step 4: Getting current_period_end');
+      const currentPeriodEnd = subscription.current_period_end;
 
       if (!currentPeriodEnd) {
-        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice.period_end');
-
-        const latestInvoice = subscription.latest_invoice;
-        if (latestInvoice && typeof latestInvoice === 'object') {
-          if (latestInvoice.period_end) {
-            currentPeriodEnd = latestInvoice.period_end;
-            console.log('[Webhook] Found period_end in latest_invoice:', currentPeriodEnd);
-          } else {
-            console.log('[Webhook] latest_invoice.period_end not available, fetching invoice');
-            try {
-              const invoice = await stripe.invoices.retrieve(latestInvoice.id);
-              if (invoice.period_end) {
-                currentPeriodEnd = invoice.period_end;
-                console.log('[Webhook] Found period_end in fetched invoice:', currentPeriodEnd);
-              }
-            } catch (error: any) {
-              console.log('[Webhook] Failed to fetch invoice:', error.message);
-            }
-          }
-        }
-      }
-
-      if (!currentPeriodEnd) {
-        console.error('[Webhook] ❌ ERROR: Missing current_period_end after all fallback attempts');
+        console.error('[Webhook] ❌ ERROR: Missing current_period_end');
         console.error('[Webhook] Cannot create membership without billing period');
-        console.error('[Webhook] Subscription data:', JSON.stringify({
-          id: subscription.id,
-          current_period_end: subscription.current_period_end,
-          latest_invoice: subscription.latest_invoice,
-        }, null, 2));
         return NextResponse.json({ received: true });
       }
 
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
-      // Step 6: Determine membership status and ended_at
-      console.log('[Webhook] Step 6: Determining membership status');
+      // Step 5: Determine membership status and ended_at
+      console.log('[Webhook] Step 5: Determining membership status');
       let membershipStatus = 'active';
       let endedAt = null;
 
@@ -317,13 +278,13 @@ export async function POST(req: NextRequest) {
           console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active');
         } else {
           membershipStatus = 'canceled';
-          endedAt = new Date().toISOString();
+          endedAt = currentPeriodEndISO;
         }
       }
       console.log('[Webhook] ✓ Membership Status:', membershipStatus);
 
-      // Step 7: Prepare membership data
-      console.log('[Webhook] Step 7: Preparing membership data');
+      // Step 6: Prepare membership data
+      console.log('[Webhook] Step 6: Preparing membership data');
       const membershipData: any = {
         user_id: userId,
         plan_id: plan.id,
@@ -333,17 +294,14 @@ export async function POST(req: NextRequest) {
         stripe_price_id: stripePriceId,
         current_period_end: currentPeriodEndISO,
         cancel_at_period_end: subscription.cancel_at_period_end || false,
+        ended_at: endedAt,
         updated_at: new Date().toISOString(),
       };
 
-      if (endedAt) {
-        membershipData.ended_at = endedAt;
-      }
-
       console.log('[Webhook] Membership data:', JSON.stringify(membershipData, null, 2));
 
-      // Step 8: Upsert membership by user_id
-      console.log('[Webhook] Step 8: Upserting membership (by user_id)');
+      // Step 7: Upsert membership by user_id
+      console.log('[Webhook] Step 7: Upserting membership (by user_id)');
       const { error: upsertError } = await supabase
         .from('memberships')
         .upsert(membershipData, {
@@ -381,19 +339,24 @@ export async function POST(req: NextRequest) {
   // ONLY handler for updating existing memberships
   // ============================================================================
   if (event.type === 'customer.subscription.updated') {
-    const subscriptionEvent = event.data.object as Stripe.Subscription;
+    const subscription = event.data.object as any;
     console.log('[Webhook] ========== SUBSCRIPTION UPDATED ==========');
-    console.log('[Webhook] Subscription ID:', subscriptionEvent.id);
+    console.log('[Webhook] Subscription ID:', subscription.id);
+    console.log('[Webhook] Subscription Status:', subscription.status);
+    console.log('[Webhook] Customer ID:', subscription.customer);
 
     try {
-      // Step 1: Fetch full subscription from Stripe
-      console.log('[Webhook] Step 1: Fetching full subscription from Stripe');
-      const subscription = await stripe.subscriptions.retrieve(subscriptionEvent.id, {
-        expand: ['latest_invoice'],
-      }) as any;
-      console.log('[Webhook] ✓ Subscription retrieved');
-      console.log('[Webhook] Subscription Status:', subscription.status);
-      console.log('[Webhook] Customer ID:', subscription.customer);
+      // Step 1: Extract user_id from metadata
+      console.log('[Webhook] Step 1: Extracting user_id from metadata');
+      const userId = subscription.metadata?.user_id;
+
+      if (!userId) {
+        console.error('[Webhook] ❌ ERROR: No user_id found in subscription metadata');
+        console.error('[Webhook] Subscription metadata:', JSON.stringify(subscription.metadata, null, 2));
+        console.error('[Webhook] Cannot update membership without user_id');
+        return NextResponse.json({ received: true });
+      }
+      console.log('[Webhook] ✓ User ID:', userId);
 
       // Step 2: Extract price ID
       console.log('[Webhook] Step 2: Extracting price ID');
@@ -421,65 +384,21 @@ export async function POST(req: NextRequest) {
       }
       console.log('[Webhook] ✓ Plan ID:', plan.id);
 
-      // Step 4: Look up user_id from users table
-      console.log('[Webhook] Step 4: Looking up user_id from users table');
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('stripe_customer_id', subscription.customer as string)
-        .maybeSingle();
-
-      if (!user) {
-        console.error('[Webhook] ❌ ERROR: No user found with stripe_customer_id:', subscription.customer);
-        console.error('[Webhook] Cannot update membership without valid user');
-        return NextResponse.json({ received: true });
-      }
-      const userId = user.id;
-      console.log('[Webhook] ✓ User ID:', userId);
-
-      // Step 5: Resolve current_period_end with proper fallbacks
-      console.log('[Webhook] Step 5: Resolving current_period_end');
-      let currentPeriodEnd = subscription.current_period_end;
+      // Step 4: Get current_period_end
+      console.log('[Webhook] Step 4: Getting current_period_end');
+      const currentPeriodEnd = subscription.current_period_end;
 
       if (!currentPeriodEnd) {
-        console.log('[Webhook] current_period_end not found on subscription, checking latest_invoice.period_end');
-
-        const latestInvoice = subscription.latest_invoice;
-        if (latestInvoice && typeof latestInvoice === 'object') {
-          if (latestInvoice.period_end) {
-            currentPeriodEnd = latestInvoice.period_end;
-            console.log('[Webhook] Found period_end in latest_invoice:', currentPeriodEnd);
-          } else {
-            console.log('[Webhook] latest_invoice.period_end not available, fetching invoice');
-            try {
-              const invoice = await stripe.invoices.retrieve(latestInvoice.id);
-              if (invoice.period_end) {
-                currentPeriodEnd = invoice.period_end;
-                console.log('[Webhook] Found period_end in fetched invoice:', currentPeriodEnd);
-              }
-            } catch (error: any) {
-              console.log('[Webhook] Failed to fetch invoice:', error.message);
-            }
-          }
-        }
-      }
-
-      if (!currentPeriodEnd) {
-        console.error('[Webhook] ❌ ERROR: Missing current_period_end after all fallback attempts');
+        console.error('[Webhook] ❌ ERROR: Missing current_period_end');
         console.error('[Webhook] Cannot update membership without billing period');
-        console.error('[Webhook] Subscription data:', JSON.stringify({
-          id: subscription.id,
-          current_period_end: subscription.current_period_end,
-          latest_invoice: subscription.latest_invoice,
-        }, null, 2));
         return NextResponse.json({ received: true });
       }
 
       const currentPeriodEndISO = new Date(currentPeriodEnd * 1000).toISOString();
       console.log('[Webhook] ✓ Current Period End:', currentPeriodEndISO);
 
-      // Step 6: Determine membership status
-      console.log('[Webhook] Step 6: Determining membership status');
+      // Step 5: Determine membership status
+      console.log('[Webhook] Step 5: Determining membership status');
       let membershipStatus = 'active';
       let endedAt = null;
 
@@ -493,14 +412,14 @@ export async function POST(req: NextRequest) {
           console.log('[Webhook] Subscription canceled but cancel_at_period_end=true, keeping active until period end');
         } else {
           membershipStatus = 'canceled';
-          endedAt = new Date().toISOString();
+          endedAt = currentPeriodEndISO;
           console.log('[Webhook] Subscription canceled immediately, setting ended_at');
         }
       }
       console.log('[Webhook] ✓ Membership Status:', membershipStatus);
 
-      // Step 7: Prepare update data
-      console.log('[Webhook] Step 7: Preparing update data');
+      // Step 6: Prepare update data
+      console.log('[Webhook] Step 6: Preparing update data');
       const updateData: any = {
         user_id: userId,
         plan_id: plan.id,
@@ -509,16 +428,14 @@ export async function POST(req: NextRequest) {
         stripe_price_id: stripePriceId,
         current_period_end: currentPeriodEndISO,
         cancel_at_period_end: subscription.cancel_at_period_end || false,
+        ended_at: endedAt,
         updated_at: new Date().toISOString(),
       };
 
-      if (endedAt) {
-        updateData.ended_at = endedAt;
-      }
       console.log('[Webhook] Update data:', JSON.stringify(updateData, null, 2));
 
-      // Step 8: Update membership by stripe_subscription_id
-      console.log('[Webhook] Step 8: Updating membership (by stripe_subscription_id)');
+      // Step 7: Update membership by stripe_subscription_id
+      console.log('[Webhook] Step 7: Updating membership (by stripe_subscription_id)');
       const { error: updateError } = await supabase
         .from('memberships')
         .update(updateData)
