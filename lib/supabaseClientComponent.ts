@@ -1,5 +1,5 @@
-import { useSupabase } from "@/app/providers";
+import { supabase } from "@/lib/supabase/client";
 
 export const supabaseClientComponent = () => {
-  return useSupabase();
+  return supabase;
 };

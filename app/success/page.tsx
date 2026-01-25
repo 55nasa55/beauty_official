@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { useCart } from '@/lib/cart-context';
 import { CheckCircle2, Package, MapPin, CreditCard, Loader2, Receipt, Truck } from 'lucide-react';
 import Link from 'next/link';
@@ -49,7 +49,6 @@ type EnrichedOrderItem = OrderItem & {
 };
 
 export default function SuccessPage() {
-  const supabase = useSupabase();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const { clearCart } = useCart();

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, X, Package, Building2 } from 'lucide-react';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { ProductWithVariants, Brand } from '@/lib/database.types';
 
 interface SearchResults {
@@ -13,7 +13,6 @@ interface SearchResults {
 }
 
 export function SearchBar() {
-  const supabase = useSupabase();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults>({ products: [], brands: [] });
   const [isOpen, setIsOpen] = useState(false);

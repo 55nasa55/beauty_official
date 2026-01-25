@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, ShoppingBag, Star, Tags } from 'lucide-react';
 
 export default function AdminDashboardPage() {
-  const supabase = useSupabase();
   const [stats, setStats] = useState({
     products: 0,
     orders: 0,
