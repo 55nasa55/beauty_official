@@ -31,7 +31,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       });
     }
 
-    // Wait until auth is fully ready
     if (authLoading) {
       if (DEBUG) {
         console.log("[Membership Debug] Auth still loading, waiting...");
@@ -39,7 +38,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // No user = no membership
     if (!user) {
       if (DEBUG) {
         console.log("[Membership Debug] No user, setting isMember=false");
@@ -50,11 +48,9 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // Prevent stale async updates
     let cancelled = false;
 
     const loadMembership = async () => {
-      // Only set loading to true if we haven't successfully loaded yet
       if (!hasLoadedRef.current) {
         setLoading(true);
       }
@@ -77,7 +73,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         });
       }
 
-      // Abort if the component unmounted or effect re-ran
       if (cancelled) {
         if (DEBUG) {
           console.log("[Membership Debug] Update cancelled (component unmounted)");
@@ -85,7 +80,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      // No membership row or query error
       if (!data || error) {
         if (DEBUG) {
           console.log("[Membership Debug] No active membership found");
@@ -96,23 +90,13 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      // Check if membership is active (including past_due)
-      const isActiveMembership =
+      const membershipActive =
         data.status === "active" || data.status === "past_due";
-
-      // Check if current_period_end is valid (null or in the future)
-      const validPeriod =
-        !data.current_period_end ||
-        new Date(data.current_period_end).getTime() > Date.now();
-
-      const membershipActive = isActiveMembership && validPeriod;
 
       if (DEBUG) {
         console.log("[Membership Debug] Computed values:", {
           status: data.status,
           current_period_end: data.current_period_end,
-          isActiveMembership,
-          validPeriod,
           membershipActive,
         });
       }
