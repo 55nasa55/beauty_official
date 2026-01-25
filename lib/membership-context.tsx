@@ -1,4 +1,18 @@
-// ... existing imports ...
+"use client";
+
+import { createContext, useContext, useEffect, useState, useRef } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+
+interface MembershipContextType {
+  isMember: boolean;
+  loading: boolean;
+}
+
+const MembershipContext = createContext<MembershipContextType>({
+  isMember: false,
+  loading: true,
+});
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -17,7 +31,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       });
     }
 
-    // Wait until auth is fully ready
     if (authLoading) {
       if (DEBUG) {
         console.log("[Membership Debug] Auth still loading, waiting...");
@@ -25,7 +38,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // No user = no membership
     if (!user) {
       if (DEBUG) {
         console.log("[Membership Debug] No user, setting isMember=false");
@@ -36,14 +48,12 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // ✅ ADD THIS LOG HERE
+    // ✅ THE LOG YOU NEED
     console.log("USER ID FROM APP:", user?.id);
 
-    // Prevent stale async updates
     let cancelled = false;
 
     const loadMembership = async () => {
-      // Only set loading to true if we haven't successfully loaded yet
       if (!hasLoadedRef.current) {
         setLoading(true);
       }
@@ -58,7 +68,33 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // ... rest of your code ...
+      if (DEBUG) {
+        console.log("[Membership Debug] Query result:", {
+          userId: user.id,
+          data,
+          error: error?.message || null
+        });
+      }
+
+      if (cancelled) return;
+
+      if (!data || error) {
+        setIsMember(false);
+        setLoading(false);
+        hasLoadedRef.current = true;
+        return;
+      }
+
+      const isActiveMembership = data.status === "active";
+      const validPeriod =
+        !data.current_period_end ||
+        new Date(data.current_period_end) > new Date();
+
+      const membershipActive = isActiveMembership && validPeriod;
+
+      setIsMember(membershipActive);
+      setLoading(false);
+      hasLoadedRef.current = true;
     };
 
     loadMembership();
@@ -73,4 +109,8 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       {children}
     </MembershipContext.Provider>
   );
+}
+
+export function useMembership() {
+  return useContext(MembershipContext);
 }
