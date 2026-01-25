@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
@@ -27,7 +27,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { formatCents, calculateSavingsFromCents } from '@/lib/pricing';
 
 export default function ProductPage() {
-  const supabase = useSupabase();
   const params = useParams();
   const slug = params.slug as string;
   const { addItem } = useCart();

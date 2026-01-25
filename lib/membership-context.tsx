@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useRef } from "react";
-import { useSupabase } from "@/app/providers";
+import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 
 interface MembershipContextType {
@@ -15,7 +15,6 @@ const MembershipContext = createContext<MembershipContextType>({
 });
 
 export function MembershipProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useSupabase();
   const { user, loading: authLoading } = useAuth();
 
   const [isMember, setIsMember] = useState(false);
@@ -29,7 +28,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       console.log("[Membership Debug] Effect triggered", {
         userId: user?.id,
         authLoading,
-        supabaseExists: !!supabase,
       });
     }
 

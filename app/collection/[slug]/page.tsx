@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ProductCard } from '@/components/ProductCard';
@@ -12,7 +12,6 @@ import { ProductWithVariants, Category, Brand, Collection } from '@/lib/database
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function CollectionPage() {
-  const supabase = useSupabase();
   const params = useParams();
   const slug = params.slug as string;
 

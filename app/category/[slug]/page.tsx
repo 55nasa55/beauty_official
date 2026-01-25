@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ProductCard } from '@/components/ProductCard';
@@ -40,7 +40,6 @@ interface Product {
 }
 
 export default function CategoryPage() {
-  const supabase = useSupabase();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();

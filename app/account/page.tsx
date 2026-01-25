@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,6 @@ interface Membership {
 
 export default function AccountPage() {
   const router = useRouter();
-  const supabase = useSupabase();
   const { user, loading: authLoading } = useAuth();
   const { isMember, loading: membershipLoading } = useMembership();
   const [orders, setOrders] = useState<Order[]>([]);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSupabase } from '@/app/providers';
+import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
   Package,
@@ -22,7 +22,6 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = useSupabase();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pathname, setPathname] = useState('');
 
