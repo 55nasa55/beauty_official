@@ -48,7 +48,6 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // ✅ THE LOG YOU NEED
     console.log("USER ID FROM APP:", user?.id);
 
     let cancelled = false;
@@ -68,17 +67,24 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (DEBUG) {
-        console.log("[Membership Debug] Query result:", {
-          userId: user.id,
-          data,
-          error: error?.message || null
-        });
+      // 🔥 NEW FULL LOG
+      console.log("[Membership Debug] Query result:", {
+        userId: user.id,
+        data,
+        error,
+      });
+
+      if (cancelled) {
+        if (DEBUG) {
+          console.log("[Membership Debug] Update cancelled (component unmounted)");
+        }
+        return;
       }
 
-      if (cancelled) return;
-
       if (!data || error) {
+        if (DEBUG) {
+          console.log("[Membership Debug] No active membership found or error occurred");
+        }
         setIsMember(false);
         setLoading(false);
         hasLoadedRef.current = true;
@@ -92,9 +98,25 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
 
       const membershipActive = isActiveMembership && validPeriod;
 
+      // 🔥 NEW LOG: show final membership decision
+      console.log("[Membership Debug] Membership computed:", {
+        status: data.status,
+        current_period_end: data.current_period_end,
+        isActiveMembership,
+        validPeriod,
+        membershipActive,
+      });
+
       setIsMember(membershipActive);
       setLoading(false);
       hasLoadedRef.current = true;
+
+      if (DEBUG) {
+        console.log("[Membership Debug] Final state:", {
+          isMember: membershipActive,
+          loading: false,
+        });
+      }
     };
 
     loadMembership();
