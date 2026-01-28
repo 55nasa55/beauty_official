@@ -27,36 +27,26 @@ export async function POST(req: NextRequest) {
   );
 
   //
-  // UTILITY TO ALWAYS PRODUCE A PERIOD END DATE
+  // PERIOD CALCULATOR (YEARLY ONLY)
   //
   function computePeriodEnd(subscription: any) {
     const anchor = subscription.billing_cycle_anchor;
-
-    if (!anchor) {
-      console.error("❌ No billing_cycle_anchor returned");
-      return null;
-    }
+    if (!anchor) return null;
 
     const end = new Date(anchor * 1000);
-    end.setFullYear(end.getFullYear() + 1); // yearly only
+    end.setFullYear(end.getFullYear() + 1);
     return end.toISOString();
   }
 
   //
-  // CREATE MEMBERSHIP
+  // MEMBERSHIP SYNC
   //
-  async function createOrUpdateMembership(subscription: any) {
+  async function syncMembership(subscription: any) {
     const userId = subscription.metadata?.user_id;
-    if (!userId) {
-      console.error("❌ No user_id in metadata for subscription", subscription.id);
-      return;
-    }
+    if (!userId) return;
 
     const priceId = subscription.items?.data?.[0]?.price?.id;
-    if (!priceId) {
-      console.error("❌ No price ID found");
-      return;
-    }
+    if (!priceId) return;
 
     const { data: plan } = await supabase
       .from("membership_plans")
@@ -64,39 +54,31 @@ export async function POST(req: NextRequest) {
       .eq("stripe_price_id", priceId)
       .maybeSingle();
 
-    if (!plan) {
-      console.error("❌ No membership plan matches price:", priceId);
-      return;
-    }
+    if (!plan) return;
 
-    // ALWAYS compute period end yourself
     const currentPeriodEnd = computePeriodEnd(subscription);
-    if (!currentPeriodEnd) {
-      console.error("❌ Could not compute current_period_end");
-      return;
-    }
+    if (!currentPeriodEnd) return;
 
-    // Determine status
-    let membershipStatus = "active";
-    let endedAt = null;
+    let status = "active";
+    let endedAt: string | null = null;
 
-    if (subscription.status === "active" || subscription.status === "trialing") {
-      membershipStatus = "active";
-    } else if (subscription.status === "past_due" || subscription.status === "unpaid") {
-      membershipStatus = "past_due";
+    if (["active", "trialing"].includes(subscription.status)) {
+      status = "active";
+    } else if (["past_due", "unpaid"].includes(subscription.status)) {
+      status = "past_due";
     } else if (subscription.status === "canceled" || subscription.status === "incomplete_expired") {
       if (subscription.cancel_at_period_end) {
-        membershipStatus = "active"; // stays active until end
+        status = "active";
       } else {
-        membershipStatus = "canceled";
+        status = "canceled";
         endedAt = currentPeriodEnd;
       }
     }
 
-    const membershipData = {
+    const data = {
       user_id: userId,
       plan_id: plan.id,
-      status: membershipStatus,
+      status,
       stripe_customer_id: subscription.customer,
       stripe_subscription_id: subscription.id,
       stripe_price_id: priceId,
@@ -106,32 +88,107 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
-      .from("memberships")
-      .upsert(membershipData, { onConflict: "user_id" });
-
-    if (error) console.error("❌ Failed to upsert membership:", error);
-    else console.log("✅ Membership synced:", membershipData);
+    await supabase.from("memberships").upsert(data, { onConflict: "user_id" });
+    console.log("✅ Membership updated:", data);
   }
 
   //
-  // EVENTS
+  // SUBSCRIPTION EVENTS
   //
   if (event.type === "customer.subscription.created") {
-    await createOrUpdateMembership(event.data.object);
+    await syncMembership(event.data.object);
   }
 
   if (event.type === "customer.subscription.updated") {
-    await createOrUpdateMembership(event.data.object);
+    await syncMembership(event.data.object);
   }
 
-  // Checkout session (orders only)
+  //
+  // ORDER CREATION — Restored & Fixed
+  //
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    console.log("🧾 checkout.session.completed received. Mode:", session.mode);
+
+    // MEMBERSHIP CHECKOUT — DO NOT CREATE ORDER HERE
     if (session.mode === "subscription") {
+      console.log("➡️ Subscription checkout — skipping order creation");
       return NextResponse.json({ received: true });
     }
-    // your existing order handler stays untouched
+
+    // PRODUCT CHECKOUT — CREATE ORDER
+    try {
+      const { data: existing } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("order_number", session.id)
+        .maybeSingle();
+
+      if (existing) {
+        console.log("Order already exists");
+        return NextResponse.json({ received: true });
+      }
+
+      const full = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ["line_items.data.price.product"],
+      });
+
+      const lineItems = full.line_items?.data || [];
+
+      const orderData = {
+        order_number: full.id,
+        user_id: full.client_reference_id || null,
+        stripe_session_id: full.id,
+        stripe_payment_intent: full.payment_intent ?? null,
+        status: full.payment_status === "paid" ? "paid" : "pending",
+        payment_status: full.payment_status === "paid" ? "paid" : "pending",
+        shipping_status: "Processing",
+        tracking_number: null,
+        total_amount: (full.amount_total ?? 0) / 100,
+        tax_amount: (full.total_details?.amount_tax ?? 0) / 100,
+        currency: full.currency,
+        customer_email: full.customer_details?.email ?? null,
+        customer_name: full.customer_details?.name ?? null,
+        shipping_address: full.shipping_details?.address ?? null,
+        billing_address: full.customer_details?.address ?? null,
+        tax_details: full.total_details?.breakdown ?? null,
+      };
+
+      const { data: order, error: orderErr } = await supabase
+        .from("orders")
+        .insert(orderData)
+        .select("id")
+        .single();
+
+      if (orderErr || !order) {
+        console.error("❌ Failed to create order:", orderErr);
+        return NextResponse.json({ received: true });
+      }
+
+      const items = lineItems.map((item) => {
+        const product = item.price?.product;
+        const total = (item.amount_total ?? 0) / 100;
+        const qty = item.quantity ?? 1;
+
+        return {
+          order_id: order.id,
+          product_id: product?.metadata?.product_id ?? null,
+          variant_id: product?.metadata?.variant_id ?? null,
+          product_name: product?.name,
+          variant_name: item.description,
+          quantity: qty,
+          price: total / qty,
+        };
+      });
+
+      await supabase.from("order_items").insert(items);
+
+      console.log("✅ Order created:", order.id);
+      return NextResponse.json({ received: true });
+    } catch (err) {
+      console.error("❌ Order creation failed:", err);
+      return NextResponse.json({ received: true });
+    }
   }
 
   return NextResponse.json({ received: true });
