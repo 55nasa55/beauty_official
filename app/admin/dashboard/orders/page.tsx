@@ -76,6 +76,9 @@ export default function OrdersManagementPage() {
   const [isRefunding, setIsRefunding] = useState(false);
   const { toast } = useToast();
 
+  const formatCurrency = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
   const [page, setPage] = useState(0);
   const [pageSize] = useState(25);
   const [total, setTotal] = useState(0);
@@ -620,7 +623,7 @@ export default function OrdersManagementPage() {
                         <CreditCard className="w-4 h-4 text-gray-500" />
                         <span className="text-gray-600">Total:</span>
                         <span className="font-medium">
-                          {order.currency.toUpperCase()} {(order.total_amount / 100).toFixed(2)}
+                          {formatCurrency(Number(order.total_amount))}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -789,7 +792,7 @@ export default function OrdersManagementPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium">
-                          {selectedOrder.currency.toUpperCase()} {(item.price / 100).toFixed(2)}
+                          {formatCurrency(Number(item.price))}
                         </p>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                       </div>
@@ -803,20 +806,19 @@ export default function OrdersManagementPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
                     <span className="font-medium">
-                      {selectedOrder.currency.toUpperCase()}{' '}
-                      {((selectedOrder.total_amount - selectedOrder.tax_amount) / 100).toFixed(2)}
+                      {formatCurrency(Number(selectedOrder.total_amount) - Number(selectedOrder.tax_amount))}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax</span>
                     <span className="font-medium">
-                      {selectedOrder.currency.toUpperCase()} {(selectedOrder.tax_amount / 100).toFixed(2)}
+                      {formatCurrency(Number(selectedOrder.tax_amount))}
                     </span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total</span>
                     <span>
-                      {selectedOrder.currency.toUpperCase()} {(selectedOrder.total_amount / 100).toFixed(2)}
+                      {formatCurrency(Number(selectedOrder.total_amount))}
                     </span>
                   </div>
                 </div>

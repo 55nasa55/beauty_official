@@ -129,9 +129,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      const full = await stripe.checkout.sessions.retrieve(session.id, {
+      const retrievedSession = await stripe.checkout.sessions.retrieve(session.id, {
         expand: ["line_items.data.price.product"],
       });
+      const full = retrievedSession as any;
 
       const lineItems = full.line_items?.data || [];
 
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      const items = lineItems.map((item) => {
+      const items = lineItems.map((item: any) => {
         const product = item.price?.product;
         const total = (item.amount_total ?? 0) / 100;
         const qty = item.quantity ?? 1;
