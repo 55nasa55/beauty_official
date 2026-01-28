@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
 
   let event: Stripe.Event;
-
   try {
     event = stripe.webhooks.constructEvent(body, signature!, webhookSecret);
   } catch (err: any) {
@@ -24,49 +23,38 @@ export async function POST(req: NextRequest) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: { autoRefreshToken: false, persistSession: false },
-    }
+    { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
   //
-  //  ---------------------------------------------------------------------------
-  //  HELPERS
-  //  ---------------------------------------------------------------------------
+  // UTILITY TO ALWAYS PRODUCE A PERIOD END DATE
   //
+  function computePeriodEnd(subscription: any) {
+    const anchor = subscription.billing_cycle_anchor;
 
-  const mapSubscriptionStatus = (sub: any) => {
-    if (sub.status === "active" || sub.status === "trialing") return "active";
-    if (sub.status === "past_due" || sub.status === "unpaid") return "past_due";
-
-    // canceled cases
-    if (sub.status === "canceled" || sub.status === "incomplete_expired") {
-      if (sub.cancel_at_period_end) {
-        return "active"; // still active until period end
-      }
-      return "canceled";
+    if (!anchor) {
+      console.error("❌ No billing_cycle_anchor returned");
+      return null;
     }
 
-    return "canceled";
-  };
+    const end = new Date(anchor * 1000);
+    end.setFullYear(end.getFullYear() + 1); // yearly only
+    return end.toISOString();
+  }
 
-  const extractCurrentPeriodEnd = (sub: any) => {
-    if (!sub.current_period_end) return null;
-    return new Date(sub.current_period_end * 1000).toISOString();
-  };
-
-  const upsertMembership = async (sub: any) => {
-    const userId = sub.metadata?.user_id;
-
+  //
+  // CREATE MEMBERSHIP
+  //
+  async function createOrUpdateMembership(subscription: any) {
+    const userId = subscription.metadata?.user_id;
     if (!userId) {
-      console.error("❌ No user_id in subscription metadata");
+      console.error("❌ No user_id in metadata for subscription", subscription.id);
       return;
     }
 
-    const priceId = sub.items.data[0]?.price.id;
-
+    const priceId = subscription.items?.data?.[0]?.price?.id;
     if (!priceId) {
-      console.error("❌ No price ID found for subscription");
+      console.error("❌ No price ID found");
       return;
     }
 
@@ -77,26 +65,43 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!plan) {
-      console.error("❌ No matching membership plan for price:", priceId);
+      console.error("❌ No membership plan matches price:", priceId);
       return;
     }
 
-    const currentPeriodEndISO = extractCurrentPeriodEnd(sub);
+    // ALWAYS compute period end yourself
+    const currentPeriodEnd = computePeriodEnd(subscription);
+    if (!currentPeriodEnd) {
+      console.error("❌ Could not compute current_period_end");
+      return;
+    }
 
-    const status = mapSubscriptionStatus(sub);
+    // Determine status
+    let membershipStatus = "active";
+    let endedAt = null;
 
-    const endedAt =
-      status === "canceled" ? currentPeriodEndISO : null;
+    if (subscription.status === "active" || subscription.status === "trialing") {
+      membershipStatus = "active";
+    } else if (subscription.status === "past_due" || subscription.status === "unpaid") {
+      membershipStatus = "past_due";
+    } else if (subscription.status === "canceled" || subscription.status === "incomplete_expired") {
+      if (subscription.cancel_at_period_end) {
+        membershipStatus = "active"; // stays active until end
+      } else {
+        membershipStatus = "canceled";
+        endedAt = currentPeriodEnd;
+      }
+    }
 
     const membershipData = {
       user_id: userId,
       plan_id: plan.id,
-      status,
-      stripe_customer_id: sub.customer,
-      stripe_subscription_id: sub.id,
+      status: membershipStatus,
+      stripe_customer_id: subscription.customer,
+      stripe_subscription_id: subscription.id,
       stripe_price_id: priceId,
-      current_period_end: currentPeriodEndISO,
-      cancel_at_period_end: sub.cancel_at_period_end || false,
+      current_period_end: currentPeriodEnd,
+      cancel_at_period_end: subscription.cancel_at_period_end || false,
       ended_at: endedAt,
       updated_at: new Date().toISOString(),
     };
@@ -105,44 +110,29 @@ export async function POST(req: NextRequest) {
       .from("memberships")
       .upsert(membershipData, { onConflict: "user_id" });
 
-    if (error) {
-      console.error("❌ Failed to upsert membership:", error);
-    } else {
-      console.log("✅ Membership upserted:", membershipData);
-    }
-  };
-
-  //
-  //  ---------------------------------------------------------------------------
-  //  SUBSCRIPTION CREATED
-  //  ---------------------------------------------------------------------------
-  //
-
-  if (event.type === "customer.subscription.created") {
-    const subscription = event.data.object;
-    console.log("➡️ customer.subscription.created");
-    await upsertMembership(subscription);
-    return NextResponse.json({ received: true });
+    if (error) console.error("❌ Failed to upsert membership:", error);
+    else console.log("✅ Membership synced:", membershipData);
   }
 
   //
-  //  ---------------------------------------------------------------------------
-  //  SUBSCRIPTION UPDATED
-  //  ---------------------------------------------------------------------------
+  // EVENTS
   //
+  if (event.type === "customer.subscription.created") {
+    await createOrUpdateMembership(event.data.object);
+  }
 
   if (event.type === "customer.subscription.updated") {
-    const subscription = event.data.object;
-    console.log("➡️ customer.subscription.updated");
-    await upsertMembership(subscription);
-    return NextResponse.json({ received: true });
+    await createOrUpdateMembership(event.data.object);
   }
 
-  //
-  //  ---------------------------------------------------------------------------
-  //  OTHER EVENTS (ignored)
-  //  ---------------------------------------------------------------------------
-  //
+  // Checkout session (orders only)
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.mode === "subscription") {
+      return NextResponse.json({ received: true });
+    }
+    // your existing order handler stays untouched
+  }
 
   return NextResponse.json({ received: true });
 }
