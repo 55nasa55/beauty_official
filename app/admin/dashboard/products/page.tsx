@@ -736,7 +736,6 @@ export default function ProductsManagementPage() {
       specs: '{}',
     });
     setEditingVariant(null);
-    setSelectedProductId(null);
   };
 
   const fetchFacetsForCategory = async (categoryId: string) => {
