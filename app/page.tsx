@@ -45,9 +45,10 @@ async function getHomePageData() {
     const collections: Collection[] = Array.isArray(collectionsResult.data) ? collectionsResult.data : [];
     const banners: Banner[] = Array.isArray(bannersResult.data) ? bannersResult.data : [];
     const allProducts: ProductWithVariants[] = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
+    const visibleProducts = allProducts.filter(p => !p.archived);
 
     const allTags = new Set<string>();
-    allProducts.forEach((product) => {
+    visibleProducts.forEach((product) => {
       if (product && product.tags && Array.isArray(product.tags)) {
         product.tags.forEach((tag) => {
           if (tag && typeof tag === 'string' && tag.trim()) {
@@ -62,7 +63,7 @@ async function getHomePageData() {
     const tagCarousels = Array.from(allTags)
       .filter((tag) => !excludedTags.has(tag.toLowerCase()))
       .map((tag) => {
-        const tagProducts = allProducts.filter(
+        const tagProducts = visibleProducts.filter(
           (p) => p && p.tags && Array.isArray(p.tags) && p.tags.includes(tag)
         );
         return {
@@ -82,12 +83,12 @@ async function getHomePageData() {
 
         try {
           if (collection.product_ids && Array.isArray(collection.product_ids) && collection.product_ids.length > 0) {
-            const idProducts = allProducts.filter((p) => p && collection.product_ids.includes(p.id));
+            const idProducts = visibleProducts.filter((p) => p && collection.product_ids.includes(p.id));
             products = [...idProducts];
           }
 
           if (collection.product_tags && Array.isArray(collection.product_tags) && collection.product_tags.length > 0) {
-            const tagProducts = allProducts.filter(
+            const tagProducts = visibleProducts.filter(
               (p) =>
                 p &&
                 p.tags &&
@@ -99,6 +100,8 @@ async function getHomePageData() {
             const uniqueTagProducts = tagProducts.filter((p) => p && !existingIds.has(p.id));
             products = [...products, ...uniqueTagProducts];
           }
+
+          products = products.filter(p => !p.archived);
         } catch (err) {
           console.error(`Error processing collection ${collection.id}:`, err);
         }
