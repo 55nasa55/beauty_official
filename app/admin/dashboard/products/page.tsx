@@ -114,13 +114,21 @@ export default function ProductsManagementPage() {
     member_price_cents: '',
   });
 
-  const [variantFormData, setVariantFormData] = useState({
+  const [variantFormData, setVariantFormData] = useState<{
+    sku: string;
+    name: string;
+    price: string;
+    compare_at_price: string;
+    member_price_cents: string;
+    images: string[];
+    specs: string;
+  }>({
     sku: '',
     name: '',
     price: '',
     compare_at_price: '',
     member_price_cents: '',
-    images: '',
+    images: [],
     specs: '{}',
   });
 
@@ -363,7 +371,9 @@ export default function ProductsManagementPage() {
           price: parseFloat(variantFormData.price),
           compare_at_price: parseFloat(variantFormData.compare_at_price) || 0,
           member_price_cents: memberPriceCents,
-          images: variantFormData.images ? variantFormData.images.split(',').map(s => s.trim()) : [],
+          images: Array.isArray(variantFormData.images)
+            ? variantFormData.images
+            : [],
           specs: specs,
         };
 
@@ -386,7 +396,9 @@ export default function ProductsManagementPage() {
           price: parseFloat(variantFormData.price),
           compare_at_price: parseFloat(variantFormData.compare_at_price) || 0,
           member_price_cents: memberPriceCents,
-          images: variantFormData.images ? variantFormData.images.split(',').map(s => s.trim()) : [],
+          images: Array.isArray(variantFormData.images)
+            ? variantFormData.images
+            : [],
           specs: specs,
         };
 
@@ -606,15 +618,15 @@ export default function ProductsManagementPage() {
         uploadedUrls.push(urlData.publicUrl);
       }
 
-      const currentImages = variantFormData.images
-        ? variantFormData.images.split(',').map(s => s.trim()).filter(s => s)
+      const currentImages = Array.isArray(variantFormData.images)
+        ? variantFormData.images
         : [];
 
       const updatedImages = [...currentImages, ...uploadedUrls];
 
       setVariantFormData({
         ...variantFormData,
-        images: updatedImages.join(', '),
+        images: updatedImages,
       });
 
       toast({
@@ -644,7 +656,7 @@ export default function ProductsManagementPage() {
       price: variant.price.toString(),
       compare_at_price: variant.compare_at_price?.toString() || '',
       member_price_cents: variant.member_price_cents ? (variant.member_price_cents / 100).toFixed(2) : '',
-      images: variant.images?.join(', ') || '',
+      images: variant.images || [],
       specs: JSON.stringify(variant.specs || {}, null, 2),
     });
     setIsVariantDialogOpen(true);
@@ -720,7 +732,7 @@ export default function ProductsManagementPage() {
       price: '',
       compare_at_price: '',
       member_price_cents: '',
-      images: '',
+      images: [],
       specs: '{}',
     });
     setEditingVariant(null);
@@ -1174,8 +1186,20 @@ export default function ProductsManagementPage() {
               </div>
               <Textarea
                 id="variant-images"
-                value={variantFormData.images}
-                onChange={(e) => setVariantFormData({ ...variantFormData, images: e.target.value })}
+                value={
+                  Array.isArray(variantFormData.images)
+                    ? variantFormData.images.join(', ')
+                    : ''
+                }
+                onChange={(e) =>
+                  setVariantFormData({
+                    ...variantFormData,
+                    images: e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter((s) => s.length > 0),
+                  })
+                }
                 rows={2}
                 placeholder="Paste URLs or upload files above (comma-separated)"
               />
