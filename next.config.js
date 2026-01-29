@@ -5,7 +5,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ['gwwnscgpfurcbkqmfpbq.supabase.co'],
+    domains: ['gwwnscgpfurcbkqmfpbq.supabase.co', 'www.perfecthair.ch', 'cdn.perfecthair.ch'],
     remotePatterns: [
       {
         protocol: 'https',
