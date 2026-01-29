@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter, Archive, ArchiveRestore } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -26,6 +26,8 @@ interface Product {
   is_new: boolean;
   member_price_cents: number | null;
   created_at: string;
+  archived: boolean;
+  archived_at: string | null;
 }
 
 interface ProductVariant {
@@ -95,6 +97,7 @@ export default function ProductsManagementPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isArchiving, setIsArchiving] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -460,6 +463,102 @@ export default function ProductsManagementPage() {
         description: error.message,
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleArchive = async (productId: string) => {
+    if (!confirm('Archive this product? It will be hidden from the storefront but remain in your database.')) return;
+
+    try {
+      setIsArchiving(productId);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        toast({
+          title: 'Error',
+          description: 'No session token. Please log in again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const response = await fetch('/api/admin/products/archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ product_id: productId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to archive product');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Product archived successfully',
+      });
+
+      loadProducts();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsArchiving(null);
+    }
+  };
+
+  const handleRestore = async (productId: string) => {
+    try {
+      setIsArchiving(productId);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        toast({
+          title: 'Error',
+          description: 'No session token. Please log in again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const response = await fetch('/api/admin/products/restore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ product_id: productId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to restore product');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Product restored successfully',
+      });
+
+      loadProducts();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsArchiving(null);
     }
   };
 
@@ -1156,10 +1255,21 @@ export default function ProductsManagementPage() {
             <>
               <div className="space-y-2 mb-4">
                 {products.map((product) => (
-                  <div key={product.id} className="border rounded-lg">
+                  <div key={product.id} className={`border rounded-lg ${product.archived ? 'bg-gray-50 opacity-75' : ''}`}>
                     <div className="flex items-center justify-between p-4">
                       <div className="flex-1">
-                        <h3 className="font-medium">{product.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{product.name}</h3>
+                          {product.archived ? (
+                            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
+                              Archived
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                              Active
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{product.slug}</p>
                         {product.member_price_cents && (
                           <div className="flex items-center gap-2 mt-1">
@@ -1185,9 +1295,30 @@ export default function ProductsManagementPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEdit(product)}
+                          disabled={product.archived}
+                          title={product.archived ? 'Restore product to edit' : 'Edit product'}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
+                        {product.archived ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestore(product.id)}
+                            disabled={isArchiving === product.id}
+                          >
+                            <ArchiveRestore className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleArchive(product.id)}
+                            disabled={isArchiving === product.id}
+                          >
+                            <Archive className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="destructive"
                           size="sm"
@@ -1205,6 +1336,8 @@ export default function ProductsManagementPage() {
                           <Button
                             size="sm"
                             onClick={() => handleAddVariant(product.id)}
+                            disabled={product.archived}
+                            title={product.archived ? 'Restore product to add variants' : 'Add variant'}
                           >
                             <Plus className="w-4 h-4 mr-1" />
                             Add Variant
@@ -1260,6 +1393,8 @@ export default function ProductsManagementPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleEditVariant(variant)}
+                                      disabled={product.archived}
+                                      title={product.archived ? 'Restore product to edit variants' : 'Edit variant'}
                                     >
                                       <Edit className="w-3 h-3" />
                                     </Button>
@@ -1267,6 +1402,8 @@ export default function ProductsManagementPage() {
                                       variant="destructive"
                                       size="sm"
                                       onClick={() => handleDeleteVariant(variant.id, product.id)}
+                                      disabled={product.archived}
+                                      title={product.archived ? 'Restore product to delete variants' : 'Delete variant'}
                                     >
                                       <Trash2 className="w-3 h-3" />
                                     </Button>

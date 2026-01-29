@@ -39,13 +39,22 @@ export async function POST(req: NextRequest) {
 
     const { data: variants, error: variantsError } = await supabase
       .from('product_variants')
-      .select('id, name, price, member_price_cents, images, product_id, products(name, slug, member_price_cents)')
+      .select('id, name, price, member_price_cents, images, product_id, products(name, slug, member_price_cents, archived)')
       .in('id', variantIds);
 
     if (variantsError || !variants) {
       return NextResponse.json(
         { error: 'Failed to fetch product details' },
         { status: 500 }
+      );
+    }
+
+    // Check if any products are archived
+    const archivedProducts = variants.filter((v: any) => v.products?.archived);
+    if (archivedProducts.length > 0) {
+      return NextResponse.json(
+        { error: 'One or more products in your cart are no longer available.' },
+        { status: 400 }
       );
     }
 
