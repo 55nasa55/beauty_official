@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Database } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter, Archive, ArchiveRestore, Upload } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -98,6 +98,8 @@ export default function ProductsManagementPage() {
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isArchiving, setIsArchiving] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const variantImageInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -559,6 +561,77 @@ export default function ProductsManagementPage() {
       });
     } finally {
       setIsArchiving(null);
+    }
+  };
+
+  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingImage(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { error: dbError } = await supabase
+          .from('admin_images')
+          .insert({
+            bucket: 'product-images',
+            path: fileName,
+            bytes: file.size,
+            mime_type: file.type,
+          });
+
+        if (dbError) {
+          console.error('Failed to index image in database:', dbError);
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(urlData.publicUrl);
+      }
+
+      const currentImages = variantFormData.images
+        ? variantFormData.images.split(',').map(s => s.trim()).filter(s => s)
+        : [];
+
+      const updatedImages = [...currentImages, ...uploadedUrls];
+
+      setVariantFormData({
+        ...variantFormData,
+        images: updatedImages.join(', '),
+      });
+
+      toast({
+        title: 'Success',
+        description: `${files.length} image(s) uploaded successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to upload images',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingImage(false);
+      if (variantImageInputRef.current) {
+        variantImageInputRef.current.value = '';
+      }
     }
   };
 
@@ -1077,13 +1150,34 @@ export default function ProductsManagementPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="variant-images">Images (comma-separated URLs)</Label>
+              <Label htmlFor="variant-images">Images</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => variantImageInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="shrink-0"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isUploadingImage ? 'Uploading...' : 'Upload Files'}
+                </Button>
+                <input
+                  ref={variantImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleVariantImageUpload}
+                  className="hidden"
+                />
+              </div>
               <Textarea
                 id="variant-images"
                 value={variantFormData.images}
                 onChange={(e) => setVariantFormData({ ...variantFormData, images: e.target.value })}
                 rows={2}
-                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
+                placeholder="Paste URLs or upload files above (comma-separated)"
               />
             </div>
 
