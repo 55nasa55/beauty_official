@@ -18,16 +18,18 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
   }
 
   return (
-    <div className="mt-12 space-y-6">
+    <div className="mt-12">
       {images.map((image) => (
-        <div key={image.id} className="relative w-full">
-          <Image
-            src={image.image_url}
-            alt="Product information"
-            width={1200}
-            height={600}
-            className="w-full h-auto rounded-lg"
-          />
+        <div key={image.id} className="w-full flex justify-center py-8">
+          <div className="w-full max-w-[800px] px-4">
+            <Image
+              src={image.image_url}
+              alt=""
+              width={800}
+              height={1200}
+              className="w-full h-auto object-contain rounded-md"
+            />
+          </div>
         </div>
       ))}
     </div>
