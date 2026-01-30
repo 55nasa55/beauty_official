@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter, Archive, ArchiveRestore, Upload } from 'lucide-react';
+import { ProductInfoSectionsEditor } from '@/components/admin/products/info/ProductInfoSectionsEditor';
+import { ProductInfoImagesEditor } from '@/components/admin/products/info/ProductInfoImagesEditor';
 
 interface Product {
   id: string;
@@ -1530,6 +1532,11 @@ export default function ProductsManagementPage() {
                             ))}
                           </div>
                         )}
+
+                        <div className="mt-6 space-y-4">
+                          <ProductInfoSectionsEditor productId={product.id} />
+                          <ProductInfoImagesEditor productId={product.id} />
+                        </div>
                       </div>
                     )}
                   </div>

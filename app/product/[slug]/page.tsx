@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { formatCents, calculateSavingsFromCents } from '@/lib/pricing';
+import { ProductInfoAccordion } from '@/components/product/ProductInfoAccordion';
+import { ProductInfoImages } from '@/components/product/ProductInfoImages';
 
 export default function ProductPage() {
   const params = useParams();
@@ -41,6 +43,8 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [productInfoSections, setProductInfoSections] = useState<any[]>([]);
+  const [productInfoImages, setProductInfoImages] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -69,6 +73,24 @@ export default function ProductPage() {
 
       if (productData && productData.variants && productData.variants.length > 0) {
         setSelectedVariant(productData.variants[0]);
+      }
+
+      if (productData) {
+        const [sectionsResult, imagesResult] = await Promise.all([
+          supabase
+            .from('product_info_sections')
+            .select('*')
+            .eq('product_id', productData.id)
+            .order('order_index'),
+          supabase
+            .from('product_info_images')
+            .select('*')
+            .eq('product_id', productData.id)
+            .order('order_index'),
+        ]);
+
+        setProductInfoSections(sectionsResult.data || []);
+        setProductInfoImages(imagesResult.data || []);
       }
 
       setLoading(false);
@@ -272,6 +294,9 @@ export default function ProductPage() {
               )}
             </div>
           </div>
+
+          <ProductInfoAccordion sections={productInfoSections} />
+          <ProductInfoImages images={productInfoImages} />
         </div>
       </main>
 
