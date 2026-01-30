@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, ChevronUp, ChevronDown, Upload } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Upload, Link } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase/client';
 import Image from 'next/image';
 
@@ -22,6 +24,8 @@ interface ProductInfoImagesEditorProps {
 export function ProductInfoImagesEditor({ productId }: ProductInfoImagesEditorProps) {
   const [images, setImages] = useState<ProductInfoImage[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [addingUrl, setAddingUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -119,6 +123,48 @@ export function ProductInfoImagesEditor({ productId }: ProductInfoImagesEditorPr
     }
   };
 
+  const handleAddByUrl = async () => {
+    if (!imageUrl.trim()) {
+      toast({ title: 'Error', description: 'Image URL is required', variant: 'destructive' });
+      return;
+    }
+
+    setAddingUrl(true);
+
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        toast({ title: 'Error', description: 'Not authenticated', variant: 'destructive' });
+        setAddingUrl(false);
+        return;
+      }
+
+      const response = await fetch('/api/admin/products/info/images/add-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          product_id: productId,
+          image_url: imageUrl.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add image');
+      }
+
+      toast({ title: 'Success', description: 'Image added' });
+      setImageUrl('');
+      fetchImages();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add image by URL', variant: 'destructive' });
+    } finally {
+      setAddingUrl(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this image?')) return;
 
@@ -203,6 +249,24 @@ export function ProductInfoImagesEditor({ productId }: ProductInfoImagesEditorPr
           className="hidden"
           onChange={handleUpload}
         />
+
+        <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+          <Label className="text-sm font-medium mb-2 block">Add Image by URL</Label>
+          <div className="flex gap-2">
+            <Input
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              disabled={addingUrl}
+              className="flex-1"
+            />
+            <Button onClick={handleAddByUrl} disabled={addingUrl || !imageUrl.trim()} size="sm">
+              <Link className="w-4 h-4 mr-2" />
+              {addingUrl ? 'Adding...' : 'Add'}
+            </Button>
+          </div>
+        </div>
+
         {images.length === 0 ? (
           <p className="text-sm text-gray-500">No images yet</p>
         ) : (
