@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { maskEmail } from "@/lib/mask";
 
 export function ReviewList({ productId }: { productId: string }) {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -61,6 +62,7 @@ export function ReviewList({ productId }: { productId: string }) {
           <div key={review.id} className="border-b pb-6">
 
             <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">{maskEmail(review.user_email)}</span>
               <div className="text-yellow-500">★★★★★</div>
               <div className="text-sm text-muted-foreground">
                 {new Date(review.created_at).toLocaleDateString()}
@@ -85,7 +87,7 @@ export function ReviewList({ productId }: { productId: string }) {
             {review.review_subratings?.length > 0 && (
               <div className="mt-3 space-y-1 text-sm">
                 {review.review_subratings.map((s: any) => (
-                  <div key={s.subrating_id} className="flex justify-between">
+                  <div key={s.subrating_name} className="flex justify-between">
                     <span>{s.subrating_name}</span>
                     <span>{s.value}</span>
                   </div>
