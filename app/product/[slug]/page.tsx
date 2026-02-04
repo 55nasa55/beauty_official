@@ -29,6 +29,8 @@ import { ProductInfoAccordion } from '@/components/product/ProductInfoAccordion'
 import { ProductInfoImages } from '@/components/product/ProductInfoImages';
 import { ReviewSummary } from '@/components/reviews/ReviewSummary';
 import { ReviewList } from '@/components/reviews/ReviewList';
+import { WriteReviewButton } from '@/components/reviews/WriteReviewButton';
+import { ReviewModal } from '@/components/reviews/ReviewModal';
 
 export default function ProductPage() {
   const params = useParams();
@@ -47,6 +49,7 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [productInfoSections, setProductInfoSections] = useState<any[]>([]);
   const [productInfoImages, setProductInfoImages] = useState<any[]>([]);
+  const [openReview, setOpenReview] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -303,6 +306,16 @@ export default function ProductPage() {
           {/* -------------------- REVIEWS SECTION -------------------- */}
           <div className="mt-16">
             <ReviewSummary productId={product.id} />
+            <WriteReviewButton
+              productId={product.id}
+              onOpen={() => setOpenReview(true)}
+            />
+            <ReviewModal
+              open={openReview}
+              onClose={() => setOpenReview(false)}
+              productId={product.id}
+              variants={product.variants || []}
+            />
             <ReviewList productId={product.id} />
           </div>
         </div>
