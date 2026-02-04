@@ -27,6 +27,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { formatCents, calculateSavingsFromCents } from '@/lib/pricing';
 import { ProductInfoAccordion } from '@/components/product/ProductInfoAccordion';
 import { ProductInfoImages } from '@/components/product/ProductInfoImages';
+import { ReviewSummary } from '@/components/reviews/ReviewSummary';
+import { ReviewList } from '@/components/reviews/ReviewList';
 
 export default function ProductPage() {
   const params = useParams();
@@ -297,6 +299,12 @@ export default function ProductPage() {
 
           <ProductInfoAccordion sections={productInfoSections} />
           <ProductInfoImages images={productInfoImages} />
+
+          {/* -------------------- REVIEWS SECTION -------------------- */}
+          <div className="mt-16">
+            <ReviewSummary productId={product.id} />
+            <ReviewList productId={product.id} />
+          </div>
         </div>
       </main>
 
