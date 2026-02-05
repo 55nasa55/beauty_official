@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-function maskEmail(email: string) {
+function maskEmail(email?: string | null) {
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    return "Anonymous";
+  }
   const [user] = email.split("@");
+  if (!user) return "Anonymous";
   if (user.length <= 2) return user[0] + "*";
-  return user.slice(0, 2) + "******";
+  return user.slice(0, 2) + "*******";
 }
 
 export function ReviewList({ productId }: { productId: string }) {

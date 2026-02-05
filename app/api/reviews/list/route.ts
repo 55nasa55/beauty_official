@@ -28,6 +28,7 @@ export async function POST(req: Request) {
           created_at,
           variant_id,
           user_id,
+          users: user_id ( email ),
           review_subratings (
             id,
             subrating_id,
@@ -60,7 +61,8 @@ export async function POST(req: Request) {
       images: Array.isArray(r.images) ? r.images : [],
       review_subratings: Array.isArray(r.review_subratings)
         ? r.review_subratings
-        : []
+        : [],
+      user_email: (r as any).users?.email || null
     }));
 
     return NextResponse.json({ reviews: normalized });
