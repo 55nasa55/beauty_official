@@ -28,7 +28,7 @@ export async function POST(req: Request) {
           created_at,
           variant_id,
           user_id,
-          users: user_id ( email ),
+          users:user_id ( email ),
           review_subratings (
             id,
             subrating_id,
