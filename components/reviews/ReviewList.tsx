@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { maskEmail } from "@/lib/mask";
+
+function maskEmail(email: string) {
+  const [user] = email.split("@");
+  if (user.length <= 2) return user[0] + "*";
+  return user.slice(0, 2) + "******";
+}
 
 export function ReviewList({ productId }: { productId: string }) {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -9,6 +14,7 @@ export function ReviewList({ productId }: { productId: string }) {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subratingMap, setSubratingMap] = useState<{ [key: string]: string }>({});
 
   const loadReviews = async () => {
     setLoading(true);
@@ -20,6 +26,18 @@ export function ReviewList({ productId }: { productId: string }) {
 
     const data = await res.json();
     setReviews(data.reviews || []);
+
+    const subRes = await fetch("/api/reviews/subratings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId }),
+    });
+    const subData = await subRes.json();
+    const mapping = Object.fromEntries(
+      (subData.subratings || []).map((s: any) => [s.id, s.name])
+    );
+    setSubratingMap(mapping);
+
     setLoading(false);
   };
 
@@ -60,40 +78,42 @@ export function ReviewList({ productId }: { productId: string }) {
       <div className="mt-6 space-y-6">
         {reviews.map(review => (
           <div key={review.id} className="border-b pb-6">
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">{maskEmail(review.user_email)}</span>
-              <div className="text-yellow-500">★★★★★</div>
-              <div className="text-sm text-muted-foreground">
-                {new Date(review.created_at).toLocaleDateString()}
-              </div>
-            </div>
-
-            <p className="mt-2 text-sm whitespace-pre-line">{review.body}</p>
-
-            {review.images?.length > 0 && (
-              <div className="mt-3 flex gap-2">
-                {review.images.map((url: string, i: number) => (
-                  <img
-                    key={i}
-                    src={url}
-                    className="w-20 h-20 object-cover rounded"
-                    alt=""
-                  />
-                ))}
-              </div>
-            )}
-
-            {review.review_subratings?.length > 0 && (
-              <div className="mt-3 space-y-1 text-sm">
-                {review.review_subratings.map((s: any) => (
-                  <div key={s.subrating_name} className="flex justify-between">
-                    <span>{s.subrating_name}</span>
-                    <span>{s.value}</span>
+            <div className="flex justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{maskEmail(review.user_email)}</span>
+                  <div className="text-yellow-500">★★★★★</div>
+                  <div className="text-sm text-muted-foreground">
+                    {new Date(review.created_at).toLocaleDateString()}
                   </div>
-                ))}
+                </div>
+
+                <p className="mt-2 text-sm whitespace-pre-line">{review.body}</p>
+
+                {review.images?.length > 0 && (
+                  <div className="mt-3 flex gap-2">
+                    {review.images.map((url: string, i: number) => (
+                      <img
+                        key={i}
+                        src={url}
+                        className="w-20 h-20 object-cover rounded"
+                        alt=""
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+
+              {review.review_subratings?.length > 0 && (
+                <div className="ml-6 min-w-[140px] space-y-1 text-right">
+                  {review.review_subratings.map((s: any) => (
+                    <p key={s.subrating_id} className="text-xs text-gray-600">
+                      {subratingMap[s.subrating_id] || "—"}: {s.value}★
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>

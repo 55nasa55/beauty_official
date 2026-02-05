@@ -20,6 +20,7 @@ export function ReviewModal({
   const [body, setBody] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -60,9 +61,14 @@ export function ReviewModal({
   };
 
   const submit = async () => {
-    if (rating === 0 || !body) return;
+    if (rating === 0 || !body.trim()) {
+      setErrorMsg("Please leave a rating and review.");
+      return;
+    }
 
     setLoading(true);
+    setErrorMsg("");
+
     const uploadedUrls = await uploadImages();
 
     const res = await fetch("/api/reviews/create", {
@@ -78,9 +84,13 @@ export function ReviewModal({
       })
     });
 
+    const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      setErrorMsg(data.error || "Unable to submit review.");
+      return;
+    }
 
     onClose();
     window.location.reload();
@@ -164,6 +174,10 @@ export function ReviewModal({
             className="mt-1"
           />
         </div>
+
+        {errorMsg && (
+          <p className="text-red-500 text-sm mt-2">{errorMsg}</p>
+        )}
 
         <div className="mt-6 flex justify-end gap-3">
           <button className="px-4 py-2 bg-gray-200 rounded" onClick={onClose}>

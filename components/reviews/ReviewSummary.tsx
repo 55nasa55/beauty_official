@@ -36,14 +36,7 @@ export function ReviewSummary({ productId }: { productId: string }) {
     );
   }
 
-  if (!summary || !summary.totalReviews) {
-    return (
-      <div className="mt-6 border-t pt-6">
-        <h3 className="text-lg font-semibold">Reviews</h3>
-        <p className="text-sm text-muted-foreground mt-2">No reviews yet.</p>
-      </div>
-    );
-  }
+  if (!summary) return null;
 
   const { averageRating, totalReviews, breakdown, subratingAverages } = summary;
 
@@ -86,6 +79,10 @@ export function ReviewSummary({ productId }: { productId: string }) {
           );
         })}
       </div>
+
+      {summary.totalReviews === 0 && (
+        <p className="text-sm text-gray-500 mt-2">No reviews yet.</p>
+      )}
     </div>
   );
 }
