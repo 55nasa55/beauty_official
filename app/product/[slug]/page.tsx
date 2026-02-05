@@ -74,6 +74,15 @@ export default function ProductPage() {
       setCollections(collectionsResult.data || []);
 
       const productData = productResult.data as ProductWithVariants | null;
+
+      if (productData) {
+        productData.tags = Array.isArray(productData.tags)
+          ? productData.tags
+          : typeof (productData.tags as any) === "string"
+            ? (productData.tags as any).split(",").map((t: string) => t.trim()).filter(Boolean)
+            : [];
+      }
+
       setProduct(productData);
 
       if (productData && productData.variants && productData.variants.length > 0) {
