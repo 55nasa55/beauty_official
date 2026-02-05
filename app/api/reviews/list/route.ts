@@ -29,6 +29,7 @@ export async function POST(req: Request) {
           variant_id,
           user_id,
           review_subratings (
+            id,
             subrating_id,
             value
           )
@@ -52,7 +53,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ reviews: data });
+    // Normalize undefined/null fields
+    const normalized = (data ?? []).map(r => ({
+      ...r,
+      body: r.body ?? "",
+      images: Array.isArray(r.images) ? r.images : [],
+      review_subratings: Array.isArray(r.review_subratings)
+        ? r.review_subratings
+        : []
+    }));
+
+    return NextResponse.json({ reviews: normalized });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

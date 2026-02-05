@@ -26,8 +26,12 @@ export async function POST(req: Request) {
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", reviewId);
 
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    return NextResponse.json(
+      { error: error.message, details: error },
+      { status: 400 }
+    );
+  }
 
   return NextResponse.json({ success: true });
 }
