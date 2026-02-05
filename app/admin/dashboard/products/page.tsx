@@ -15,6 +15,7 @@ import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, Chevron
 import { ProductInfoSectionsEditor } from '@/components/admin/products/info/ProductInfoSectionsEditor';
 import { ProductInfoImagesEditor } from '@/components/admin/products/info/ProductInfoImagesEditor';
 import { ProductReviewsAdmin } from '@/components/admin/ProductReviewsAdmin';
+import { ProductSubratingsEditor } from '@/components/admin/ProductSubratingsEditor';
 
 interface Product {
   id: string;
@@ -1537,6 +1538,7 @@ export default function ProductsManagementPage() {
                         <div className="mt-6 space-y-4">
                           <ProductInfoSectionsEditor productId={product.id} />
                           <ProductInfoImagesEditor productId={product.id} />
+                          <ProductSubratingsEditor productId={product.id} />
                           <ProductReviewsAdmin productId={product.id} />
                         </div>
                       </div>
