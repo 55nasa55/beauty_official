@@ -80,9 +80,9 @@ export function ReviewList({ productId }: { productId: string }) {
       )}
 
       <div className="mt-6 space-y-6">
-        {console.log("REVIEW OBJECT:", review)}
         {reviews.map(review => (
           <div key={review.id} className="border-b pb-6">
+                {console.log("REVIEW OBJECT:", review)}
             <div className="flex justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
