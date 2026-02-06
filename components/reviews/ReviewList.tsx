@@ -56,6 +56,8 @@ export function ReviewList({ productId }: { productId: string }) {
   }, [sort, page]);
 
   const totalPages = Math.ceil(total / 10);
+  const allImages = reviews.flatMap(r => r.images || []);
+  const photoCount = allImages.length;
 
   return (
     <div className="mt-8">
@@ -95,6 +97,35 @@ export function ReviewList({ productId }: { productId: string }) {
           </button>
         ))}
       </div>
+
+      {/* PHOTO STRIP */}
+      {photoCount > 0 && (
+        <div className="mt-6 mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-medium">
+              Photos ({photoCount})
+            </p>
+
+            <a
+              href={`/product/${productId}/photos`}
+              className="text-sm text-gray-600 underline"
+            >
+              View more →
+            </a>
+          </div>
+
+          <div className="flex gap-3 overflow-x-auto no-scrollbar py-2">
+            {allImages.slice(0, 20).map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                onClick={() => setModalImage(url)}
+                className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition shrink-0"
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* LOADING */}
       {loading && (
