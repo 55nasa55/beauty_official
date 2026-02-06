@@ -16,12 +16,12 @@ export function ReviewList({ productId }: { productId: string }) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [subratingMap, setSubratingMap] = useState<{ [key: string]: string }>({});
 
   const loadReviews = async () => {
     setLoading(true);
+
     const res = await fetch("/api/reviews/list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -37,6 +37,7 @@ export function ReviewList({ productId }: { productId: string }) {
       body: JSON.stringify({ productId }),
     });
     const subData = await subRes.json();
+
     const mapping = Object.fromEntries(
       (subData.subratings || []).map((s: any) => [s.id, s.name])
     );
@@ -51,7 +52,7 @@ export function ReviewList({ productId }: { productId: string }) {
 
   return (
     <div className="mt-8">
-
+      {/* SORT TABS */}
       <div className="flex gap-3 border-b pb-3">
         {[
           { key: "newest", label: "Newest" },
@@ -71,75 +72,77 @@ export function ReviewList({ productId }: { productId: string }) {
         ))}
       </div>
 
+      {/* LOADING */}
       {loading && (
         <p className="text-sm text-muted-foreground mt-4">Loading reviews...</p>
       )}
 
+      {/* NO REVIEWS */}
       {!loading && reviews.length === 0 && (
         <p className="text-sm mt-4 text-muted-foreground">No reviews found.</p>
       )}
 
-  <div className="mt-6 space-y-6">
-  {reviews.map(review => {
-    console.log("REVIEW OBJECT:", review); // SAFE: before JSX
+      {/* REVIEW LIST */}
+      <div className="mt-6 space-y-6">
+        {reviews.map(review => {
+          console.log("REVIEW OBJECT:", review);
 
-    return (
-      <div key={review.id} className="border-b pb-6">
-        <div className="flex justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                {maskEmail(review.user_email)}
-              </span>
+          return (
+            <div key={review.id} className="border-b pb-6">
+              <div className="flex justify-between">
+                <div className="flex-1">
+                  {/* User + Rating + Date */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">
+                      {maskEmail(review.user_email)}
+                    </span>
 
-              <div className="text-yellow-500">
-                {"★★★★★".slice(0, review.rating)}
-              </div>
+                    <div className="text-yellow-500">
+                      {"★★★★★".slice(0, review.rating)}
+                    </div>
 
-              <div className="text-sm text-muted-foreground">
-                {review.created_at
-                  ? new Date(review.created_at).toLocaleDateString()
-                  : "—"}
-              </div>
-            </div>
+                    <div className="text-sm text-muted-foreground">
+                      {review.created_at
+                        ? new Date(review.created_at).toLocaleDateString()
+                        : "—"}
+                    </div>
+                  </div>
 
-            <p className="mt-2 text-sm whitespace-pre-line">
-              {review.body}
-            </p>
+                  {/* Body */}
+                  <p className="mt-2 text-sm whitespace-pre-line">{review.body}</p>
 
-            {review.images?.length > 0 && (
-              <div className="mt-3 flex gap-2">
-                {review.images.map((url: string, i: number) => (
-                  <img
-                    key={i}
-                    src={url}
-                    className="w-20 h-20 object-cover rounded"
-                    alt=""
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  })}
-</div>
-
-              {review.review_subratings?.length > 0 && (
-                <div className="ml-6 min-w-[140px] space-y-1 text-right">
-                  {review.review_subratings.map((s: any) => (
-                    <p key={s.subrating_id} className="text-xs text-gray-600">
-                      {subratingMap[s.subrating_id] || "—"}: {s.value}★
-                    </p>
-                  ))}
+                  {/* Images */}
+                  {review.images?.length > 0 && (
+                    <div className="mt-3 flex gap-2">
+                      {review.images.map((url: string, i: number) => (
+                        <img
+                          key={i}
+                          src={url}
+                          className="w-20 h-20 object-cover rounded"
+                          alt=""
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* SUBRATINGS */}
+                {review.review_subratings?.length > 0 && (
+                  <div className="ml-6 min-w-[140px] space-y-1 text-right">
+                    {review.review_subratings.map((s: any) => (
+                      <p key={s.subrating_id} className="text-xs text-gray-600">
+                        {subratingMap[s.subrating_id] || "—"}: {s.value}★
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* PAGINATION */}
       <div className="mt-6 flex justify-between">
         <button
           disabled={page <= 1}
