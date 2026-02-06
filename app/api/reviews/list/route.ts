@@ -29,9 +29,7 @@ export async function POST(req: Request) {
           product_id,
           variant_id,
           user_id,
-          users:user_id (
-            email
-          ),
+          user_email,
           review_subratings (
             id,
             subrating_id,
@@ -60,7 +58,7 @@ export async function POST(req: Request) {
     // Normalize undefined/null fields
     const safe = (data ?? []).map(r => ({
       ...r,
-      user_email: (r as any).users?.email ?? null,
+      user_email: r.user_email ?? null,
       body: r.body ?? "",
       images: Array.isArray(r.images) ? r.images : [],
       created_at: r.created_at ?? new Date().toISOString(),
