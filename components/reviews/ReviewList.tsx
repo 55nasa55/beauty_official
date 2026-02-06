@@ -21,6 +21,7 @@ export function ReviewList({ productId }: { productId: string }) {
   const [loading, setLoading] = useState(true);
   const [subratingMap, setSubratingMap] = useState<{ [key: string]: string }>({});
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
 
   const loadReviews = async () => {
     setLoading(true);
@@ -33,6 +34,7 @@ export function ReviewList({ productId }: { productId: string }) {
 
     const data = await res.json();
     setReviews(data.reviews || []);
+    setTotal(data.total || 0);
 
     const subRes = await fetch("/api/reviews/subratings", {
       method: "POST",
@@ -52,6 +54,8 @@ export function ReviewList({ productId }: { productId: string }) {
   useEffect(() => {
     loadReviews();
   }, [sort, page]);
+
+  const totalPages = Math.ceil(total / 10);
 
   return (
     <div className="mt-8">
@@ -82,7 +86,10 @@ export function ReviewList({ productId }: { productId: string }) {
             className={`text-sm ${
               sort === opt.key ? "font-semibold underline" : "text-muted-foreground"
             }`}
-            onClick={() => setSort(opt.key)}
+            onClick={() => {
+              setPage(1);
+              setSort(opt.key);
+            }}
           >
             {opt.label}
           </button>
@@ -163,7 +170,7 @@ export function ReviewList({ productId }: { productId: string }) {
       </div>
 
       {/* PAGINATION */}
-      <div className="mt-6 flex justify-between">
+      <div className="mt-6 flex items-center justify-between">
         <button
           disabled={page <= 1}
           onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -171,9 +178,15 @@ export function ReviewList({ productId }: { productId: string }) {
         >
           Previous
         </button>
+
+        <p className="text-sm text-gray-600">
+          Page {page} of {totalPages || 1}
+        </p>
+
         <button
+          disabled={page >= totalPages}
           onClick={() => setPage(p => p + 1)}
-          className="text-sm"
+          className="text-sm disabled:text-gray-400"
         >
           Next
         </button>

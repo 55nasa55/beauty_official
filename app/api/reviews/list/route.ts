@@ -17,6 +17,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing productId" }, { status: 400 });
     }
 
+    let orderBy: { column: string; asc: boolean } = { column: "created_at", asc: false };
+
+    if (sort === "newest") orderBy = { column: "created_at", asc: false };
+    if (sort === "oldest") orderBy = { column: "created_at", asc: true };
+    if (sort === "highest_rating") orderBy = { column: "rating", asc: false };
+
     let query = supabase
       .from("reviews")
       .select(
@@ -35,21 +41,21 @@ export async function POST(req: Request) {
             subrating_id,
             value
           )
-        `
+        `,
+        { count: "exact" }
       )
       .eq("product_id", productId)
       .is("deleted_at", null);
 
-    if (sort === "newest") query = query.order("created_at", { ascending: false });
-    if (sort === "oldest") query = query.order("created_at", { ascending: true });
-    if (sort === "highest_rating") query = query.order("rating", { ascending: false });
     if (sort === "photos") query = query.not("images", "is", null);
+
+    query = query.order(orderBy.column, { ascending: orderBy.asc });
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
     query = query.range(from, to);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -65,7 +71,12 @@ export async function POST(req: Request) {
       review_subratings: r.review_subratings ?? []
     }));
 
-    return NextResponse.json({ reviews: safe });
+    return NextResponse.json({
+      reviews: safe,
+      total: count,
+      page,
+      limit
+    });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
