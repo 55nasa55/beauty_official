@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ReviewModal({
   open,
   onClose,
@@ -37,39 +46,25 @@ export function ReviewModal({
     load();
   }, [open, productId]);
 
-  const uploadImages = async () => {
-    if (images.length === 0) return [];
-
-    const uploaded: string[] = [];
-
-    for (const file of images) {
-      const form = new FormData();
-      form.append("file", file);
-
-      const filename = `${crypto.randomUUID()}.${file.name.split(".").pop()}`;
-
-      const res = await fetch(
-        `/api/upload?bucket=review_images&filename=${filename}`,
-        { method: "POST", body: form }
-      );
-
-      const url = await res.text();
-      uploaded.push(url);
-    }
-
-    return uploaded;
-  };
-
   const submit = async () => {
     if (rating === 0 || !body.trim()) {
       setErrorMsg("Please leave a rating and review.");
       return;
     }
 
+    if (images.length > 3) {
+      setErrorMsg("Max 3 images allowed");
+      return;
+    }
+
     setLoading(true);
     setErrorMsg("");
 
-    const uploadedUrls = await uploadImages();
+    const base64Images = [];
+    for (const img of images) {
+      const encoded = await fileToBase64(img);
+      base64Images.push(encoded);
+    }
 
     const res = await fetch("/api/reviews/create", {
       method: "POST",
@@ -79,7 +74,7 @@ export function ReviewModal({
         variantId,
         rating,
         body,
-        images: uploadedUrls,
+        images: base64Images,
         subratings: subValues
       })
     });
