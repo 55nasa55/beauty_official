@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Star } from "./Star";
 import { ImageModal } from "./ImageModal";
+import { PhotoGalleryModal } from "./PhotoGalleryModal";
 
 function maskEmail(email?: string | null) {
   if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -22,6 +23,7 @@ export function ReviewList({ productId }: { productId: string }) {
   const [subratingMap, setSubratingMap] = useState<{ [key: string]: string }>({});
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   const loadReviews = async () => {
     setLoading(true);
@@ -106,12 +108,12 @@ export function ReviewList({ productId }: { productId: string }) {
               Photos ({photoCount})
             </p>
 
-            <a
-              href={`/product/${productId}/photos`}
+            <button
               className="text-sm text-gray-600 underline"
+              onClick={() => setPhotoModalOpen(true)}
             >
               View more →
-            </a>
+            </button>
           </div>
 
           <div className="flex gap-3 overflow-x-auto no-scrollbar py-2">
@@ -227,6 +229,13 @@ export function ReviewList({ productId }: { productId: string }) {
       {modalImage && (
         <ImageModal url={modalImage} onClose={() => setModalImage(null)} />
       )}
+
+      {/* PHOTO GALLERY MODAL */}
+      <PhotoGalleryModal
+        open={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        photos={allImages}
+      />
     </div>
   );
 }
