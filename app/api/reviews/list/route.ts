@@ -60,10 +60,10 @@ export async function POST(req: Request) {
     // Normalize undefined/null fields
     const safe = (data ?? []).map(r => ({
       ...r,
+      user_email: (r as any).users?.email ?? null,
       body: r.body ?? "",
       images: Array.isArray(r.images) ? r.images : [],
       created_at: r.created_at ?? new Date().toISOString(),
-      users: r.users ?? { email: null },
       review_subratings: r.review_subratings ?? []
     }));
 
