@@ -79,35 +79,52 @@ export function ReviewList({ productId }: { productId: string }) {
         <p className="text-sm mt-4 text-muted-foreground">No reviews found.</p>
       )}
 
-      <div className="mt-6 space-y-6">
-        {reviews.map(review => (
-          <div key={review.id} className="border-b pb-6">
-                {console.log("REVIEW OBJECT:", review)}
-            <div className="flex justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{maskEmail(review.user_email)}</span>
-                  <div className="text-yellow-500">★★★★★</div>
-<div className="text-sm text-muted-foreground">
-  {review.created_at ? new Date(review.created_at).toLocaleDateString() : "—"}
-</div>
-                </div>
+  <div className="mt-6 space-y-6">
+  {reviews.map(review => {
+    console.log("REVIEW OBJECT:", review); // SAFE: before JSX
 
-                <p className="mt-2 text-sm whitespace-pre-line">{review.body}</p>
+    return (
+      <div key={review.id} className="border-b pb-6">
+        <div className="flex justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">
+                {maskEmail(review.user_email)}
+              </span>
 
-                {review.images?.length > 0 && (
-                  <div className="mt-3 flex gap-2">
-                    {review.images.map((url: string, i: number) => (
-                      <img
-                        key={i}
-                        src={url}
-                        className="w-20 h-20 object-cover rounded"
-                        alt=""
-                      />
-                    ))}
-                  </div>
-                )}
+              <div className="text-yellow-500">
+                {"★★★★★".slice(0, review.rating)}
               </div>
+
+              <div className="text-sm text-muted-foreground">
+                {review.created_at
+                  ? new Date(review.created_at).toLocaleDateString()
+                  : "—"}
+              </div>
+            </div>
+
+            <p className="mt-2 text-sm whitespace-pre-line">
+              {review.body}
+            </p>
+
+            {review.images?.length > 0 && (
+              <div className="mt-3 flex gap-2">
+                {review.images.map((url: string, i: number) => (
+                  <img
+                    key={i}
+                    src={url}
+                    className="w-20 h-20 object-cover rounded"
+                    alt=""
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>
 
               {review.review_subratings?.length > 0 && (
                 <div className="ml-6 min-w-[140px] space-y-1 text-right">
