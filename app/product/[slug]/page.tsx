@@ -208,6 +208,15 @@ export default function ProductPage() {
 
               <div>
                 <h1 className="text-3xl font-light tracking-wide mb-3">{product.name}</h1>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById("reviews-section");
+                    el?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="underline text-sm mb-3 text-gray-600 hover:text-gray-900"
+                >
+                  See all reviews
+                </button>
                 <div className="flex items-center gap-3">
                   {!membershipLoading && isMember && selectedVariant.member_price_cents ? (
                     <>
@@ -313,7 +322,7 @@ export default function ProductPage() {
           <ProductInfoImages images={productInfoImages} />
 
           {/* -------------------- REVIEWS SECTION -------------------- */}
-          <div className="mt-16">
+          <div id="reviews-section" className="mt-16">
             <ReviewSummary productId={product.id} />
             <WriteReviewButton
               productId={product.id}

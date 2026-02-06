@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Star } from "./Star";
+import { ImageModal } from "./ImageModal";
 
 function maskEmail(email?: string | null) {
   if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -18,6 +20,7 @@ export function ReviewList({ productId }: { productId: string }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [subratingMap, setSubratingMap] = useState<{ [key: string]: string }>({});
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   const loadReviews = async () => {
     setLoading(true);
@@ -52,6 +55,20 @@ export function ReviewList({ productId }: { productId: string }) {
 
   return (
     <div className="mt-8">
+      {/* REVIEW SUMMARY HEADER */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex">
+          {[1,2,3,4,5].map(n => (
+            <Star key={n} filled={n <= (reviews.length ?
+              Math.round(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length)
+            : 0)} />
+          ))}
+        </div>
+        <p className="text-sm text-gray-600">
+          {reviews.length} review{reviews.length === 1 ? "" : "s"}
+        </p>
+      </div>
+
       {/* SORT TABS */}
       <div className="flex gap-3 border-b pb-3">
         {[
@@ -83,7 +100,7 @@ export function ReviewList({ productId }: { productId: string }) {
       )}
 
       {/* REVIEW LIST */}
-      <div className="mt-6 space-y-6">
+      <div className="mt-8 space-y-10">
         {reviews.map(review => {
           console.log("REVIEW OBJECT:", review);
 
@@ -93,17 +110,19 @@ export function ReviewList({ productId }: { productId: string }) {
                 <div className="flex-1">
                   {/* User + Rating + Date */}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm font-medium text-gray-700">
                       {maskEmail(review.user_email)}
                     </span>
 
-                    <div className="text-yellow-500">
-                      {"★★★★★".slice(0, review.rating)}
+                    <div className="flex">
+                      {[1,2,3,4,5].map(n => (
+                        <Star key={n} filled={n <= review.rating} />
+                      ))}
                     </div>
 
                     <div className="text-sm text-muted-foreground">
                       {review.created_at
-                        ? new Date(review.created_at).toLocaleDateString()
+                        ? new Date(review.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })
                         : "—"}
                     </div>
                   </div>
@@ -118,7 +137,8 @@ export function ReviewList({ productId }: { productId: string }) {
                         <img
                           key={i}
                           src={url}
-                          className="w-20 h-20 object-cover rounded"
+                          onClick={() => setModalImage(url)}
+                          className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 transition"
                           alt=""
                         />
                       ))}
@@ -158,6 +178,11 @@ export function ReviewList({ productId }: { productId: string }) {
           Next
         </button>
       </div>
+
+      {/* IMAGE MODAL */}
+      {modalImage && (
+        <ImageModal url={modalImage} onClose={() => setModalImage(null)} />
+      )}
     </div>
   );
 }
