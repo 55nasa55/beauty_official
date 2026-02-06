@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       variantId,
       rating,
       body,
-      images,
+      images = [],
       subratings
     } = await req.json();
 
@@ -26,10 +26,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    if (images && images.length > 3) {
+    if (images.length > 3) {
       return NextResponse.json({ error: "Max 3 images allowed" }, { status: 400 });
     }
 
+    // ───────────────────────────────────────────────
+    // 1. Upload images to Supabase Storage
+    // ───────────────────────────────────────────────
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+
+      // EXPECTS base64 string: "data:image/png;base64,...."
+      const matches = img.match(/^data:(.*);base64,(.*)$/);
+      if (!matches) continue;
+
+      const contentType = matches[1];
+      const base64 = matches[2];
+      const buffer = Buffer.from(base64, "base64");
+
+      const filePath = `${user.id}/${Date.now()}_${i}.png`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("review-images")
+        .upload(filePath, buffer, {
+          contentType,
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error("UPLOAD ERROR:", uploadError);
+        continue;
+      }
+
+      const { data } = supabase.storage
+        .from("review-images")
+        .getPublicUrl(filePath);
+
+      uploadedUrls.push(data.publicUrl);
+    }
+
+    // ───────────────────────────────────────────────
+    // 2. Create review with uploaded image URLs
+    // ───────────────────────────────────────────────
     const { data: review, error: reviewError } = await supabase
       .from("reviews")
       .insert({
@@ -38,7 +78,7 @@ export async function POST(req: Request) {
         user_id: user.id,
         rating,
         body,
-        images: images ?? []
+        images: uploadedUrls
       })
       .select()
       .single();
@@ -47,6 +87,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: reviewError.message }, { status: 400 });
     }
 
+    // ───────────────────────────────────────────────
+    // 3. Insert subratings
+    // ───────────────────────────────────────────────
     if (subratings && Object.keys(subratings).length > 0) {
       const rows = Object.entries(subratings).map(([subId, value]) => ({
         review_id: review.id,
@@ -65,6 +108,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, review });
   } catch (err) {
+    console.error("SERVER ERROR", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
