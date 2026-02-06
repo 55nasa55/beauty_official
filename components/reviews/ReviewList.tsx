@@ -87,9 +87,9 @@ export function ReviewList({ productId }: { productId: string }) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500">{maskEmail(review.user_email)}</span>
                   <div className="text-yellow-500">★★★★★</div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(review.created_at).toLocaleDateString()}
-                  </div>
+<div className="text-sm text-muted-foreground">
+  {review.created_at ? new Date(review.created_at).toLocaleDateString() : "—"}
+</div>
                 </div>
 
                 <p className="mt-2 text-sm whitespace-pre-line">{review.body}</p>
