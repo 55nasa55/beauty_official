@@ -26,9 +26,12 @@ export async function POST(req: Request) {
           body,
           images,
           created_at,
+          product_id,
           variant_id,
           user_id,
-          users:user_id ( email ),
+          users:user_id (
+            email
+          ),
           review_subratings (
             id,
             subrating_id,
@@ -55,17 +58,16 @@ export async function POST(req: Request) {
     }
 
     // Normalize undefined/null fields
-    const normalized = (data ?? []).map(r => ({
+    const safe = (data ?? []).map(r => ({
       ...r,
       body: r.body ?? "",
       images: Array.isArray(r.images) ? r.images : [],
-      review_subratings: Array.isArray(r.review_subratings)
-        ? r.review_subratings
-        : [],
-      user_email: (r as any).users?.email || null
+      created_at: r.created_at ?? new Date().toISOString(),
+      users: r.users ?? { email: null },
+      review_subratings: r.review_subratings ?? []
     }));
 
-    return NextResponse.json({ reviews: normalized });
+    return NextResponse.json({ reviews: safe });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
