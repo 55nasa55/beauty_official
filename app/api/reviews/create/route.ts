@@ -73,12 +73,12 @@ export async function POST(req: Request) {
     // ───────────────────────────────────────────────
     // 2. CHECK IF USER PURCHASED THIS PRODUCT
     // ───────────────────────────────────────────────
-    const { data: orders, error: orderCheckError } = await supabase
-      .from("order_items")
-      .select("id")
-      .eq("product_id", productId)
-      .eq("user_id", user.id)
-      .limit(1);
+const { data: orders, error: orderCheckError } = await supabase
+  .from("order_items")
+  .select("id, orders!inner(user_id)")
+  .eq("product_id", productId)
+  .eq("orders.user_id", user.id)
+  .limit(1);
 
     if (orderCheckError) {
       return NextResponse.json({ error: "Server error" }, { status: 500 });
