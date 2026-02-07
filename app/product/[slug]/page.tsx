@@ -7,12 +7,14 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { supabasePublic } from '@/lib/supabase/public';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { VariantSelector } from '@/components/VariantSelector';
+import { ProductCard } from '@/components/ProductCard';
 import {
   ProductWithVariants,
   Category,
@@ -50,6 +52,7 @@ export default function ProductPage() {
   const [productInfoSections, setProductInfoSections] = useState<any[]>([]);
   const [productInfoImages, setProductInfoImages] = useState<any[]>([]);
   const [openReview, setOpenReview] = useState(false);
+  const [suggestedProducts, setSuggestedProducts] = useState<ProductWithVariants[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -90,7 +93,7 @@ export default function ProductPage() {
       }
 
       if (productData) {
-        const [sectionsResult, imagesResult] = await Promise.all([
+        const [sectionsResult, imagesResult, suggestedResult] = await Promise.all([
           supabase
             .from('product_info_sections')
             .select('*')
@@ -101,10 +104,20 @@ export default function ProductPage() {
             .select('*')
             .eq('product_id', productData.id)
             .order('order_index'),
+          productData.brand_id
+            ? supabasePublic
+                .from('products')
+                .select('*, brand:brands(*), variants:product_variants(*)')
+                .eq('brand_id', productData.brand_id)
+                .neq('id', productData.id)
+                .order('created_at', { ascending: false })
+                .limit(4)
+            : Promise.resolve({ data: null }),
         ]);
 
         setProductInfoSections(sectionsResult.data || []);
         setProductInfoImages(imagesResult.data || []);
+        setSuggestedProducts(suggestedResult.data || []);
       }
 
       setLoading(false);
@@ -336,6 +349,19 @@ export default function ProductPage() {
             />
             <ReviewList productId={product.id} />
           </div>
+
+          {/* -------------------- SUGGESTED PRODUCTS SECTION -------------------- */}
+          {suggestedProducts.length > 0 && (
+            <div className="mt-16">
+              <h2 className="text-2xl font-light mb-6">You May Also Like</h2>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {suggestedProducts.map((prod) => (
+                  <ProductCard key={prod.id} product={prod} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
