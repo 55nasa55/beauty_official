@@ -74,18 +74,19 @@ export function ReviewModal({
       base64Images.push(encoded);
     }
 
-    const res = await fetch("/api/reviews/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productId,
-        variantId,
-        rating,
-        body,
-        images: base64Images,
-        subratings: subValues
-      })
-    });
+const res = await fetch("/api/reviews/create", {
+  method: "POST",
+  credentials: "include",   //  🔥 REQUIRED 🔥
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    productId,
+    variantId,
+    rating,
+    body,
+    images: base64Images,
+    subratings: subValues
+  })
+});
 
     const data = await res.json();
     setLoading(false);
