@@ -24,7 +24,7 @@ export function ProductInfoAccordion({ sections }: ProductInfoAccordionProps) {
   }
 
   return (
-    <div className="mt-12">
+    <div className="mt-12 mb-0 pb-0">
       <Accordion type="single" collapsible className="w-full">
         {sections.map((section, index) => (
           <AccordionItem key={section.id} value={`item-${index}`}>
