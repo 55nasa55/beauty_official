@@ -10,7 +10,10 @@ export async function POST(req: Request) {
     const user = userRes.data.user;
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Please sign in to leave a review." },
+        { status: 401 }
+      );
     }
 
     const {

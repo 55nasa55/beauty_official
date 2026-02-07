@@ -91,7 +91,11 @@ export function ReviewModal({
     setLoading(false);
 
     if (!res.ok) {
-      setErrorMsg(data.error || "Unable to submit review.");
+      if (data?.error) {
+        setErrorMsg(data.error);  // Use server-provided friendly message
+      } else {
+        setErrorMsg("We could not submit your review. Please try again.");
+      }
       return;
     }
 
