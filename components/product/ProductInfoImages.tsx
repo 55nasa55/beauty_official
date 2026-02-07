@@ -33,14 +33,14 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
 return (
   <div className="mt-12">
     {visibleImages.map((image) => (
-      <div key={image.id} className="mb-4">
+      <div key={image.id}>
         <div className="mx-auto max-w-[800px]"> 
           <Image
             src={image.image_url}
             alt=""
             width={800}
             height={1200}
-            className="w-full h-auto object-contain rounded-md"
+            className="block w-full h-auto object-contain rounded-md"
           />
         </div>
       </div>
