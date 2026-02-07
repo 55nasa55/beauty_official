@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
     const cookieStore = cookies();
     const supabase = createSupabaseServerClient(cookieStore);
+    const supabaseAdmin = createSupabaseServiceRoleClient();
     const userRes = await supabase.auth.getUser();
     const user = userRes.data.user;
 
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     // ───────────────────────────────────────────────
     // 2. CHECK IF USER PURCHASED THIS PRODUCT
     // ───────────────────────────────────────────────
-const { data: orders, error: orderCheckError } = await supabase
+const { data: orders, error: orderCheckError } = await supabaseAdmin
   .from("order_items")
   .select("id, orders!inner(user_id)")
   .eq("product_id", productId)
