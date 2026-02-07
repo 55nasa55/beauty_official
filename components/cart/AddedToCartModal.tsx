@@ -22,6 +22,13 @@ export function AddedToCartModal() {
 
   if (!lastAddedItem) return null;
 
+  // Find the actual item in cart to get correct quantity
+  const actualCartItem = items.find(
+    item => item.productName === lastAddedItem.productName &&
+            item.variantName === lastAddedItem.variantName
+  );
+  const actualQuantity = actualCartItem?.quantity || lastAddedItem.quantity;
+
   const handleCheckout = async () => {
     setIsLoading(true);
 
@@ -95,10 +102,10 @@ export function AddedToCartModal() {
             )}
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-600">
-                Qty: {lastAddedItem.quantity}
+                Qty: {actualQuantity}
               </p>
               <p className="font-semibold text-sm text-gray-900">
-                ${lastAddedItem.price.toFixed(2)}
+                ${(lastAddedItem.price * actualQuantity).toFixed(2)}
               </p>
             </div>
           </div>

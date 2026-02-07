@@ -112,7 +112,7 @@ export function MiniCart() {
                       {item.productName}
                     </Link>
                     <p className="text-xs text-gray-500 mt-1">{item.variantName}</p>
-                    <p className="text-sm font-medium mt-1">${item.price.toFixed(2)}</p>
+                    <p className="text-sm font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
 
                     <div className="flex items-center gap-2 mt-2">
                       <button
