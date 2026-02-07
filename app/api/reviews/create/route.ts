@@ -68,7 +68,28 @@ export async function POST(req: Request) {
     }
 
     // ───────────────────────────────────────────────
-    // 2. Create review with uploaded image URLs
+    // 2. CHECK IF USER PURCHASED THIS PRODUCT
+    // ───────────────────────────────────────────────
+    const { data: orders, error: orderCheckError } = await supabase
+      .from("order_items")
+      .select("id")
+      .eq("product_id", productId)
+      .eq("user_id", user.id)
+      .limit(1);
+
+    if (orderCheckError) {
+      return NextResponse.json({ error: "Server error" }, { status: 500 });
+    }
+
+    if (!orders || orders.length === 0) {
+      return NextResponse.json(
+        { error: "You must purchase this item before leaving a review." },
+        { status: 403 }
+      );
+    }
+
+    // ───────────────────────────────────────────────
+    // 3. Create review with uploaded image URLs
     // ───────────────────────────────────────────────
     const { data: review, error: reviewError } = await supabase
       .from("reviews")
@@ -88,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     // ───────────────────────────────────────────────
-    // 3. Insert subratings
+    // 4. Insert subratings
     // ───────────────────────────────────────────────
     if (subratings && Object.keys(subratings).length > 0) {
       const rows = Object.entries(subratings).map(([subId, value]) => ({

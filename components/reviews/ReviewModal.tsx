@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,6 +23,7 @@ export function ReviewModal({
   productId: string;
   variants: any[];
 }) {
+  const { user } = useAuth();
   const [rating, setRating] = useState(0);
   const [subratings, setSubratings] = useState<any[]>([]);
   const [subValues, setSubValues] = useState<{ [key: string]: number }>({});
@@ -47,6 +49,12 @@ export function ReviewModal({
   }, [open, productId]);
 
   const submit = async () => {
+    // If not logged in, redirect to login
+    if (!user) {
+      window.location.href = "/login?redirect_back=1";
+      return;
+    }
+
     if (rating === 0 || !body.trim()) {
       setErrorMsg("Please leave a rating and review.");
       return;
