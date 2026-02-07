@@ -47,36 +47,6 @@ async function getHomePageData() {
     const allProducts: ProductWithVariants[] = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
     const visibleProducts = allProducts.filter(p => !p.archived);
 
-    const allTags = new Set<string>();
-    visibleProducts.forEach((product) => {
-      if (product && product.tags && Array.isArray(product.tags)) {
-        product.tags.forEach((tag) => {
-          if (tag && typeof tag === 'string' && tag.trim()) {
-            allTags.add(tag);
-          }
-        });
-      }
-    });
-
-    const excludedTags = new Set(['featured', 'new', 'best_seller']);
-
-    const tagCarousels = Array.from(allTags)
-      .filter((tag) => !excludedTags.has(tag.toLowerCase()))
-      .map((tag) => {
-        const tagProducts = visibleProducts.filter(
-          (p) => p && p.tags && Array.isArray(p.tags) && p.tags.includes(tag)
-        );
-        return {
-          tag,
-          slug: tag.toLowerCase().replace(/_/g, '-'),
-          title: tag
-            .split('_')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' '),
-          products: tagProducts,
-        };
-      });
-
     const collectionProducts = await Promise.all(
       collections.map(async (collection) => {
         let products: ProductWithVariants[] = [];
@@ -118,7 +88,6 @@ async function getHomePageData() {
       brands,
       collections,
       banners,
-      tagCarousels: tagCarousels.filter((tc) => tc && tc.products && tc.products.length > 0),
       collectionProducts: collectionProducts.filter((cp) => cp && cp.products && cp.products.length > 0),
     };
   } catch (error) {
@@ -129,7 +98,6 @@ async function getHomePageData() {
       brands: [],
       collections: [],
       banners: [],
-      tagCarousels: [],
       collectionProducts: [],
     };
   }
@@ -141,7 +109,6 @@ export default async function Home() {
     brands,
     collections,
     banners,
-    tagCarousels,
     collectionProducts,
   } = await getHomePageData();
 
@@ -158,10 +125,6 @@ export default async function Home() {
 
         <div className="container mx-auto px-4 py-8">
           <div className="space-y-16">
-            {tagCarousels.map(({ tag, slug, title, products }) => (
-              <ProductCarousel key={tag} title={title} products={products} viewMoreSlug={slug} />
-            ))}
-
             {collectionProducts.map(({ collection, products }) => (
               <ProductCarousel
                 key={collection.id}
@@ -171,7 +134,7 @@ export default async function Home() {
               />
             ))}
 
-            {tagCarousels.length === 0 && collectionProducts.length === 0 && (
+            {collectionProducts.length === 0 && (
               <div className="text-center py-16">
                 <p className="text-xl text-gray-500 font-light">
                   No products available at the moment.
