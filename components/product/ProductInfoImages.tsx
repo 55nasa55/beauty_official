@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 
 interface ProductInfoImage {
@@ -17,11 +18,27 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
     return null;
   }
 
+  const INITIAL_COUNT = 1.5;      // first 1.5 images
+  const LOAD_MORE_COUNT = 3;      // load 3 more per click
+
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
+
+  const visibleImages = images.slice(0, Math.ceil(visibleCount));
+
+  const canLoadMore = visibleCount < images.length;
+
+  const loadMore = () => {
+    setVisibleCount((prev) => prev + LOAD_MORE_COUNT);
+  };
+
   return (
     <div className="mt-12">
-      {images.map((image) => (
-        <div key={image.id} className="w-full flex justify-center py-8">
-          <div className="w-full max-w-[800px] px-4">
+      {visibleImages.map((image) => (
+        <div
+          key={image.id}
+          className="w-full flex justify-center mb-6"
+        >
+          <div className="w-full max-w-[800px]">
             <Image
               src={image.image_url}
               alt=""
@@ -32,6 +49,17 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
           </div>
         </div>
       ))}
+
+      {canLoadMore && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={loadMore}
+            className="px-4 py-2 bg-black text-white rounded"
+          >
+            Show More
+          </button>
+        </div>
+      )}
     </div>
   );
 }
