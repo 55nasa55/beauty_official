@@ -30,13 +30,11 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
     setVisibleCount((prev) => prev + LOAD_MORE_COUNT);
   };
 
-  return (
-    <div className="mt-12">
-      {visibleImages.map((image) => (
-        <div
-          key={image.id}
-          className="mb-4" // clean spacing, no flex/padding
-        >
+return (
+  <div className="mt-12">
+    {visibleImages.map((image) => (
+      <div key={image.id} className="mb-4">
+        <div className="mx-auto max-w-[800px]"> 
           <Image
             src={image.image_url}
             alt=""
@@ -45,18 +43,19 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
             className="w-full h-auto object-contain rounded-md"
           />
         </div>
-      ))}
+      </div>
+    ))}
 
-      {canLoadMore && (
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={loadMore}
-            className="px-4 py-2 bg-black text-white rounded"
-          >
-            Show More
-          </button>
-        </div>
-      )}
-    </div>
-  );
+    {canLoadMore && (
+      <div className="flex justify-center mt-4">
+        <button
+          onClick={loadMore}
+          className="px-4 py-2 bg-black text-white rounded"
+        >
+          Show More
+        </button>
+      </div>
+    )}
+  </div>
+);
 }
