@@ -23,7 +23,13 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
 
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
 
-  const visibleImages = images.slice(0, Math.ceil(visibleCount));
+  let visibleImages;
+  if (visibleCount === INITIAL_COUNT) {
+    // Show exactly 2 images in the array, but visually crop the second
+    visibleImages = images.slice(0, 2);
+  } else {
+    visibleImages = images.slice(0, Math.ceil(visibleCount));
+  }
   const canLoadMore = visibleCount < images.length;
 
   const loadMore = () => {
@@ -32,19 +38,36 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
 
 return (
   <div className="mt-12">
-    {visibleImages.map((image) => (
-      <div key={image.id}>
-        <div className="mx-auto max-w-[800px]"> 
-          <Image
-            src={image.image_url}
-            alt=""
-            width={800}
-            height={1200}
-            className="block w-full h-auto object-contain rounded-md"
-          />
+    {visibleImages.map((image, index) => {
+      const isSecondImageAndInitial =
+        visibleCount === INITIAL_COUNT && index === 1;
+
+      return (
+        <div key={image.id}>
+          <div className="mx-auto max-w-[800px]">
+            {isSecondImageAndInitial ? (
+              <div className="overflow-hidden max-h-[400px]">
+                <Image
+                  src={image.image_url}
+                  alt=""
+                  width={800}
+                  height={1200}
+                  className="block w-full h-auto object-contain rounded-md"
+                />
+              </div>
+            ) : (
+              <Image
+                src={image.image_url}
+                alt=""
+                width={800}
+                height={1200}
+                className="block w-full h-auto object-contain rounded-md"
+              />
+            )}
+          </div>
         </div>
-      </div>
-    ))}
+      );
+    })}
 
     {canLoadMore && (
       <div className="flex justify-center mt-4">
