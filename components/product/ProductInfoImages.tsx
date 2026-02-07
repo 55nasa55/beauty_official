@@ -24,7 +24,6 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
 
   const visibleImages = images.slice(0, Math.ceil(visibleCount));
-
   const canLoadMore = visibleCount < images.length;
 
   const loadMore = () => {
@@ -36,17 +35,15 @@ export function ProductInfoImages({ images }: ProductInfoImagesProps) {
       {visibleImages.map((image) => (
         <div
           key={image.id}
-          className="w-full flex justify-center mb-6"
+          className="mb-4" // clean spacing, no flex/padding
         >
-          <div className="w-full max-w-[800px]">
-            <Image
-              src={image.image_url}
-              alt=""
-              width={800}
-              height={1200}
-              className="w-full h-auto object-contain rounded-md"
-            />
-          </div>
+          <Image
+            src={image.image_url}
+            alt=""
+            width={800}
+            height={1200}
+            className="w-full h-auto object-contain rounded-md"
+          />
         </div>
       ))}
 
