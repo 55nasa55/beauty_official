@@ -37,7 +37,7 @@ import { ReviewModal } from '@/components/reviews/ReviewModal';
 export default function ProductPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { addItem } = useCart();
+  const { addItem, updateQuantity, items } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
   const { isMember, loading: membershipLoading } = useMembership();
@@ -54,6 +54,7 @@ export default function ProductPage() {
   const [openReview, setOpenReview] = useState(false);
   const [suggestedProducts, setSuggestedProducts] = useState<ProductWithVariants[]>([]);
   const [alsoBoughtProducts, setAlsoBoughtProducts] = useState<ProductWithVariants[]>([]);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     async function fetchData() {
@@ -199,6 +200,9 @@ export default function ProductPage() {
     const memberPrice = selectedVariant.member_price_cents ? selectedVariant.member_price_cents / 100 : null;
     const finalPrice = !membershipLoading && isMember && memberPrice ? memberPrice : selectedVariant.price;
 
+    const existingItem = items.find(item => item.variantId === selectedVariant.id);
+    const currentQuantity = existingItem ? existingItem.quantity : 0;
+
     addItem({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -208,6 +212,10 @@ export default function ProductPage() {
       price: finalPrice,
       image: selectedVariant.images[0] || '',
     });
+
+    if (quantity > 1 || existingItem) {
+      updateQuantity(selectedVariant.id, currentQuantity + quantity);
+    }
 
     toast({
       title: 'Added to cart',
@@ -350,6 +358,35 @@ export default function ProductPage() {
                 selectedVariant={selectedVariant}
                 onVariantChange={handleVariantChange}
               />
+
+              <div className="flex items-center gap-3 mb-4">
+                <label className="text-sm text-gray-600">Quantity:</label>
+
+                <div className="flex items-center border rounded-md">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="px-3 py-1 text-lg"
+                  >
+                    −
+                  </button>
+
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) =>
+                      setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                    }
+                    className="w-12 text-center border-l border-r"
+                  />
+
+                  <button
+                    onClick={() => setQuantity(q => q + 1)}
+                    className="px-3 py-1 text-lg"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
               <Button
                 className="w-full h-12 text-base"
