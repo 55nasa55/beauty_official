@@ -4,12 +4,15 @@ import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/l
 
 export async function POST(req: Request) {
   try {
+    console.log(">>> /api/reviews/create called");
     const cookieStore = cookies();
     const supabase = createSupabaseServerClient(cookieStore);
     const admin = createSupabaseServiceRoleClient();
 
     const userRes = await supabase.auth.getUser();
     const user = userRes.data.user;
+
+    console.log("USER:", user);
 
     if (!user) {
       return NextResponse.json(
@@ -32,6 +35,8 @@ export async function POST(req: Request) {
     }
 
     const uploadedUrls: string[] = [];
+
+    console.log("IMAGE COUNT:", images.length);
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
@@ -61,12 +66,17 @@ export async function POST(req: Request) {
       uploadedUrls.push(data.publicUrl);
     }
 
-    const { data: orders } = await admin
+    console.log(">>> CHECKING PURCHASE for product:", productId, "user:", user.id);
+
+    const { data: orders, error: orderCheckError } = await admin
       .from("order_items")
-      .select("id, orders!inner(user_id)")
+      .select("id, product_id, orders!inner(user_id)")
       .eq("product_id", productId)
       .eq("orders.user_id", user.id)
       .limit(1);
+
+    console.log("PURCHASE CHECK RESULT:", orders);
+    console.error("PURCHASE CHECK ERROR:", orderCheckError);
 
     if (!orders || orders.length === 0) {
       return NextResponse.json(
@@ -74,6 +84,8 @@ export async function POST(req: Request) {
         { status: 403 }
       );
     }
+
+    console.log(">>> INSERTING REVIEW");
 
     const { data: review, error: reviewError } = await admin
       .from("reviews")
@@ -88,6 +100,9 @@ export async function POST(req: Request) {
       .select()
       .single();
 
+    console.log("REVIEW INSERT RESULT:", review);
+    console.error("REVIEW INSERT ERROR:", reviewError);
+
     if (reviewError) {
       return NextResponse.json({ error: reviewError.message }, { status: 400 });
     }
@@ -99,7 +114,11 @@ export async function POST(req: Request) {
         value
       }));
 
-      await admin.from("review_subratings").insert(rows);
+      console.log(">>> INSERTING SUBRATINGS:", subratings);
+
+      const { error: subError } = await admin.from("review_subratings").insert(rows);
+
+      console.error("SUBRATINGS INSERT ERROR:", subError);
     }
 
     return NextResponse.json({ success: true, review });
