@@ -6,7 +6,8 @@ export async function POST(req: Request) {
   try {
     const cookieStore = cookies();
     const supabase = createSupabaseServerClient(cookieStore);
-    const supabaseAdmin = createSupabaseServiceRoleClient();
+    const admin = createSupabaseServiceRoleClient();
+
     const userRes = await supabase.auth.getUser();
     const user = userRes.data.user;
 
@@ -35,14 +36,13 @@ export async function POST(req: Request) {
     }
 
     // ───────────────────────────────────────────────
-    // 1. Upload images to Supabase Storage
+    // 1. Upload images (SERVICE ROLE CLIENT)
     // ───────────────────────────────────────────────
     const uploadedUrls: string[] = [];
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
 
-      // EXPECTS base64 string: "data:image/png;base64,...."
       const matches = img.match(/^data:(.*);base64,(.*)$/);
       if (!matches) continue;
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
       const filePath = `${user.id}/${Date.now()}_${i}.png`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await admin.storage
         .from("review-images")
         .upload(filePath, buffer, {
           contentType,
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const { data } = supabase.storage
+      const { data } = admin.storage
         .from("review-images")
         .getPublicUrl(filePath);
 
@@ -72,14 +72,14 @@ export async function POST(req: Request) {
     }
 
     // ───────────────────────────────────────────────
-    // 2. CHECK IF USER PURCHASED THIS PRODUCT
+    // 2. CHECK PURCHASE (SERVICE ROLE CLIENT)
     // ───────────────────────────────────────────────
-const { data: orders, error: orderCheckError } = await supabaseAdmin
-  .from("order_items")
-  .select("id, orders!inner(user_id)")
-  .eq("product_id", productId)
-  .eq("orders.user_id", user.id)
-  .limit(1);
+    const { data: orders, error: orderCheckError } = await admin
+      .from("order_items")
+      .select("id, orders!inner(user_id)")
+      .eq("product_id", productId)
+      .eq("orders.user_id", user.id)
+      .limit(1);
 
     if (orderCheckError) {
       return NextResponse.json({ error: "Server error" }, { status: 500 });
@@ -93,9 +93,9 @@ const { data: orders, error: orderCheckError } = await supabaseAdmin
     }
 
     // ───────────────────────────────────────────────
-    // 3. Create review with uploaded image URLs
+    // 3. INSERT REVIEW (SERVICE ROLE CLIENT)
     // ───────────────────────────────────────────────
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await admin
       .from("reviews")
       .insert({
         product_id: productId,
@@ -113,7 +113,7 @@ const { data: orders, error: orderCheckError } = await supabaseAdmin
     }
 
     // ───────────────────────────────────────────────
-    // 4. Insert subratings
+    // 4. INSERT SUBRATINGS (SERVICE ROLE CLIENT)
     // ───────────────────────────────────────────────
     if (subratings && Object.keys(subratings).length > 0) {
       const rows = Object.entries(subratings).map(([subId, value]) => ({
@@ -122,7 +122,7 @@ const { data: orders, error: orderCheckError } = await supabaseAdmin
         value
       }));
 
-      const { error: subError } = await supabase
+      const { error: subError } = await admin
         .from("review_subratings")
         .insert(rows);
 
