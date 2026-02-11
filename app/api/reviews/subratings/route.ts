@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const admin = createSupabaseServiceRoleClient();
     const { productId } = await req.json();
 
     if (!productId) {
       return NextResponse.json({ error: "Missing productId" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("product_subratings")
       .select("id, name, display_order")
       .eq("product_id", productId)
