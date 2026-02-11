@@ -49,7 +49,6 @@ export function ReviewModal({
   }, [open, productId]);
 
   const submit = async () => {
-    // If not logged in, redirect to login
     if (!user) {
       window.location.href = "/login?redirect_back=1";
       return;
@@ -74,22 +73,26 @@ export function ReviewModal({
       base64Images.push(encoded);
     }
 
-body: JSON.stringify({
-  productId,
-  variantId: variantId || null,   // 🔥 FIX HERE
-  rating,
-  body,
-  images: base64Images,
-  subratings: subValues
-})
-});
+    const res = await fetch("/api/reviews/create", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId,
+        variantId: variantId || null,  // 🔥 FIXED HERE
+        rating,
+        body,
+        images: base64Images,
+        subratings: subValues
+      })
+    });
 
     const data = await res.json();
     setLoading(false);
 
     if (!res.ok) {
       if (data?.error) {
-        setErrorMsg(data.error);  // Use server-provided friendly message
+        setErrorMsg(data.error);
       } else {
         setErrorMsg("We could not submit your review. Please try again.");
       }
