@@ -33,8 +33,10 @@ export function ReviewModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Load subratings
   useEffect(() => {
     if (!open) return;
+
     const load = async () => {
       const res = await fetch("/api/reviews/subratings", {
         method: "POST",
@@ -45,9 +47,11 @@ export function ReviewModal({
       const data = await res.json();
       setSubratings(data.subratings || []);
     };
+
     load();
   }, [open, productId]);
 
+  // Submit review
   const submit = async () => {
     if (!user) {
       window.location.href = "/login?redirect_back=1";
@@ -67,6 +71,7 @@ export function ReviewModal({
     setLoading(true);
     setErrorMsg("");
 
+    // Convert files to base64
     const base64Images = [];
     for (const img of images) {
       const encoded = await fileToBase64(img);
@@ -79,7 +84,7 @@ export function ReviewModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         productId,
-        variantId: variantId || null,  // 🔥 FIXED HERE
+        variantId: variantId || null, // important fix
         rating,
         body,
         images: base64Images,
@@ -111,6 +116,7 @@ export function ReviewModal({
 
         <h2 className="text-lg font-semibold">Write a Review</h2>
 
+        {/* Star rating */}
         <div className="mt-4 flex gap-2">
           {[1, 2, 3, 4, 5].map((s) => (
             <button
@@ -123,6 +129,7 @@ export function ReviewModal({
           ))}
         </div>
 
+        {/* Subratings */}
         {subratings.length > 0 && (
           <div className="mt-4 space-y-3">
             {subratings.map((sub: any) => (
@@ -146,6 +153,7 @@ export function ReviewModal({
           </div>
         )}
 
+        {/* Variant selection */}
         {variants?.length > 0 && (
           <div className="mt-4">
             <p className="text-sm mb-1">Variant</p>
@@ -161,6 +169,7 @@ export function ReviewModal({
           </div>
         )}
 
+        {/* Body */}
         <textarea
           className="mt-4 border p-2 rounded w-full h-28"
           placeholder="Write your review..."
@@ -168,6 +177,7 @@ export function ReviewModal({
           onChange={(e) => setBody(e.target.value)}
         />
 
+        {/* Image upload */}
         <div className="mt-4">
           <p className="text-sm">Upload images (max 3)</p>
           <input
@@ -182,10 +192,12 @@ export function ReviewModal({
           />
         </div>
 
+        {/* Error */}
         {errorMsg && (
           <p className="text-red-500 text-sm mt-2">{errorMsg}</p>
         )}
 
+        {/* Actions */}
         <div className="mt-6 flex justify-end gap-3">
           <button className="px-4 py-2 bg-gray-200 rounded" onClick={onClose}>
             Cancel
