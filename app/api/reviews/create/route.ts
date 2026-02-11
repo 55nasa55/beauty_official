@@ -31,13 +31,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    if (images.length > 3) {
-      return NextResponse.json({ error: "Max 3 images allowed" }, { status: 400 });
-    }
-
-    // ───────────────────────────────────────────────
-    // 1. Upload images (SERVICE ROLE CLIENT)
-    // ───────────────────────────────────────────────
     const uploadedUrls: string[] = [];
 
     for (let i = 0; i < images.length; i++) {
@@ -59,10 +52,7 @@ export async function POST(req: Request) {
           upsert: false
         });
 
-      if (uploadError) {
-        console.error("UPLOAD ERROR:", uploadError);
-        continue;
-      }
+      if (uploadError) continue;
 
       const { data } = admin.storage
         .from("review-images")
@@ -71,19 +61,12 @@ export async function POST(req: Request) {
       uploadedUrls.push(data.publicUrl);
     }
 
-    // ───────────────────────────────────────────────
-    // 2. CHECK PURCHASE (SERVICE ROLE CLIENT)
-    // ───────────────────────────────────────────────
-    const { data: orders, error: orderCheckError } = await admin
+    const { data: orders } = await admin
       .from("order_items")
       .select("id, orders!inner(user_id)")
       .eq("product_id", productId)
       .eq("orders.user_id", user.id)
       .limit(1);
-
-    if (orderCheckError) {
-      return NextResponse.json({ error: "Server error" }, { status: 500 });
-    }
 
     if (!orders || orders.length === 0) {
       return NextResponse.json(
@@ -92,9 +75,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // ───────────────────────────────────────────────
-    // 3. INSERT REVIEW (SERVICE ROLE CLIENT)
-    // ───────────────────────────────────────────────
     const { data: review, error: reviewError } = await admin
       .from("reviews")
       .insert({
@@ -112,9 +92,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: reviewError.message }, { status: 400 });
     }
 
-    // ───────────────────────────────────────────────
-    // 4. INSERT SUBRATINGS (SERVICE ROLE CLIENT)
-    // ───────────────────────────────────────────────
     if (subratings && Object.keys(subratings).length > 0) {
       const rows = Object.entries(subratings).map(([subId, value]) => ({
         review_id: review.id,
@@ -122,18 +99,12 @@ export async function POST(req: Request) {
         value
       }));
 
-      const { error: subError } = await admin
-        .from("review_subratings")
-        .insert(rows);
-
-      if (subError) {
-        return NextResponse.json({ error: subError.message }, { status: 400 });
-      }
+      await admin.from("review_subratings").insert(rows);
     }
 
     return NextResponse.json({ success: true, review });
+
   } catch (err) {
-    console.error("SERVER ERROR", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
