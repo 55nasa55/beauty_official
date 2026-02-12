@@ -84,6 +84,7 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log("UPLOADED URLS BEFORE INSERT:", uploadedUrls);
     console.log(">>> INSERTING REVIEW");
 
     const { data: review, error: reviewError } = await admin
