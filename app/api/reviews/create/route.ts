@@ -36,6 +36,11 @@ export async function POST(req: Request) {
 
     console.log("IMAGE COUNT:", images.length);
 
+    // 🔎 DEBUG: List available buckets
+    const { data: buckets, error: bucketError } = await admin.storage.listBuckets();
+    console.log("AVAILABLE BUCKETS:", buckets);
+    console.error("BUCKET LIST ERROR:", bucketError);
+
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
       console.log("RAW IMAGE STRING:", typeof img, img?.slice?.(0, 50));
