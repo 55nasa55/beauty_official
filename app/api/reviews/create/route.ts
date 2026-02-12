@@ -38,6 +38,7 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
+      console.log("RAW IMAGE STRING:", typeof img, img?.slice?.(0, 50));
 
       const matches = img.match(/^data:(.*);base64,(.*)$/);
       if (!matches) continue;
