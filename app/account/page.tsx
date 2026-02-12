@@ -10,6 +10,9 @@ import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
+import { Category, Brand, Collection } from '@/lib/database.types';
 
 interface Order {
   id: string;
@@ -43,6 +46,9 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
 
   useEffect(() => {
     if (!membershipLoading && !user) {
@@ -51,11 +57,31 @@ export default function AccountPage() {
   }, [user, membershipLoading, router]);
 
   useEffect(() => {
+    loadNavigationData();
+  }, []);
+
+  useEffect(() => {
     if (user) {
       loadOrders();
       loadMembershipDetails();
     }
   }, [user]);
+
+  const loadNavigationData = async () => {
+    try {
+      const [categoriesResult, brandsResult, collectionsResult] = await Promise.all([
+        supabase.from('categories').select('*').order('name'),
+        supabase.from('brands').select('*').order('name'),
+        supabase.from('collections').select('*').eq('display_on_home', true).order('sort_order'),
+      ]);
+
+      if (categoriesResult.data) setCategories(categoriesResult.data);
+      if (brandsResult.data) setBrands(brandsResult.data);
+      if (collectionsResult.data) setCollections(collectionsResult.data);
+    } catch (error) {
+      console.error('Error loading navigation data:', error);
+    }
+  };
 
   const loadMembershipDetails = async () => {
     try {
@@ -161,8 +187,11 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen flex flex-col">
+      <Header categories={categories} brands={brands} collections={collections} />
+
+      <main className="flex-1 bg-gray-50 py-12">
+        <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex justify-between items-start">
             <div>
@@ -308,7 +337,10 @@ export default function AccountPage() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

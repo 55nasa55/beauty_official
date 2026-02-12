@@ -1,5 +1,9 @@
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabasePublic } from '@/lib/supabase/public';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
+import { Category, Brand, Collection } from '@/lib/database.types';
 
 export default async function MyReviewsPage() {
   const cookieStore = cookies();
@@ -8,6 +12,16 @@ export default async function MyReviewsPage() {
   const user = userRes.user;
 
   if (!user) return <p className="p-4">Please log in to view your reviews.</p>;
+
+  const [categoriesResult, brandsResult, collectionsResult] = await Promise.all([
+    supabasePublic.from('categories').select('*').order('name'),
+    supabasePublic.from('brands').select('*').order('name'),
+    supabasePublic.from('collections').select('*').eq('display_on_home', true).order('sort_order'),
+  ]);
+
+  const categories: Category[] = categoriesResult.data || [];
+  const brands: Brand[] = brandsResult.data || [];
+  const collections: Collection[] = collectionsResult.data || [];
 
   const { data: reviews } = await supabase
     .from("reviews")
@@ -27,8 +41,12 @@ export default async function MyReviewsPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="p-6 space-y-6 max-w-xl mx-auto">
-      <h1 className="text-xl font-semibold mb-4">My Reviews</h1>
+    <div className="min-h-screen flex flex-col">
+      <Header categories={categories} brands={brands} collections={collections} />
+
+      <main className="flex-1">
+        <div className="p-6 space-y-6 max-w-xl mx-auto">
+          <h1 className="text-xl font-semibold mb-4">My Reviews</h1>
 
       {(!reviews || reviews.length === 0) && (
         <p className="text-sm text-gray-500">You haven't written any reviews yet.</p>
@@ -73,6 +91,10 @@ export default async function MyReviewsPage() {
           </form>
         </div>
       ))}
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }
