@@ -56,7 +56,10 @@ export async function POST(req: Request) {
           upsert: false
         });
 
-      if (uploadError) continue;
+      if (uploadError) {
+        console.error("UPLOAD ERROR:", uploadError);
+        continue;
+      }
 
       const { data } = admin.storage
         .from("review-images")
