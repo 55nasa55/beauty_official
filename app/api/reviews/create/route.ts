@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       const filePath = `${user.id}/${Date.now()}_${i}.png`;
 
       const { error: uploadError } = await admin.storage
-        .from("review-images")
+        .from("review_images")
         .upload(filePath, buffer, {
           contentType,
           upsert: false
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       }
 
       const { data } = admin.storage
-        .from("review-images")
+        .from("review_images")
         .getPublicUrl(filePath);
 
       uploadedUrls.push(data.publicUrl);
