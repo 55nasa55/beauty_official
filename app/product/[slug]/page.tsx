@@ -122,49 +122,9 @@ export default function ProductPage() {
         setSuggestedProducts(suggestedResult.data || []);
 
         // Fetch "Customers Also Bought" products
-        let alsoBoughtResult: ProductWithVariants[] = [];
-
-        // Step 1: find all orders containing this product
-        const { data: relevantOrders } = await supabasePublic
-          .from('order_items')
-          .select('order_id')
-          .eq('product_id', productData.id);
-
-        const orderIds = (relevantOrders || []).map((o: any) => o.order_id);
-
-        if (orderIds.length > 0) {
-          // Step 2: find all other products in those orders
-          const { data: otherItems } = await supabasePublic
-            .from('order_items')
-            .select('product_id')
-            .in('order_id', orderIds)
-            .neq('product_id', productData.id);
-
-          const freqMap: Record<string, number> = {};
-
-          (otherItems || []).forEach((item: any) => {
-            freqMap[item.product_id] = (freqMap[item.product_id] || 0) + 1;
-          });
-
-          // Step 3: sort by frequency and take top 4
-          const topProductIds = Object.entries(freqMap)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 4)
-            .map(entry => entry[0]);
-
-          // Step 4: fetch product details
-          if (topProductIds.length > 0) {
-            const { data: alsoBoughtProductsFull } = await supabasePublic
-              .from('products')
-              .select('*, brand:brands(*), variants:product_variants(*)')
-              .in('id', topProductIds);
-
-            alsoBoughtResult = alsoBoughtProductsFull || [];
-          }
-        }
-
-        // Save to state
-        setAlsoBoughtProducts(alsoBoughtResult);
+        const res = await fetch(`/api/products/also-bought/${productData.id}`);
+        const alsoBought = await res.json();
+        setAlsoBoughtProducts(alsoBought || []);
       }
 
       setLoading(false);
