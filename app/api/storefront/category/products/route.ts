@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
       const { count, error: countError } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
-        .eq('category_id', category.id);
+        .eq('category_id', category.id)
+        .eq('archived', false);
 
       if (countError) throw countError;
 
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('id')
         .eq('category_id', category.id)
+        .eq('archived', false)
         .order('name')
         .range(offset, offset + limit - 1);
 
@@ -142,6 +144,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('id')
         .eq('category_id', category.id)
+        .eq('archived', false)
         .in('id', allProductIds);
 
       if (categoryFilterError) throw categoryFilterError;
@@ -166,7 +169,8 @@ export async function GET(request: NextRequest) {
     const { data: productsData, error: productsError } = await supabase
       .from('products')
       .select('id, name, slug, description, category_id, brand_id')
-      .in('id', productIds);
+      .in('id', productIds)
+      .eq('archived', false);
 
     if (productsError) throw productsError;
 

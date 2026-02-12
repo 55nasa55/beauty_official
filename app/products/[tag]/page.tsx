@@ -20,7 +20,7 @@ async function getProductsByTag(tag: string) {
     supabase.from('categories').select('*').order('name'),
     supabase.from('brands').select('*').order('name'),
     supabase.from('collections').select('*').order('sort_order'),
-    supabase.from('products').select('*, brand:brands(*), variants:product_variants(*)'),
+    supabase.from('products').select('*, brand:brands(*), variants:product_variants(*)').eq('archived', false),
   ]);
 
   const categories: Category[] = categoriesResult.data || [];

@@ -48,6 +48,7 @@ export function SearchBar() {
           supabase
             .from('products')
             .select('*, brand:brands(*), variants:product_variants(*)')
+            .eq('archived', false)
             .or(
               `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`
             )
@@ -80,6 +81,7 @@ export function SearchBar() {
             .from('products')
             .select('*, brand:brands(*), variants:product_variants(*)')
             .in('brand_id', brandIds)
+            .eq('archived', false)
             .limit(6);
 
           if (brandProducts && Array.isArray(brandProducts)) {

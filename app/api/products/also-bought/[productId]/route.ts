@@ -56,7 +56,8 @@ export async function GET(
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select("*, brand:brands(*), variants:product_variants(*)")
-    .in("id", topProductIds);
+    .in("id", topProductIds)
+    .eq("archived", false);
 
   if (productsError) {
     console.error("AlsoBought products fetch error:", productsError);

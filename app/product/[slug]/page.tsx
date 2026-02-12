@@ -71,6 +71,7 @@ export default function ProductPage() {
             .from('products')
             .select('*, brand:brands(*), variants:product_variants(*)')
             .eq('slug', slug)
+            .eq('archived', false)
             .maybeSingle(),
         ]);
 
@@ -111,6 +112,7 @@ export default function ProductPage() {
                 .from('products')
                 .select('*, brand:brands(*), variants:product_variants(*)')
                 .eq('brand_id', productData.brand_id)
+                .eq('archived', false)
                 .neq('id', productData.id)
                 .order('created_at', { ascending: false })
                 .limit(4)

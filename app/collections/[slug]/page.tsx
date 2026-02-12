@@ -198,7 +198,8 @@ export default function CollectionsPage() {
     try {
       const { data: allProducts, error } = await supabase
         .from('products')
-        .select('*, brand:brands(*), variants:product_variants(*)');
+        .select('*, brand:brands(*), variants:product_variants(*)')
+        .eq('archived', false);
 
       if (error) throw error;
 
@@ -248,7 +249,8 @@ export default function CollectionsPage() {
       const tagNormalized = slug.toLowerCase().replace(/-/g, '_');
       const { data: allProducts, error } = await supabase
         .from('products')
-        .select('*, brand:brands(*), variants:product_variants(*)');
+        .select('*, brand:brands(*), variants:product_variants(*)')
+        .eq('archived', false);
 
       if (error) throw error;
 

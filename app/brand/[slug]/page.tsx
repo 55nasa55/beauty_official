@@ -34,7 +34,8 @@ async function getBrandData(slug: string) {
     const productsResult = await supabase
       .from('products')
       .select('*, brand:brands(*), variants:product_variants(*)')
-      .eq('brand_id', brand.id as string);
+      .eq('brand_id', brand.id as string)
+      .eq('archived', false);
 
     products = (productsResult.data || []) as ProductWithVariants[];
   }
