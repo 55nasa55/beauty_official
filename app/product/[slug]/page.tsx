@@ -409,7 +409,7 @@ export default function ProductPage() {
           {/* -------------------- CUSTOMERS ALSO BOUGHT SECTION -------------------- */}
           {alsoBoughtProducts.length > 0 && (
             <div className="mt-16">
-              <h2 className="text-2xl font-light mb-6">Customers Also Bought</h2>
+              <h2 className="text-2xl font-light mb-6">Frequently Bought Together</h2>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {alsoBoughtProducts.map((prod) => (
