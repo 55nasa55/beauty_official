@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, Star, Upload } from 'lucide-react';
 import Image from 'next/image';
+import { uploadImage } from '@/lib/uploadImage';
 
 interface Brand {
   id: string;
@@ -25,6 +26,8 @@ export default function BrandsManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -141,6 +144,42 @@ export default function BrandsManagementPage() {
     setEditingBrand(null);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+
+    try {
+      const { publicUrl, error } = await uploadImage(file, 'brands');
+
+      if (error || !publicUrl) {
+        throw error || new Error('Failed to upload image');
+      }
+
+      setFormData({
+        ...formData,
+        logo_url: publicUrl,
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Image uploaded successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -206,13 +245,46 @@ export default function BrandsManagementPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="logo_url">Logo URL</Label>
-                <Input
-                  id="logo_url"
-                  value={formData.logo_url}
-                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                  placeholder="https://example.com/logo.png"
-                />
+                <Label htmlFor="logo_url">Logo Image</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingImage}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {isUploadingImage ? 'Uploading...' : 'Upload Image'}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+                {formData.logo_url && (
+                  <div className="space-y-2">
+                    <Input
+                      id="logo_url"
+                      value={formData.logo_url}
+                      readOnly
+                      placeholder="Image URL will appear here after upload"
+                      className="text-sm text-gray-600"
+                    />
+                    {formData.logo_url && (
+                      <div className="relative w-32 h-32 border rounded">
+                        <Image
+                          src={formData.logo_url}
+                          alt="Logo preview"
+                          fill
+                          className="object-contain p-2"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-4">

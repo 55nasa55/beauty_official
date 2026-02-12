@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Plus, Edit2, Trash2, Eye, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, X, Upload } from 'lucide-react';
 import Image from 'next/image';
+import { uploadImage } from '@/lib/uploadImage';
 
 type Banner = {
   id: string;
@@ -34,6 +35,8 @@ export default function BannersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<BannerFormData>({
     title: '',
     description: '',
@@ -135,6 +138,36 @@ export default function BannersPage() {
     setShowForm(false);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+
+    try {
+      const { publicUrl, error } = await uploadImage(file, 'banners');
+
+      if (error || !publicUrl) {
+        throw error || new Error('Failed to upload image');
+      }
+
+      setFormData({
+        ...formData,
+        image_url: publicUrl,
+      });
+
+      alert('Image uploaded successfully');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert('Failed to upload image: ' + error.message);
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -193,16 +226,34 @@ export default function BannersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Image URL *</label>
-              <input
-                type="text"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="https://example.com/banner-image.jpg"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">Paste a direct image URL</p>
+              <label className="block text-sm font-medium mb-1">Banner Image *</label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isUploadingImage ? 'Uploading...' : 'Upload Image'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+              {formData.image_url && (
+                <input
+                  type="text"
+                  value={formData.image_url}
+                  readOnly
+                  className="w-full border rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-600 mb-2"
+                  placeholder="Image URL will appear here after upload"
+                />
+              )}
               {formData.image_url && (
                 <div className="mt-3 relative w-full h-48 border rounded-lg overflow-hidden">
                   <Image
