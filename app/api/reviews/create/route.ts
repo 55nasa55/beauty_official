@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
     console.log(">>> /api/reviews/create called");
-    const cookieStore = cookies();
-    const supabase = createSupabaseServerClient(cookieStore);
+    const supabase = createSupabaseServerClient();
     const admin = createSupabaseServiceRoleClient();
 
     const userRes = await supabase.auth.getUser();
