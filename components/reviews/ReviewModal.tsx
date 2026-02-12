@@ -3,15 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 export function ReviewModal({
   open,
   onClose,
@@ -29,7 +20,7 @@ export function ReviewModal({
   const [subValues, setSubValues] = useState<{ [key: string]: number }>({});
   const [variantId, setVariantId] = useState<string | null>(null);
   const [body, setBody] = useState("");
-  const [images, setImages] = useState<File[]>([]);
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -51,6 +42,32 @@ export function ReviewModal({
     load();
   }, [open, productId]);
 
+  const handleImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const selected = Array.from(files);
+
+    const newImages: string[] = [];
+
+    for (const file of selected) {
+      if (images.length + newImages.length >= 3) break;
+
+      const reader = new FileReader();
+
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      newImages.push(base64);
+    }
+
+    setImages((prev) => [...prev, ...newImages]);
+  };
+
   // Submit review
   const submit = async () => {
     if (!user) {
@@ -71,13 +88,6 @@ export function ReviewModal({
     setLoading(true);
     setErrorMsg("");
 
-    // Convert files to base64
-    const base64Images = [];
-    for (const img of images) {
-      const encoded = await fileToBase64(img);
-      base64Images.push(encoded);
-    }
-
     const res = await fetch("/api/reviews/create", {
       method: "POST",
       credentials: "include",
@@ -87,7 +97,7 @@ export function ReviewModal({
         variantId: variantId || null, // important fix
         rating,
         body,
-        images: base64Images,
+        images,
         subratings: subValues
       })
     });
@@ -182,14 +192,33 @@ export function ReviewModal({
           <p className="text-sm">Upload images (max 3)</p>
           <input
             type="file"
-            multiple
             accept="image/*"
-            onChange={(e) => {
-              const files = Array.from(e.target.files || []);
-              if (files.length <= 3) setImages(files as File[]);
-            }}
+            multiple
+            onChange={handleImageChange}
             className="mt-1"
           />
+          {images.length > 0 && (
+            <div className="flex gap-2 mt-3 flex-wrap">
+              {images.map((img, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={img}
+                    alt="preview"
+                    className="w-20 h-20 object-cover rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setImages((prev) => prev.filter((_, i) => i !== index))
+                    }
+                    className="absolute top-0 right-0 bg-black text-white text-xs px-1 rounded"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Error */}
