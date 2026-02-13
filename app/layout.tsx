@@ -5,6 +5,7 @@ import { CartProvider } from '@/lib/cart-context';
 import { AddedToCartModal } from '@/components/cart/AddedToCartModal';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers';
+import { MarketingModal } from '@/components/MarketingModal';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <CartProvider>
+            <MarketingModal />
             {children}
             <AddedToCartModal />
             <Toaster />
