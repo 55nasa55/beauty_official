@@ -31,6 +31,19 @@ export function MarketingModal() {
     }
   }, [user, isMember, pathname]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isVisible) {
+        handleClose();
+      }
+    };
+
+    if (isVisible) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [isVisible]);
+
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -51,19 +64,26 @@ export function MarketingModal() {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-start justify-center bg-white overflow-y-auto transition-opacity duration-300 ${
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
         isClosing ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <button
-        onClick={handleClose}
-        className="fixed top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
-        aria-label="Close modal"
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-white rounded-2xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto relative transition-all duration-300 ${
+          isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+        }`}
       >
-        <X className="w-6 h-6 text-gray-600" />
-      </button>
+        <button
+          onClick={handleClose}
+          className="sticky top-4 float-right mr-4 mt-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6 text-gray-600" />
+        </button>
 
-      <div className="w-full max-w-[1100px] px-6 py-16 space-y-24">
+        <div className="w-full px-6 py-16 space-y-24 clear-both">
         {/* SECTION 1 — Hero */}
         <section className="text-center space-y-6 pt-8">
           <h1 className="text-5xl md:text-6xl font-light tracking-tight text-gray-900">
@@ -275,6 +295,7 @@ export function MarketingModal() {
             </button>
           </div>
         </section>
+        </div>
       </div>
     </div>
   );
