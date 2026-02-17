@@ -1,5 +1,6 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { BrowseAsGuestButton } from '@/components/BrowseAsGuestButton';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { supabasePublic } from '@/lib/supabase/public';
@@ -49,12 +50,9 @@ export default async function EntryPage() {
                 Join Cosmetic Club
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
-              <Link
-                href="/"
+              <BrowseAsGuestButton
                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-gray-900 bg-white border-2 border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
-              >
-                Browse as Guest
-              </Link>
+              />
             </div>
 
             <Link
@@ -216,12 +214,9 @@ export default async function EntryPage() {
                 Join Now & Save
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
-              <Link
-                href="/"
+              <BrowseAsGuestButton
                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-gray-900 bg-white border-2 border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
-              >
-                Browse as Guest
-              </Link>
+              />
             </div>
           </section>
         </div>
