@@ -21,10 +21,37 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
+  const pathname = req.nextUrl.pathname;
+
+  if (pathname === "/") {
+    if (!session?.user) {
+      return NextResponse.redirect(new URL("/entry", req.url));
+    }
+
+    const { data: membership } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .eq("status", "active")
+      .is("ended_at", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) {
+      return NextResponse.redirect(new URL("/entry", req.url));
+    }
+  }
+
   return res;
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/api/stripe/:path*", "/api/debug/:path*"],
+  matcher: [
+    "/",
+    "/admin/:path*",
+    "/api/admin/:path*",
+    "/api/stripe/:path*",
+    "/api/debug/:path*"
+  ],
 };
