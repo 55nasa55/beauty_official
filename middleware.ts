@@ -25,6 +25,12 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
   if (pathname === "/") {
+    // Allow guest bypass
+    const guestBypass = req.cookies.get("cc_guest_bypass");
+    if (guestBypass?.value === "true") {
+      return res;
+    }
+
     if (!session?.user) {
       return NextResponse.redirect(new URL("/entry", req.url));
     }
