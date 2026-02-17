@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -129,28 +130,29 @@ export default function BrandsPage() {
       <Header categories={categories} brands={brands} collections={collections} />
 
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-              <h1 className="text-4xl font-light tracking-wide mb-3 md:mb-0">All Brands</h1>
-              <div className="flex items-center gap-2">
-                <label htmlFor="sort" className="text-sm text-gray-600">
-                  Sort by:
-                </label>
-                <Select value={sortBy} onValueChange={(value: 'a-z' | 'z-a') => setSortBy(value)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="a-z">A-Z</SelectItem>
-                    <SelectItem value="z-a">Z-A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <p className="text-gray-600 text-lg">
-              Explore our curated selection of premium beauty brands
+        <div className="mx-auto max-w-[1100px] px-6 py-12">
+          <div className="mb-12 text-center">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Brands We Carry</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Shop the best of K-beauty, J-beauty, and everyday essentials at member-only pricing.
             </p>
+          </div>
+
+          <div className="flex justify-end mb-6">
+            <div className="flex items-center gap-2">
+              <label htmlFor="sort" className="text-sm text-gray-600">
+                Sort by:
+              </label>
+              <Select value={sortBy} onValueChange={(value: 'a-z' | 'z-a') => setSortBy(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="a-z">A-Z</SelectItem>
+                  <SelectItem value="z-a">Z-A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {brands.length === 0 ? (
@@ -167,7 +169,7 @@ export default function BrandsPage() {
                       FEATURED
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {featuredBrands.map((brand) => (
                       <BrandCard key={brand.id} brand={brand} isFeatured={true} />
                     ))}
@@ -176,17 +178,29 @@ export default function BrandsPage() {
               )}
 
               {regularBrands.length > 0 && (
-                <div>
+                <div className="mb-16">
                   {featuredBrands.length > 0 && (
                     <h2 className="text-2xl font-light tracking-wide mb-6">All Brands</h2>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {regularBrands.map((brand) => (
                       <BrandCard key={brand.id} brand={brand} isFeatured={false} />
                     ))}
                   </div>
                 </div>
               )}
+
+              <div className="text-center mt-16 pt-12 border-t border-gray-200">
+                <p className="text-lg text-gray-700 mb-3">
+                  New brands added regularly. Become a member to unlock all deals.
+                </p>
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center text-gray-900 hover:text-gray-700 font-medium underline underline-offset-4"
+                >
+                  Learn More About Membership →
+                </Link>
+              </div>
             </>
           )}
         </div>
