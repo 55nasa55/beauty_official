@@ -44,6 +44,9 @@ interface ProductVariant {
   member_price_cents: number | null;
   images: string[];
   specs: Record<string, any>;
+  stock_quantity: number;
+  track_inventory: boolean;
+  low_stock_threshold: number;
 }
 
 interface Category {
@@ -104,6 +107,8 @@ export default function ProductsManagementPage() {
   const [isArchiving, setIsArchiving] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const variantImageInputRef = useRef<HTMLInputElement>(null);
+  const [inventoryAdjustments, setInventoryAdjustments] = useState<Record<string, string>>({});
+  const [isApplyingAdjustment, setIsApplyingAdjustment] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -267,7 +272,7 @@ export default function ProductsManagementPage() {
   const fetchVariants = async (productId: string) => {
     const { data } = await supabase
       .from('product_variants')
-      .select('id, product_id, sku, name, price, compare_at_price, member_price_cents, images, specs')
+      .select('id, product_id, sku, name, price, compare_at_price, member_price_cents, images, specs, stock_quantity, track_inventory, low_stock_threshold')
       .eq('product_id', productId)
       .order('created_at');
 
@@ -868,6 +873,105 @@ export default function ProductsManagementPage() {
     setDateFrom('');
     setDateTo('');
     setPage(0);
+  };
+
+  const handleApplyInventoryAdjustment = async (variantId: string, productId: string) => {
+    const adjustmentStr = inventoryAdjustments[variantId]?.trim();
+
+    if (!adjustmentStr) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an adjustment value',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const adjustment = parseInt(adjustmentStr, 10);
+
+    if (isNaN(adjustment) || adjustment === 0) {
+      toast({
+        title: 'Error',
+        description: 'Adjustment must be a non-zero integer',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsApplyingAdjustment(variantId);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const userId = sessionData.session?.user?.id;
+
+      if (!token || !userId) {
+        toast({
+          title: 'Error',
+          description: 'Session expired. Please log in again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const variant = variants[productId]?.find(v => v.id === variantId);
+      if (!variant) {
+        throw new Error('Variant not found');
+      }
+
+      const newStock = variant.stock_quantity + adjustment;
+
+      if (newStock < 0) {
+        toast({
+          title: 'Error',
+          description: 'Cannot reduce stock below zero',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('product_variants')
+        .update({ stock_quantity: newStock })
+        .eq('id', variantId);
+
+      if (updateError) throw updateError;
+
+      const { error: auditError } = await supabase
+        .from('inventory_adjustments')
+        .insert({
+          variant_id: variantId,
+          change_amount: adjustment,
+          reason: 'admin_manual',
+          created_by: userId,
+        });
+
+      if (auditError) {
+        console.error('Failed to log inventory adjustment:', auditError);
+      }
+
+      setInventoryAdjustments(prev => {
+        const updated = { ...prev };
+        delete updated[variantId];
+        return updated;
+      });
+
+      await fetchVariants(productId);
+
+      toast({
+        title: 'Success',
+        description: `Stock adjusted by ${adjustment > 0 ? '+' : ''}${adjustment}. New stock: ${newStock}`,
+      });
+    } catch (error: any) {
+      console.error('Error applying inventory adjustment:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to apply inventory adjustment',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsApplyingAdjustment(null);
+    }
   };
 
   const hasActiveFilters = searchQuery || (brandFilter && brandFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || dateFrom || dateTo;
@@ -1473,7 +1577,7 @@ export default function ProductsManagementPage() {
                           <div className="space-y-2">
                             {variants[product.id]?.map((variant) => (
                               <div key={variant.id} className="bg-white p-3 rounded border">
-                                <div className="flex items-start justify-between">
+                                <div className="flex items-start justify-between mb-3">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="font-medium">{variant.name}</span>
@@ -1528,6 +1632,71 @@ export default function ProductsManagementPage() {
                                     >
                                       <Trash2 className="w-3 h-3" />
                                     </Button>
+                                  </div>
+                                </div>
+
+                                <div className="border-t pt-3 mt-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-medium">Inventory Tracking</Label>
+                                        <span className={`text-xs px-2 py-1 rounded ${variant.track_inventory ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                          {variant.track_inventory ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="text-sm text-gray-600">Current Stock:</span>
+                                        <span className={`text-lg font-semibold ${
+                                          variant.stock_quantity === 0
+                                            ? 'text-red-600'
+                                            : variant.stock_quantity <= variant.low_stock_threshold
+                                            ? 'text-orange-600'
+                                            : 'text-green-600'
+                                        }`}>
+                                          {variant.stock_quantity}
+                                        </span>
+                                        {variant.stock_quantity <= variant.low_stock_threshold && variant.stock_quantity > 0 && (
+                                          <span className="text-xs text-orange-600">Low Stock</span>
+                                        )}
+                                        {variant.stock_quantity === 0 && (
+                                          <span className="text-xs text-red-600">Out of Stock</span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-gray-500">
+                                        Low stock threshold: {variant.low_stock_threshold}
+                                      </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label className="text-sm font-medium">Adjust Inventory</Label>
+                                      <div className="flex gap-2">
+                                        <Input
+                                          type="number"
+                                          placeholder="+10 or -5"
+                                          value={inventoryAdjustments[variant.id] || ''}
+                                          onChange={(e) => setInventoryAdjustments({
+                                            ...inventoryAdjustments,
+                                            [variant.id]: e.target.value
+                                          })}
+                                          disabled={product.archived || isApplyingAdjustment === variant.id}
+                                          className="flex-1"
+                                        />
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleApplyInventoryAdjustment(variant.id, product.id)}
+                                          disabled={
+                                            product.archived ||
+                                            isApplyingAdjustment === variant.id ||
+                                            !inventoryAdjustments[variant.id]?.trim()
+                                          }
+                                        >
+                                          {isApplyingAdjustment === variant.id ? 'Applying...' : 'Apply'}
+                                        </Button>
+                                      </div>
+                                      <p className="text-xs text-gray-500">
+                                        Enter positive (add) or negative (remove) value
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
