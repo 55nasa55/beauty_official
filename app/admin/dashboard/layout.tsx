@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   Image,
-  Layout
+  Layout,
+  BarChart3
 } from 'lucide-react';
 
 export default function AdminDashboardLayout({
@@ -50,6 +51,7 @@ export default function AdminDashboardLayout({
   const navItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: Grid },
     { href: '/admin/dashboard/products', label: 'Products', icon: Package },
+    { href: '/admin/dashboard/inventory', label: 'Inventory', icon: BarChart3 },
     { href: '/admin/dashboard/categories', label: 'Categories', icon: Tags },
     { href: '/admin/dashboard/brands', label: 'Brands', icon: Star },
     { href: '/admin/dashboard/collections', label: 'Collections', icon: Grid },
