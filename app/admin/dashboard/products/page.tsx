@@ -902,10 +902,9 @@ export default function ProductsManagementPage() {
       setIsApplyingAdjustment(variantId);
 
       const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
       const userId = sessionData.session?.user?.id;
 
-      if (!token || !userId) {
+      if (!userId) {
         toast({
           title: 'Error',
           description: 'Session expired. Please log in again.',
@@ -914,28 +913,12 @@ export default function ProductsManagementPage() {
         return;
       }
 
-      const variant = variants[productId]?.find(v => v.id === variantId);
-      if (!variant) {
-        throw new Error('Variant not found');
-      }
+      const { data: newStock, error: rpcError } = await supabase.rpc('adjust_variant_stock', {
+        p_variant_id: variantId,
+        p_adjustment: adjustment,
+      });
 
-      const newStock = variant.stock_quantity + adjustment;
-
-      if (newStock < 0) {
-        toast({
-          title: 'Error',
-          description: 'Cannot reduce stock below zero',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('product_variants')
-        .update({ stock_quantity: newStock })
-        .eq('id', variantId);
-
-      if (updateError) throw updateError;
+      if (rpcError) throw rpcError;
 
       const { error: auditError } = await supabase
         .from('inventory_adjustments')
@@ -964,9 +947,10 @@ export default function ProductsManagementPage() {
       });
     } catch (error: any) {
       console.error('Error applying inventory adjustment:', error);
+      const errorMessage = error.message || 'Failed to apply inventory adjustment';
       toast({
         title: 'Error',
-        description: error.message || 'Failed to apply inventory adjustment',
+        description: errorMessage.includes('negative stock') ? 'Cannot reduce stock below zero' : errorMessage,
         variant: 'destructive',
       });
     } finally {
