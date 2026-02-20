@@ -156,33 +156,79 @@ export default function ProductPage() {
     setSelectedImageIndex(0);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product || !selectedVariant) return;
 
-    const memberPrice = selectedVariant.member_price_cents ? selectedVariant.member_price_cents / 100 : null;
-    const finalPrice = !membershipLoading && isMember && memberPrice ? memberPrice : selectedVariant.price;
+    try {
+      const result = await supabasePublic
+        .from('product_variants')
+        .select('stock_quantity, track_inventory')
+        .eq('id', selectedVariant.id)
+        .maybeSingle();
 
-    const existingItem = items.find(item => item.variantId === selectedVariant.id);
-    const currentQuantity = existingItem ? existingItem.quantity : 0;
+      if (result.error || !result.data) {
+        toast({
+          title: 'Error',
+          description: 'Product variant not found.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    addItem({
-      variantId: selectedVariant.id,
-      productId: product.id,
-      productName: product.name,
-      productSlug: product.slug,
-      variantName: selectedVariant.name,
-      price: finalPrice,
-      image: selectedVariant.images[0] || '',
-    });
+      const variantStock = result.data as { stock_quantity: number; track_inventory: boolean };
+      const existingItem = items.find(item => item.variantId === selectedVariant.id);
+      const currentQuantity = existingItem ? existingItem.quantity : 0;
+      const requestedQuantity = currentQuantity + quantity;
 
-    if (quantity > 1 || existingItem) {
-      updateQuantity(selectedVariant.id, currentQuantity + quantity);
+      if (variantStock.track_inventory) {
+        if (variantStock.stock_quantity === 0) {
+          toast({
+            title: 'Out of Stock',
+            description: 'This item is currently out of stock.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        if (requestedQuantity > variantStock.stock_quantity) {
+          toast({
+            title: 'Limited Stock',
+            description: `Only ${variantStock.stock_quantity} left in stock.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
+      const memberPrice = selectedVariant.member_price_cents ? selectedVariant.member_price_cents / 100 : null;
+      const finalPrice = !membershipLoading && isMember && memberPrice ? memberPrice : selectedVariant.price;
+
+      addItem({
+        variantId: selectedVariant.id,
+        productId: product.id,
+        productName: product.name,
+        productSlug: product.slug,
+        variantName: selectedVariant.name,
+        price: finalPrice,
+        image: selectedVariant.images[0] || '',
+      });
+
+      if (quantity > 1 || existingItem) {
+        updateQuantity(selectedVariant.id, currentQuantity + quantity);
+      }
+
+      toast({
+        title: 'Added to cart',
+        description: `${product.name} - ${selectedVariant.name}`,
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add item to cart.',
+        variant: 'destructive',
+      });
     }
-
-    toast({
-      title: 'Added to cart',
-      description: `${product.name} - ${selectedVariant.name}`,
-    });
   };
 
   return (

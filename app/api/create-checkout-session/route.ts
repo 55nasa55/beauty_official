@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const { data: variants, error: variantsError } = await supabase
       .from('product_variants')
-      .select('id, name, price, member_price_cents, images, product_id, products(name, slug, member_price_cents, archived)')
+      .select('id, name, price, member_price_cents, images, product_id, stock_quantity, track_inventory, products(name, slug, member_price_cents, archived)')
       .in('id', variantIds);
 
     if (variantsError || !variants) {
@@ -56,6 +56,34 @@ export async function POST(req: NextRequest) {
         { error: 'One or more products in your cart are no longer available.' },
         { status: 400 }
       );
+    }
+
+    // Stock validation
+    for (const item of cartItems) {
+      const variant = (variants as any[]).find((v: any) => v.id === item.variantId);
+      if (!variant) {
+        return NextResponse.json(
+          { error: `Product variant not found.` },
+          { status: 400 }
+        );
+      }
+
+      if (variant.track_inventory) {
+        if (variant.stock_quantity === 0) {
+          return NextResponse.json(
+            { error: 'Some items are out of stock.' },
+            { status: 400 }
+          );
+        }
+
+        if (item.quantity > variant.stock_quantity) {
+          const productName = variant.products?.name || 'Product';
+          return NextResponse.json(
+            { error: `Only ${variant.stock_quantity} left for ${productName} - ${variant.name}.` },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const lineItems = cartItems.map((item: any) => {

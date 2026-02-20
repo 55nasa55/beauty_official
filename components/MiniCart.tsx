@@ -1,10 +1,10 @@
 'use client';
 
 import { useCart } from '@/lib/cart-context';
-import { X, Minus, Plus } from 'lucide-react';
+import { X, Minus, Plus, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -14,13 +14,85 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { supabasePublic } from '@/lib/supabase/public';
+
+interface StockInfo {
+  variantId: string;
+  liveStock: number;
+  trackInventory: boolean;
+}
 
 export function MiniCart() {
   const { items, removeItem, updateQuantity, totalItems, totalPrice } = useCart();
   const [isLoading, setIsLoading] = useState(false);
+  const [stockInfo, setStockInfo] = useState<StockInfo[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (isOpen && items.length > 0) {
+      fetchStockInfo();
+    }
+  }, [isOpen, items]);
+
+  const fetchStockInfo = async () => {
+    try {
+      const variantIds = items.map(item => item.variantId);
+      const result = await supabasePublic
+        .from('product_variants')
+        .select('id, stock_quantity, track_inventory')
+        .in('id', variantIds);
+
+      if (result.data) {
+        const typedData = result.data as Array<{
+          id: string;
+          stock_quantity: number;
+          track_inventory: boolean;
+        }>;
+
+        setStockInfo(
+          typedData.map(v => ({
+            variantId: v.id,
+            liveStock: v.stock_quantity,
+            trackInventory: v.track_inventory,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching stock info:', error);
+    }
+  };
+
+  const getStockStatus = (variantId: string, cartQty: number) => {
+    const stock = stockInfo.find(s => s.variantId === variantId);
+    if (!stock || !stock.trackInventory) return null;
+
+    if (stock.liveStock === 0) {
+      return { type: 'error', message: 'Out of stock — remove to continue checkout' };
+    }
+
+    if (cartQty > stock.liveStock) {
+      return { type: 'warning', message: `Only ${stock.liveStock} left — reduce quantity` };
+    }
+
+    return null;
+  };
+
+  const hasStockIssues = items.some(item => {
+    const status = getStockStatus(item.variantId, item.quantity);
+    return status?.type === 'error' || status?.type === 'warning';
+  });
+
   const handleCheckout = async () => {
+    if (hasStockIssues) {
+      toast({
+        title: 'Cannot proceed',
+        description: 'Please fix stock issues before checkout.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -55,7 +127,7 @@ export function MiniCart() {
   };
 
   return (
-    <Sheet>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <button className="relative p-2 hover:bg-gray-50 rounded-full transition-colors">
           <svg
@@ -93,52 +165,62 @@ export function MiniCart() {
         ) : (
           <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto py-6 space-y-4">
-              {items.map((item) => (
-                <div key={item.variantId} className="flex gap-4 border-b pb-4">
-                  <div className="relative w-20 h-20 flex-shrink-0">
-                    <Image
-                      src={item.image}
-                      alt={item.productName}
-                      fill
-                      className="object-cover rounded"
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/product/${item.productSlug}`}
-                      className="text-sm font-medium hover:text-gray-600 line-clamp-2"
-                    >
-                      {item.productName}
-                    </Link>
-                    <p className="text-xs text-gray-500 mt-1">{item.variantName}</p>
-                    <p className="text-sm font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
-
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                        className="p-1 hover:bg-gray-100 rounded"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-sm w-8 text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-                        className="p-1 hover:bg-gray-100 rounded"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
+              {items.map((item) => {
+                const stockStatus = getStockStatus(item.variantId, item.quantity);
+                return (
+                  <div key={item.variantId} className="flex gap-4 border-b pb-4">
+                    <div className="relative w-20 h-20 flex-shrink-0">
+                      <Image
+                        src={item.image}
+                        alt={item.productName}
+                        fill
+                        className="object-cover rounded"
+                      />
                     </div>
-                  </div>
 
-                  <button
-                    onClick={() => removeItem(item.variantId)}
-                    className="p-1 hover:bg-gray-100 rounded h-fit"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/product/${item.productSlug}`}
+                        className="text-sm font-medium hover:text-gray-600 line-clamp-2"
+                      >
+                        {item.productName}
+                      </Link>
+                      <p className="text-xs text-gray-500 mt-1">{item.variantName}</p>
+                      <p className="text-sm font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
+
+                      {stockStatus && (
+                        <div className={`flex items-center gap-1 mt-2 text-xs ${stockStatus.type === 'error' ? 'text-red-600' : 'text-orange-600'}`}>
+                          <AlertCircle className="w-3 h-3" />
+                          <span>{stockStatus.message}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-sm w-8 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => removeItem(item.variantId)}
+                      className="p-1 hover:bg-gray-100 rounded h-fit"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="border-t pt-4 space-y-4">
@@ -149,10 +231,15 @@ export function MiniCart() {
               <Button
                 className="w-full"
                 onClick={handleCheckout}
-                disabled={isLoading}
+                disabled={isLoading || hasStockIssues}
               >
                 {isLoading ? 'Processing...' : 'Checkout'}
               </Button>
+              {hasStockIssues && (
+                <p className="text-xs text-red-600 text-center">
+                  Fix stock issues to continue
+                </p>
+              )}
             </div>
           </div>
         )}
