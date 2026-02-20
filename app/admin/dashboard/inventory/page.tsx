@@ -13,10 +13,15 @@ async function getInventoryData() {
     redirect('/admin/login');
   }
 
+  const email = session.user.email?.toLowerCase();
+  if (!email) {
+    redirect('/admin/login');
+  }
+
   const { data: adminCheck } = await supabase
     .from('admins')
     .select('id')
-    .eq('user_id', session.user.id)
+    .eq('email', email)
     .maybeSingle();
 
   if (!adminCheck) {
