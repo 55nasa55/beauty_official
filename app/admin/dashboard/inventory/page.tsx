@@ -76,7 +76,7 @@ export default function InventoryPage() {
       const cutoffDate = thirtyDaysAgo.toISOString();
 
       // Fetch product variants with product info
-      const { data: variants, error: variantsError } = await supabase
+      const { data: variantsRaw, error: variantsError } = await supabase
         .from('product_variants')
         .select(`
           id,
@@ -86,17 +86,18 @@ export default function InventoryPage() {
           stock_quantity,
           low_stock_threshold,
           track_inventory,
-          products!inner (
+          products (
             id,
             name,
             archived
           )
         `)
-        .eq('products.archived', false)
-        .order('products.name')
         .order('name');
 
       if (variantsError) throw variantsError;
+
+      // RLS-safe filtering (shows only unarchived products)
+      const variants = (variantsRaw || []).filter((v: any) => v.products?.archived === false);
 
       // Fetch 30-day sales data
       const { data: salesData, error: salesError } = await supabase
