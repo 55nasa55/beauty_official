@@ -32,37 +32,58 @@ export default async function EntryPage() {
     <>
       <Header categories={categories} brands={brands} collections={collections} />
       <main className="min-h-screen bg-white">
-        <div className="mx-auto max-w-[1100px] px-6 py-16 sm:py-24">
-          {/* Hero Section */}
-          <section className="text-center mb-20">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              Same beauty essentials.<br />Lower prices — every time.
-            </h1>
-            <p className="text-xl sm:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto">
-              Members save $1.50–$3 per item by replacing retail markups with a membership model.
-            </p>
+        {/* Premium Hero Section */}
+        <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-rose-50 via-pink-50 to-neutral-100">
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          {/* Hero background image */}
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105 animate-[slowzoom_12s_ease-in-out_infinite]"
+            style={{ backgroundImage: "url('/images/entry-hero-premium.jpg')" }}
+          />
+
+          {/* Premium gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/60 to-white/90" />
+          <div className="absolute inset-0 backdrop-blur-[3px]" />
+
+          {/* Soft vignette for luxury depth */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle,transparent_60%,rgba(0,0,0,0.08)_100%)]" />
+
+          {/* Foreground content */}
+          <div className="relative z-10 flex flex-col items-center justify-center px-6 py-24 min-h-screen animate-fadeIn">
+            <div className="max-w-3xl w-full bg-white/60 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] px-10 py-12 text-center border border-white/40">
+              <h1 className="text-5xl font-semibold text-neutral-900 leading-tight mb-4">
+                Same beauty essentials.<br />Lower prices — every time.
+              </h1>
+
+              <p className="text-lg text-neutral-600 mb-10">
+                Members save $1.50–$3 per item by replacing retail markups with a membership model.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center mb-6">
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gray-900 hover:bg-gray-800 transition-colors rounded-lg"
+                >
+                  Join Cosmetic Club
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+                <BrowseAsGuestButton
+                  className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-gray-900 bg-white border-2 border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+                />
+              </div>
+
               <Link
-                href="/pricing"
-                className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gray-900 hover:bg-gray-800 transition-colors rounded-lg"
+                href="/why-prices-are-lower"
+                className="inline-flex items-center text-gray-700 hover:text-gray-900 font-medium underline underline-offset-4"
               >
-                Join Cosmetic Club
-                <ArrowRight className="ml-2 h-5 w-5" />
+                See How Pricing Works
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
-              <BrowseAsGuestButton
-                className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-gray-900 bg-white border-2 border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
-              />
             </div>
+          </div>
+        </div>
 
-            <Link
-              href="/why-prices-are-lower"
-              className="inline-flex items-center text-gray-700 hover:text-gray-900 font-medium underline underline-offset-4"
-            >
-              See How Pricing Works
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </section>
+        <div className="mx-auto max-w-[1100px] px-6 py-16 sm:py-24">
 
           {/* Price Comparison Cards */}
           <section className="mb-32">
@@ -219,7 +240,7 @@ export default async function EntryPage() {
               />
             </div>
           </section>
-        </div>
+          </div>
       </main>
       <Footer />
     </>
