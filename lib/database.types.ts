@@ -130,6 +130,9 @@ export interface Database {
           compare_at_price: number
           member_price_cents: number | null
           stock: number
+          stock_quantity: number
+          track_inventory: boolean
+          low_stock_threshold: number
           images: string[]
           specs: Json
           created_at: string
@@ -144,6 +147,9 @@ export interface Database {
           compare_at_price?: number
           member_price_cents?: number | null
           stock?: number
+          stock_quantity?: number
+          track_inventory?: boolean
+          low_stock_threshold?: number
           images?: string[]
           specs?: Json
           created_at?: string
@@ -158,6 +164,9 @@ export interface Database {
           compare_at_price?: number
           member_price_cents?: number | null
           stock?: number
+          stock_quantity?: number
+          track_inventory?: boolean
+          low_stock_threshold?: number
           images?: string[]
           specs?: Json
           created_at?: string

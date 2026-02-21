@@ -135,6 +135,13 @@ export default function ProductPage() {
     fetchData();
   }, [slug]);
 
+  function getStockStatus(qty: number) {
+    if (qty === 0) return { label: "Out of stock", color: "text-red-600" };
+    if (qty <= 4) return { label: `Only ${qty} left`, color: "text-red-600" };
+    if (qty <= 15) return { label: "Low stock", color: "text-orange-500" };
+    return { label: "In stock", color: "text-green-600" };
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -395,6 +402,13 @@ export default function ProductPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Stock Status */}
+              {selectedVariant?.track_inventory && (
+                <p className={`text-sm font-medium mt-1 ${getStockStatus(selectedVariant.stock_quantity).color}`}>
+                  {getStockStatus(selectedVariant.stock_quantity).label}
+                </p>
+              )}
 
               <Button
                 className="w-full h-12 text-base"
