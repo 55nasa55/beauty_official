@@ -69,17 +69,30 @@ export async function POST(req: NextRequest) {
       }
 
       if (variant.track_inventory) {
-        if (variant.stock_quantity === 0) {
+        const product = variant.products as any;
+        const stock = variant.stock_quantity || 0;
+        const requested = item.quantity;
+
+        if (stock === 0) {
           return NextResponse.json(
-            { error: 'Some items are out of stock.' },
+            {
+              error: `"${variant.name}" (${product.name}) is out of stock.`,
+              variantId: variant.id,
+              productId: variant.product_id,
+              available: 0,
+            },
             { status: 400 }
           );
         }
 
-        if (item.quantity > variant.stock_quantity) {
-          const productName = variant.products?.name || 'Product';
+        if (requested > stock) {
           return NextResponse.json(
-            { error: `Only ${variant.stock_quantity} left for ${productName} - ${variant.name}.` },
+            {
+              error: `Only ${stock} left in stock for "${variant.name}" (${product.name}). Please adjust your cart.`,
+              variantId: variant.id,
+              productId: variant.product_id,
+              available: stock,
+            },
             { status: 400 }
           );
         }
