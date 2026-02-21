@@ -248,6 +248,20 @@ export default function ProductPage() {
     }
   };
 
+  function renderStars(rating: number) {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      if (rating >= i) {
+        stars.push(<span key={i} className="text-yellow-500">★</span>);
+      } else if (rating >= i - 0.5) {
+        stars.push(<span key={i} className="text-yellow-500">☆</span>);
+      } else {
+        stars.push(<span key={i} className="text-gray-300">☆</span>);
+      }
+    }
+    return stars;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header categories={categories} brands={brands} collections={collections} />
@@ -300,14 +314,17 @@ export default function ProductPage() {
 
               <div>
                 <h1 className="text-3xl font-light tracking-wide mb-3">{product.name}</h1>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-3 mb-3">
                   {averageRating ? (
                     <>
-                      <div className="flex items-center gap-1 text-yellow-500 text-sm font-medium">
-                        <span>⭐</span>
-                        <span>{averageRating.toFixed(1)}</span>
-                        <span className="text-gray-500">/ 5</span>
+                      <div className="flex items-center text-lg">
+                        {renderStars(averageRating)}
                       </div>
+
+                      <span className="text-sm font-medium text-gray-800">
+                        {averageRating.toFixed(1)}
+                      </span>
+
                       <button
                         onClick={() => {
                           const el = document.getElementById("reviews-section");
