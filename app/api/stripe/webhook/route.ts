@@ -184,6 +184,58 @@ export async function POST(req: NextRequest) {
 
       await supabase.from("order_items").insert(items);
 
+      // ------------------------------
+      // Atomic Inventory Decrement
+      // ------------------------------
+      console.log("Webhook: Beginning atomic stock decrement");
+
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from("order_items")
+        .select("variant_id, quantity")
+        .eq("order_id", order.id);
+
+      if (orderItemsError) {
+        console.error("Error fetching order items:", orderItemsError);
+        throw orderItemsError;
+      }
+
+      for (const item of orderItems) {
+        const { variant_id, quantity } = item;
+
+        // Atomic decrement: stock_quantity = stock_quantity - quantity
+        const { data: updatedStock, error: rpcError } = await supabase.rpc(
+          "adjust_variant_stock",
+          {
+            p_variant_id: variant_id,
+            p_adjustment: -quantity
+          }
+        );
+
+        if (rpcError) {
+          console.error(`Stock decrement FAILED for variant ${variant_id}`, rpcError);
+          throw rpcError;
+        }
+
+        // Log audit entry
+        const { error: auditError } = await supabase
+          .from("inventory_adjustments")
+          .insert({
+            variant_id,
+            change_amount: -quantity,
+            reason: "webhook_sale",
+            created_by: "system-webhook"
+          });
+
+        if (auditError) {
+          console.error("Inventory audit log failed:", auditError);
+          throw auditError;
+        }
+
+        console.log(
+          `Stock updated for variant ${variant_id}: -${quantity} (new ${updatedStock})`
+        );
+      }
+
       console.log("✅ Order created:", order.id);
       return NextResponse.json({ received: true });
     } catch (err) {
