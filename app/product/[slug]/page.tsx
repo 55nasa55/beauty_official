@@ -55,6 +55,8 @@ export default function ProductPage() {
   const [suggestedProducts, setSuggestedProducts] = useState<ProductWithVariants[]>([]);
   const [alsoBoughtProducts, setAlsoBoughtProducts] = useState<ProductWithVariants[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -69,7 +71,7 @@ export default function ProductPage() {
             .order('sort_order'),
           supabase
             .from('products')
-            .select('*, brand:brands(*), variants:product_variants(*)')
+            .select('*, brand:brands(*), variants:product_variants(*), reviews(id, rating)')
             .eq('slug', slug)
             .eq('archived', false)
             .maybeSingle(),
@@ -90,6 +92,14 @@ export default function ProductPage() {
       }
 
       setProduct(productData);
+
+      // Compute average rating
+      const ratings = (productData as any)?.reviews?.map((r: any) => r.rating) || [];
+      const avgRating = ratings.length
+        ? (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length)
+        : null;
+      setAverageRating(avgRating);
+      setReviewCount(ratings.length);
 
       if (productData && productData.variants && productData.variants.length > 0) {
         setSelectedVariant(productData.variants[0]);
@@ -290,15 +300,36 @@ export default function ProductPage() {
 
               <div>
                 <h1 className="text-3xl font-light tracking-wide mb-3">{product.name}</h1>
-                <button
-                  onClick={() => {
-                    const el = document.getElementById("reviews-section");
-                    el?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="underline text-sm mb-3 text-gray-600 hover:text-gray-900"
-                >
-                  See all reviews
-                </button>
+                <div className="flex items-center gap-2 mb-3">
+                  {averageRating ? (
+                    <>
+                      <div className="flex items-center gap-1 text-yellow-500 text-sm font-medium">
+                        <span>⭐</span>
+                        <span>{averageRating.toFixed(1)}</span>
+                        <span className="text-gray-500">/ 5</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById("reviews-section");
+                          el?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="text-sm underline cursor-pointer text-gray-600 hover:text-gray-900"
+                      >
+                        See all {reviewCount} reviews
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById("reviews-section");
+                        el?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="text-sm underline cursor-pointer text-gray-600 hover:text-gray-900"
+                    >
+                      See all reviews
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   {!membershipLoading && isMember && selectedVariant.member_price_cents ? (
                     <>
