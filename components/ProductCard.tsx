@@ -93,7 +93,8 @@ export function ProductCard({ product }: ProductCardProps) {
               productName={product.name}
               productSlug={product.slug}
               variantName={defaultVariant.name}
-              price={displayPrice}
+              price={defaultVariant.price}
+              memberPrice={memberPrice || undefined}
               image={defaultVariant.images[0] || '/placeholder.jpg'}
               stock={defaultVariant.stock}
             />

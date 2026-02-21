@@ -5,6 +5,7 @@ import { X, Minus, Plus, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Sheet,
   SheetContent,
@@ -15,11 +16,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabasePublic } from '@/lib/supabase/public';
+import { useMembership } from '@/lib/membership-context';
 
 interface StockInfo {
   variantId: string;
   liveStock: number;
   trackInventory: boolean;
+  memberPrice: number | null;
 }
 
 export function MiniCart() {
@@ -28,6 +31,8 @@ export function MiniCart() {
   const [stockInfo, setStockInfo] = useState<StockInfo[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+  const { isMember } = useMembership();
 
   useEffect(() => {
     if (isOpen && items.length > 0) {
@@ -40,7 +45,7 @@ export function MiniCart() {
       const variantIds = items.map(item => item.variantId);
       const result = await supabasePublic
         .from('product_variants')
-        .select('id, stock_quantity, track_inventory')
+        .select('id, stock_quantity, track_inventory, member_price')
         .in('id', variantIds);
 
       if (result.data) {
@@ -48,6 +53,7 @@ export function MiniCart() {
           id: string;
           stock_quantity: number;
           track_inventory: boolean;
+          member_price: number | null;
         }>;
 
         setStockInfo(
@@ -55,6 +61,7 @@ export function MiniCart() {
             variantId: v.id,
             liveStock: v.stock_quantity,
             trackInventory: v.track_inventory,
+            memberPrice: v.member_price,
           }))
         );
       }
@@ -82,6 +89,14 @@ export function MiniCart() {
     const status = getStockStatus(item.variantId, item.quantity);
     return status?.type === 'error' || status?.type === 'warning';
   });
+
+  const computeSavings = (item: typeof items[0]) => {
+    const stock = stockInfo.find(s => s.variantId === item.variantId);
+    if (!stock || !stock.memberPrice) return 0;
+    return (item.price - stock.memberPrice) * item.quantity;
+  };
+
+  const totalSavings = items.reduce((sum, item) => sum + computeSavings(item), 0);
 
   const handleCheckout = async () => {
     if (hasStockIssues) {
@@ -167,6 +182,9 @@ export function MiniCart() {
             <div className="flex-1 overflow-y-auto py-6 space-y-4">
               {items.map((item) => {
                 const stockStatus = getStockStatus(item.variantId, item.quantity);
+                const stock = stockInfo.find(s => s.variantId === item.variantId);
+                const memberPrice = stock?.memberPrice;
+
                 return (
                   <div key={item.variantId} className="flex gap-4 border-b pb-4">
                     <div className="relative w-20 h-20 flex-shrink-0">
@@ -187,6 +205,26 @@ export function MiniCart() {
                       </Link>
                       <p className="text-xs text-gray-500 mt-1">{item.variantName}</p>
                       <p className="text-sm font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
+
+                      {memberPrice && (
+                        isMember ? (
+                          <div className="text-sm text-green-600 mt-1 font-medium">
+                            Your member price
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-sm text-green-600 mt-1">
+                              Member price: ${memberPrice.toFixed(2)}
+                            </div>
+                            <div
+                              className="text-xs text-blue-600 underline cursor-pointer mt-1"
+                              onClick={() => router.push('/entry')}
+                            >
+                              Become a member to save
+                            </div>
+                          </>
+                        )
+                      )}
 
                       {stockStatus && (
                         <div className={`flex items-center gap-1 mt-2 text-xs ${stockStatus.type === 'error' ? 'text-red-600' : 'text-orange-600'}`}>
@@ -228,6 +266,21 @@ export function MiniCart() {
                 <span>Total</span>
                 <span>${totalPrice.toFixed(2)}</span>
               </div>
+
+              {!isMember && totalSavings > 0 && (
+                <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
+                  <div className="text-blue-800 text-sm font-medium">
+                    Become a member and save ${totalSavings.toFixed(2)} on this order
+                  </div>
+                  <button
+                    onClick={() => router.push('/entry')}
+                    className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition"
+                  >
+                    Join Cosmetic Club
+                  </button>
+                </div>
+              )}
+
               <Button
                 className="w-full"
                 onClick={handleCheckout}

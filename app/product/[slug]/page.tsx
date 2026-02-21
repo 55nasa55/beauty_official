@@ -218,7 +218,6 @@ export default function ProductPage() {
       }
 
       const memberPrice = selectedVariant.member_price_cents ? selectedVariant.member_price_cents / 100 : null;
-      const finalPrice = !membershipLoading && isMember && memberPrice ? memberPrice : selectedVariant.price;
 
       addItem({
         variantId: selectedVariant.id,
@@ -226,7 +225,8 @@ export default function ProductPage() {
         productName: product.name,
         productSlug: product.slug,
         variantName: selectedVariant.name,
-        price: finalPrice,
+        price: selectedVariant.price,
+        memberPrice: memberPrice || undefined,
         image: selectedVariant.images[0] || '',
       });
 

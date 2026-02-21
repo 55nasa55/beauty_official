@@ -14,6 +14,7 @@ interface AddToCartButtonProps {
   productSlug: string;
   variantName: string;
   price: number;
+  memberPrice?: number;
   image: string;
   stock: number;
 }
@@ -25,6 +26,7 @@ export function AddToCartButton({
   productSlug,
   variantName,
   price,
+  memberPrice,
   image,
   stock,
 }: AddToCartButtonProps) {
@@ -88,6 +90,7 @@ export function AddToCartButton({
         productSlug,
         variantName,
         price,
+        memberPrice,
         image,
       });
     } catch (error) {

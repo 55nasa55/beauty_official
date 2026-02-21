@@ -10,6 +10,7 @@ export interface CartItem {
   productSlug: string;
   variantName: string;
   price: number;
+  memberPrice?: number;
   image: string;
   quantity: number;
 }
