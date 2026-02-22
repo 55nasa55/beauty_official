@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Package,
   ShoppingBag,
@@ -15,7 +16,8 @@ import {
   X,
   Image,
   Layout,
-  BarChart3
+  BarChart3,
+  MessageSquare
 } from 'lucide-react';
 
 export default function AdminDashboardLayout({
@@ -25,6 +27,7 @@ export default function AdminDashboardLayout({
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pathname, setPathname] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     // Set initial pathname
@@ -43,6 +46,30 @@ export default function AdminDashboardLayout({
     };
   }, []);
 
+  useEffect(() => {
+    fetchUnreadCount();
+
+    // Poll for unread count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('read', false);
+
+      if (!error && data !== null) {
+        setUnreadCount(data.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/admin/login';
@@ -58,6 +85,7 @@ export default function AdminDashboardLayout({
     { href: '/admin/dashboard/banners', label: 'Banners', icon: Layout },
     { href: '/admin/dashboard/images', label: 'Images', icon: Image },
     { href: '/admin/dashboard/orders', label: 'Orders', icon: ShoppingBag },
+    { href: '/admin/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadCount },
   ];
 
   return (
@@ -74,6 +102,7 @@ export default function AdminDashboardLayout({
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const showBadge = item.badge && item.badge > 0;
 
               return (
                 <Link
@@ -87,7 +116,12 @@ export default function AdminDashboardLayout({
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {showBadge && (
+                    <Badge variant="secondary" className="bg-blue-500 text-white">
+                      {item.badge}
+                    </Badge>
+                  )}
                 </Link>
               );
             })}
@@ -129,6 +163,7 @@ export default function AdminDashboardLayout({
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
+                const showBadge = item.badge && item.badge > 0;
 
                 return (
                   <Link
@@ -145,7 +180,12 @@ export default function AdminDashboardLayout({
                     }`}
                   >
                     <Icon className="w-5 h-5" />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {showBadge && (
+                      <Badge variant="secondary" className="bg-blue-500 text-white">
+                        {item.badge}
+                      </Badge>
+                    )}
                   </Link>
                 );
               })}
