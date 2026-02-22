@@ -143,6 +143,46 @@ export default async function Home() {
             )}
           </div>
         </div>
+
+        <section className="py-16 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-5xl mx-auto">
+              <h2 className="text-3xl font-bold text-center mb-12">
+                Why our prices are lower
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10 max-w-3xl mx-auto">
+                <div className="text-center flex flex-col items-center justify-center">
+                  <h3 className="text-xl font-semibold mb-3">Membership over markup</h3>
+                  <p className="text-gray-600">
+                    We use a membership model instead of traditional retail markups, passing savings directly to you.
+                  </p>
+                </div>
+
+                <div className="text-center flex flex-col items-center justify-center">
+                  <h3 className="text-xl font-semibold mb-3">Curated selection</h3>
+                  <p className="text-gray-600">
+                    We focus on quality over quantity, carefully selecting products that deliver real value.
+                  </p>
+                </div>
+
+                <div className="text-center flex flex-col items-center justify-center">
+                  <h3 className="text-xl font-semibold mb-3">No hype tax</h3>
+                  <p className="text-gray-600">
+                    We skip expensive marketing campaigns and celebrity endorsements, keeping prices fair.
+                  </p>
+                </div>
+
+                <div className="text-center flex flex-col items-center justify-center">
+                  <h3 className="text-xl font-semibold mb-3">Direct sourcing</h3>
+                  <p className="text-gray-600">
+                    We work directly with manufacturers to eliminate middlemen and reduce costs.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       <Footer />
