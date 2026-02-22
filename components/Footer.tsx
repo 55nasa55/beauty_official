@@ -42,7 +42,7 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Help</h4>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
+                <Link href="/contact" className="hover:text-gray-900 transition-colors">
                   Contact Us
                 </Link>
               </li>
