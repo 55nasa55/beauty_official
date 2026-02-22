@@ -222,17 +222,6 @@ export default function ContactPage() {
             </form>
           </div>
 
-          <div className="mt-12 text-center">
-            <p className="text-gray-600">
-              You can also email us directly at{' '}
-              <a
-                href="mailto:support@example.com"
-                className="text-blue-600 hover:underline font-medium"
-              >
-                support@example.com
-              </a>
-            </p>
-          </div>
         </div>
       </main>
       <Footer />
