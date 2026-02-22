@@ -26,10 +26,19 @@ interface ContactMessage {
 
 interface MessagesTableProps {
   messages: ContactMessage[];
+  totalCount: number;
+  page: number;
+  limit: number;
   onRefresh: () => Promise<void>;
 }
 
-export default function MessagesTable({ messages, onRefresh }: MessagesTableProps) {
+export default function MessagesTable({
+  messages,
+  totalCount,
+  page,
+  limit,
+  onRefresh,
+}: MessagesTableProps) {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -50,69 +59,60 @@ export default function MessagesTable({ messages, onRefresh }: MessagesTableProp
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Messages</h1>
-          <Button onClick={onRefresh} variant="outline">
-            Refresh
-          </Button>
-        </div>
-
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {messages.length === 0 ? (
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                  No messages found
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {messages.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                    No messages yet
+            ) : (
+              messages.map((message) => (
+                <TableRow
+                  key={message.id}
+                  className={message.read ? '' : 'font-semibold bg-blue-50'}
+                >
+                  <TableCell>{message.name}</TableCell>
+                  <TableCell>{message.email}</TableCell>
+                  <TableCell>{message.subject}</TableCell>
+                  <TableCell>
+                    {format(new Date(message.created_at), 'MMM d, yyyy h:mm a')}
+                  </TableCell>
+                  <TableCell>
+                    {message.read ? (
+                      <span className="text-gray-500">Read</span>
+                    ) : (
+                      <Badge variant="secondary" className="bg-blue-500 text-white">
+                        Unread
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      onClick={() => handleViewMessage(message)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      View
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ) : (
-                messages.map((message) => (
-                  <TableRow
-                    key={message.id}
-                    className={message.read ? '' : 'font-semibold bg-blue-50'}
-                  >
-                    <TableCell>{message.name}</TableCell>
-                    <TableCell>{message.email}</TableCell>
-                    <TableCell>{message.subject}</TableCell>
-                    <TableCell>
-                      {format(new Date(message.created_at), 'MMM d, yyyy h:mm a')}
-                    </TableCell>
-                    <TableCell>
-                      {message.read ? (
-                        <span className="text-gray-500">Read</span>
-                      ) : (
-                        <Badge variant="secondary" className="bg-blue-500 text-white">
-                          Unread
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        onClick={() => handleViewMessage(message)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {selectedMessage && (

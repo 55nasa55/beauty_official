@@ -57,13 +57,13 @@ export default function AdminDashboardLayout({
 
   const fetchUnreadCount = async () => {
     try {
-      const { data, error } = await supabase
+      const { count, error } = await supabase
         .from('contact_messages')
-        .select('id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .eq('read', false);
 
-      if (!error && data !== null) {
-        setUnreadCount(data.length || 0);
+      if (!error) {
+        setUnreadCount(count || 0);
       }
     } catch (error) {
       console.error('Error fetching unread count:', error);
