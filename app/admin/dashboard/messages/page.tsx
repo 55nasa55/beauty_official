@@ -78,48 +78,23 @@ export default function MessagesPage() {
 
   async function loadMessages() {
     try {
-      // Calculate range for pagination
-      const start = (page - 1) * limit;
-      const end = start + limit - 1;
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        search,
+        filter,
+        sort,
+      });
 
-      // Build query
-      let query = supabase
-        .from('contact_messages')
-        .select('*', { count: 'exact' });
+      const res = await fetch(`/api/admin/messages/list?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to load messages");
 
-      // Apply search filter
-      if (search) {
-        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,subject.ilike.%${search}%,message.ilike.%${search}%`);
-      }
+      const json = await res.json();
 
-      // Apply read/unread filter
-      if (filter === 'unread') {
-        query = query.eq('read', false);
-      } else if (filter === 'read') {
-        query = query.eq('read', true);
-      } else if (filter === '30days') {
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        query = query.gte('created_at', thirtyDaysAgo);
-      }
-
-      // Apply sorting
-      if (sort === 'oldest') {
-        query = query.order('created_at', { ascending: true });
-      } else {
-        query = query.order('created_at', { ascending: false });
-      }
-
-      // Apply pagination
-      query = query.range(start, end);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setMessages(data || []);
-      setTotalCount(count || 0);
+      setMessages(json.messages || []);
+      setTotalCount(json.totalCount || 0);
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error("Error loading messages:", error);
     }
   }
 
