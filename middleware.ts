@@ -53,5 +53,10 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/"],
+  matcher: [
+    "/",                   // Protect homepage (membership gate)
+    "/admin/:path*",       // Protect admin dashboard
+    "/api/admin/:path*",   // Protect admin API endpoints
+    "/api/stripe/:path*",  // Protect Stripe-related APIs
+  ],
 };
