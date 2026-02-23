@@ -21,7 +21,13 @@ async function getHomePageData() {
           .eq('display_on_home', true)
           .order('sort_order'),
         supabase.from('banners').select('*').eq('active', true).order('sort_order'),
-        supabase.from('products').select('*, brand:brands(*), variants:product_variants(*)'),
+        supabase.from('products').select(`
+          *,
+          brand:brands(*),
+          variants:product_variants(*),
+          average_rating:reviews(rating),
+          review_count:reviews(count)
+        `),
       ]);
 
     if (categoriesResult.error) {

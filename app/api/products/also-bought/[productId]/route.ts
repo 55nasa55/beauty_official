@@ -55,7 +55,13 @@ export async function GET(
   // 3️⃣ Fetch full product data
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("*, brand:brands(*), variants:product_variants(*)")
+    .select(`
+      *,
+      brand:brands(*),
+      variants:product_variants(*),
+      average_rating:reviews(rating),
+      review_count:reviews(count)
+    `)
     .in("id", topProductIds)
     .eq("archived", false);
 

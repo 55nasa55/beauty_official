@@ -33,7 +33,13 @@ async function getBrandData(slug: string) {
   if (brand) {
     const productsResult = await supabase
       .from('products')
-      .select('*, brand:brands(*), variants:product_variants(*)')
+      .select(`
+        *,
+        brand:brands(*),
+        variants:product_variants(*),
+        average_rating:reviews(rating),
+        review_count:reviews(count)
+      `)
       .eq('brand_id', brand.id as string)
       .eq('archived', false);
 

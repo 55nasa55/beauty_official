@@ -48,7 +48,13 @@ export default function CollectionPage() {
       if (coll) {
         const allProductsResult = await supabase
           .from('products')
-          .select('*, brand:brands(*), variants:product_variants(*)');
+          .select(`
+            *,
+            brand:brands(*),
+            variants:product_variants(*),
+            average_rating:reviews(rating),
+            review_count:reviews(count)
+          `);
 
         const allProducts = (allProductsResult.data || []) as ProductWithVariants[];
         let collectionProducts: ProductWithVariants[] = [];

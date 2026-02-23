@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     const brandIds = Array.from(new Set((productsData || []).map(p => p.brand_id).filter(Boolean)));
     const categoryIds = Array.from(new Set((productsData || []).map(p => p.category_id).filter(Boolean)));
 
-    const [brandsResult, categoriesResult, variantsResult] = await Promise.all([
+    const [brandsResult, categoriesResult, variantsResult, reviewsResult] = await Promise.all([
       brandIds.length > 0
         ? supabase.from('brands').select('id, name').in('id', brandIds)
         : Promise.resolve({ data: [] }),
@@ -185,6 +185,7 @@ export async function GET(request: NextRequest) {
         ? supabase.from('categories').select('id, name').in('id', categoryIds)
         : Promise.resolve({ data: [] }),
       supabase.from('product_variants').select('*').in('product_id', productIds),
+      supabase.from('reviews').select('product_id, rating').in('product_id', productIds),
     ]);
 
     const brandsMap: Record<string, string> = {};
@@ -205,11 +206,25 @@ export async function GET(request: NextRequest) {
       variantsByProduct[variant.product_id].push(variant);
     });
 
+    const reviewsByProduct: Record<string, any[]> = {};
+    (reviewsResult.data || []).forEach(review => {
+      if (!reviewsByProduct[review.product_id]) {
+        reviewsByProduct[review.product_id] = [];
+      }
+      reviewsByProduct[review.product_id].push(review);
+    });
+
     const products = (productsData || []).map(product => {
       const variants = variantsByProduct[product.id] || [];
       const lowestPriceVariant = variants.reduce((min, v) =>
         !min || v.price < min.price ? v : min, null
       );
+
+      const reviews = reviewsByProduct[product.id] || [];
+      const average_rating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : undefined;
+      const review_count = reviews.length;
 
       return {
         id: product.id,
@@ -221,6 +236,8 @@ export async function GET(request: NextRequest) {
         image: lowestPriceVariant?.images?.[0] || '',
         price: lowestPriceVariant?.price || 0,
         compareAtPrice: lowestPriceVariant?.compare_at_price || null,
+        average_rating,
+        review_count,
       };
     });
 
