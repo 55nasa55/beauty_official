@@ -26,19 +26,6 @@ interface FacetOption {
   count: number;
 }
 
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  brand: string;
-  category: string;
-  image: string;
-  price: number;
-  compareAtPrice: number | null;
-  average_rating?: number;
-  review_count?: number;
-}
 
 export default function CollectionsPage() {
   const params = useParams();
@@ -50,7 +37,7 @@ export default function CollectionsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [facets, setFacets] = useState<Facet[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set());
   const [openFacets, setOpenFacets] = useState<Record<string, boolean>>({});
   const [offset, setOffset] = useState(0);
@@ -207,9 +194,8 @@ export default function CollectionsPage() {
             variants:product_variants(*)
           `)
           .eq('archived', false),
-        supabase
-          .from('reviews')
-          .select('product_id, rating'),
+
+        supabase.from('reviews').select('product_id, rating'),
       ]);
 
       if (productsResult.error) throw productsResult.error;
@@ -223,49 +209,42 @@ export default function CollectionsPage() {
       });
 
       const allProducts = productsResult.data || [];
+
       let collectionProducts: any[] = [];
 
-      if (collection.product_ids && Array.isArray(collection.product_ids) && collection.product_ids.length > 0) {
-        const idProducts = (allProducts || []).filter((p: any) =>
-          p && collection.product_ids.includes(p.id)
-        );
-        collectionProducts = [...idProducts];
+      if (collection.product_ids?.length) {
+        collectionProducts = [
+          ...allProducts.filter((p: any) => collection.product_ids.includes(p.id)),
+        ];
       }
 
-      if (collection.product_tags && Array.isArray(collection.product_tags) && collection.product_tags.length > 0) {
-        const tagProducts = (allProducts || []).filter((p: any) =>
-          p && p.tags && Array.isArray(p.tags) &&
-          p.tags.some((tag: string) => collection.product_tags.includes(tag))
+      if (collection.product_tags?.length) {
+        const tagMatches = allProducts.filter(
+          (p: any) =>
+            p.tags?.some((tag: string) => collection.product_tags.includes(tag))
         );
 
-        const existingIds = new Set(collectionProducts.map((p) => p.id));
-        const uniqueTagProducts = tagProducts.filter((p: any) => p && !existingIds.has(p.id));
-        collectionProducts = [...collectionProducts, ...uniqueTagProducts];
+        const existing = new Set(collectionProducts.map((p) => p.id));
+        collectionProducts = [
+          ...collectionProducts,
+          ...tagMatches.filter((p) => !existing.has(p.id)),
+        ];
       }
 
-      const mappedProducts = collectionProducts.slice(0, limit).map((p: any) => {
+      const productsWithRatings = collectionProducts.map((p: any) => {
         const reviews = reviewsByProduct[p.id] || [];
-        const average_rating = reviews.length > 0
-          ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-          : undefined;
-        const review_count = reviews.length;
-
+        const average_rating =
+          reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : undefined;
         return {
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: p.description,
-          brand: p.brand?.name || '',
-          category: '',
-          image: p.variants?.[0]?.images?.[0] || '',
-          price: p.variants?.[0]?.price || 0,
-          compareAtPrice: p.variants?.[0]?.compare_at_price || null,
+          ...p,
           average_rating,
-          review_count,
+          review_count: reviews.length,
         };
       });
 
-      setProducts(mappedProducts);
+      setProducts(productsWithRatings);
       setTotal(collectionProducts.length);
       setHasMore(collectionProducts.length > limit);
       setOffset(0);
@@ -286,9 +265,8 @@ export default function CollectionsPage() {
             variants:product_variants(*)
           `)
           .eq('archived', false),
-        supabase
-          .from('reviews')
-          .select('product_id, rating'),
+
+        supabase.from('reviews').select('product_id, rating'),
       ]);
 
       if (productsResult.error) throw productsResult.error;
@@ -303,36 +281,27 @@ export default function CollectionsPage() {
 
       const allProducts = productsResult.data || [];
 
-      const tagProducts = (allProducts || []).filter((product: any) => {
+      const tagProducts = allProducts.filter((product: any) => {
         if (!product || !product.tags || !Array.isArray(product.tags)) return false;
         return product.tags.some((t: string) =>
           t && typeof t === 'string' && t.toLowerCase().replace(/-/g, '_') === tagNormalized
         );
       });
 
-      const mappedProducts = tagProducts.slice(0, limit).map((p: any) => {
+      const productsWithRatings = tagProducts.map((p: any) => {
         const reviews = reviewsByProduct[p.id] || [];
-        const average_rating = reviews.length > 0
-          ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-          : undefined;
-        const review_count = reviews.length;
-
+        const average_rating =
+          reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : undefined;
         return {
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: p.description,
-          brand: p.brand?.name || '',
-          category: '',
-          image: p.variants?.[0]?.images?.[0] || '',
-          price: p.variants?.[0]?.price || 0,
-          compareAtPrice: p.variants?.[0]?.compare_at_price || null,
+          ...p,
           average_rating,
-          review_count,
+          review_count: reviews.length,
         };
       });
 
-      setProducts(mappedProducts);
+      setProducts(productsWithRatings);
       setTotal(tagProducts.length);
       setHasMore(tagProducts.length > limit);
       setOffset(0);
@@ -492,35 +461,9 @@ export default function CollectionsPage() {
               {products.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                    {products.map((product) => {
-                      const productWithVariants = {
-                        id: product.id,
-                        name: product.name,
-                        slug: product.slug,
-                        description: product.description,
-                        category: product.category,
-                        brand: { name: product.brand },
-                        variants: [
-                          {
-                            id: '',
-                            product_id: product.id,
-                            name: '',
-                            price: product.price,
-                            compare_at_price: product.compareAtPrice,
-                            images: product.image ? [product.image] : [],
-                            specs: {},
-                            sku: '',
-                            created_at: '',
-                            updated_at: '',
-                          },
-                        ],
-                        average_rating: product.average_rating,
-                        review_count: product.review_count,
-                      };
-                      return (
-                        <ProductCard key={product.id} product={productWithVariants as any} />
-                      );
-                    })}
+                    {products.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
                   </div>
 
                   {hasMore && pageType === 'category' && (
