@@ -196,13 +196,31 @@ export default function CollectionsPage() {
 
   const fetchCollectionProducts = async (collection: Collection) => {
     try {
-      const { data: allProducts, error } = await supabase
-        .from('products')
-        .select('*, brand:brands(*), variants:product_variants(*)')
-        .eq('archived', false);
+      const [productsResult, reviewsResult] = await Promise.all([
+        supabase
+          .from('products')
+          .select(`
+            *,
+            brand:brands(*),
+            variants:product_variants(*)
+          `)
+          .eq('archived', false),
+        supabase
+          .from('reviews')
+          .select('product_id, rating'),
+      ]);
 
-      if (error) throw error;
+      if (productsResult.error) throw productsResult.error;
 
+      const reviewsByProduct: Record<string, any[]> = {};
+      (reviewsResult.data || []).forEach((review: any) => {
+        if (!reviewsByProduct[review.product_id]) {
+          reviewsByProduct[review.product_id] = [];
+        }
+        reviewsByProduct[review.product_id].push(review);
+      });
+
+      const allProducts = productsResult.data || [];
       let collectionProducts: any[] = [];
 
       if (collection.product_ids && Array.isArray(collection.product_ids) && collection.product_ids.length > 0) {
@@ -223,17 +241,27 @@ export default function CollectionsPage() {
         collectionProducts = [...collectionProducts, ...uniqueTagProducts];
       }
 
-      const mappedProducts = collectionProducts.slice(0, limit).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        description: p.description,
-        brand: p.brand?.name || '',
-        category: '',
-        image: p.variants?.[0]?.images?.[0] || '',
-        price: p.variants?.[0]?.price || 0,
-        compareAtPrice: p.variants?.[0]?.compare_at_price || null,
-      }));
+      const mappedProducts = collectionProducts.slice(0, limit).map((p: any) => {
+        const reviews = reviewsByProduct[p.id] || [];
+        const average_rating = reviews.length > 0
+          ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+          : undefined;
+        const review_count = reviews.length;
+
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          description: p.description,
+          brand: p.brand?.name || '',
+          category: '',
+          image: p.variants?.[0]?.images?.[0] || '',
+          price: p.variants?.[0]?.price || 0,
+          compareAtPrice: p.variants?.[0]?.compare_at_price || null,
+          average_rating,
+          review_count,
+        };
+      });
 
       setProducts(mappedProducts);
       setTotal(collectionProducts.length);
@@ -247,12 +275,31 @@ export default function CollectionsPage() {
   const fetchTagProducts = async () => {
     try {
       const tagNormalized = slug.toLowerCase().replace(/-/g, '_');
-      const { data: allProducts, error } = await supabase
-        .from('products')
-        .select('*, brand:brands(*), variants:product_variants(*)')
-        .eq('archived', false);
+      const [productsResult, reviewsResult] = await Promise.all([
+        supabase
+          .from('products')
+          .select(`
+            *,
+            brand:brands(*),
+            variants:product_variants(*)
+          `)
+          .eq('archived', false),
+        supabase
+          .from('reviews')
+          .select('product_id, rating'),
+      ]);
 
-      if (error) throw error;
+      if (productsResult.error) throw productsResult.error;
+
+      const reviewsByProduct: Record<string, any[]> = {};
+      (reviewsResult.data || []).forEach((review: any) => {
+        if (!reviewsByProduct[review.product_id]) {
+          reviewsByProduct[review.product_id] = [];
+        }
+        reviewsByProduct[review.product_id].push(review);
+      });
+
+      const allProducts = productsResult.data || [];
 
       const tagProducts = (allProducts || []).filter((product: any) => {
         if (!product || !product.tags || !Array.isArray(product.tags)) return false;
@@ -261,17 +308,27 @@ export default function CollectionsPage() {
         );
       });
 
-      const mappedProducts = tagProducts.slice(0, limit).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        description: p.description,
-        brand: p.brand?.name || '',
-        category: '',
-        image: p.variants?.[0]?.images?.[0] || '',
-        price: p.variants?.[0]?.price || 0,
-        compareAtPrice: p.variants?.[0]?.compare_at_price || null,
-      }));
+      const mappedProducts = tagProducts.slice(0, limit).map((p: any) => {
+        const reviews = reviewsByProduct[p.id] || [];
+        const average_rating = reviews.length > 0
+          ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+          : undefined;
+        const review_count = reviews.length;
+
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          description: p.description,
+          brand: p.brand?.name || '',
+          category: '',
+          image: p.variants?.[0]?.images?.[0] || '',
+          price: p.variants?.[0]?.price || 0,
+          compareAtPrice: p.variants?.[0]?.compare_at_price || null,
+          average_rating,
+          review_count,
+        };
+      });
 
       setProducts(mappedProducts);
       setTotal(tagProducts.length);

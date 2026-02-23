@@ -44,10 +44,14 @@ export function SearchBar() {
       try {
         const searchTerm = query.trim().toLowerCase();
 
-        const [productsResult, brandsResult] = await Promise.all([
+        const [productsResult, brandsResult, reviewsResult] = await Promise.all([
           supabase
             .from('products')
-            .select('*, brand:brands(*), variants:product_variants(*)')
+            .select(`
+              *,
+              brand:brands(*),
+              variants:product_variants(*)
+            `)
             .eq('archived', false)
             .or(
               `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`
@@ -58,6 +62,9 @@ export function SearchBar() {
             .select('*')
             .ilike('name', `%${searchTerm}%`)
             .limit(4),
+          supabase
+            .from('reviews')
+            .select('product_id, rating'),
         ]);
 
         if (productsResult.error) {
@@ -67,7 +74,29 @@ export function SearchBar() {
           console.error('Error searching brands:', brandsResult.error);
         }
 
-        const products = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
+        const reviewsByProduct: Record<string, any[]> = {};
+        (reviewsResult.data || []).forEach((review: any) => {
+          if (!reviewsByProduct[review.product_id]) {
+            reviewsByProduct[review.product_id] = [];
+          }
+          reviewsByProduct[review.product_id].push(review);
+        });
+
+        let products = Array.isArray(productsResult.data)
+          ? (productsResult.data as ProductWithVariants[]).map(product => {
+              const reviews = reviewsByProduct[product.id] || [];
+              const average_rating = reviews.length > 0
+                ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+                : undefined;
+              const review_count = reviews.length;
+
+              return {
+                ...product,
+                average_rating,
+                review_count,
+              };
+            })
+          : [];
         const brands = Array.isArray(brandsResult.data) ? brandsResult.data as Brand[] : [];
 
         const brandProductResults = await supabase
@@ -79,16 +108,32 @@ export function SearchBar() {
           const brandIds = brandProductResults.data.map((b: { id: string }) => b.id);
           const { data: brandProducts } = await supabase
             .from('products')
-            .select('*, brand:brands(*), variants:product_variants(*)')
+            .select(`
+              *,
+              brand:brands(*),
+              variants:product_variants(*)
+            `)
             .in('brand_id', brandIds)
             .eq('archived', false)
             .limit(6);
 
           if (brandProducts && Array.isArray(brandProducts)) {
             const existingIds = new Set(products.map((p) => p.id));
-            const uniqueBrandProducts = (brandProducts as ProductWithVariants[]).filter(
-              (p) => p && !existingIds.has(p.id)
-            );
+            const uniqueBrandProducts = (brandProducts as ProductWithVariants[])
+              .filter((p) => p && !existingIds.has(p.id))
+              .map(product => {
+                const reviews = reviewsByProduct[product.id] || [];
+                const average_rating = reviews.length > 0
+                  ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+                  : undefined;
+                const review_count = reviews.length;
+
+                return {
+                  ...product,
+                  average_rating,
+                  review_count,
+                };
+              });
             products.push(...uniqueBrandProducts.slice(0, 6 - products.length));
           }
         }

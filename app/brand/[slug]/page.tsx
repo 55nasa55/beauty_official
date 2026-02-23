@@ -31,19 +31,42 @@ async function getBrandData(slug: string) {
   let products: ProductWithVariants[] = [];
 
   if (brand) {
-    const productsResult = await supabase
-      .from('products')
-      .select(`
-        *,
-        brand:brands(*),
-        variants:product_variants(*),
-        average_rating:reviews(rating),
-        review_count:reviews(count)
-      `)
-      .eq('brand_id', brand.id as string)
-      .eq('archived', false);
+    const [productsResult, reviewsResult] = await Promise.all([
+      supabase
+        .from('products')
+        .select(`
+          *,
+          brand:brands(*),
+          variants:product_variants(*)
+        `)
+        .eq('brand_id', brand.id as string)
+        .eq('archived', false),
+      supabase
+        .from('reviews')
+        .select('product_id, rating'),
+    ]);
 
-    products = (productsResult.data || []) as ProductWithVariants[];
+    const reviewsByProduct: Record<string, any[]> = {};
+    (reviewsResult.data || []).forEach((review: any) => {
+      if (!reviewsByProduct[review.product_id]) {
+        reviewsByProduct[review.product_id] = [];
+      }
+      reviewsByProduct[review.product_id].push(review);
+    });
+
+    products = ((productsResult.data || []) as ProductWithVariants[]).map(product => {
+      const reviews = reviewsByProduct[product.id] || [];
+      const average_rating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : undefined;
+      const review_count = reviews.length;
+
+      return {
+        ...product,
+        average_rating,
+        review_count,
+      };
+    });
   }
 
   return {

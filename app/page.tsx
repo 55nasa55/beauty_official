@@ -11,7 +11,7 @@ export const revalidate = 0;
 async function getHomePageData() {
   const supabase = supabasePublic;
   try {
-    const [categoriesResult, brandsResult, collectionsResult, bannersResult, productsResult] =
+    const [categoriesResult, brandsResult, collectionsResult, bannersResult, productsResult, reviewsResult] =
       await Promise.all([
         supabase.from('categories').select('*').order('name'),
         supabase.from('brands').select('*').order('name'),
@@ -24,10 +24,9 @@ async function getHomePageData() {
         supabase.from('products').select(`
           *,
           brand:brands(*),
-          variants:product_variants(*),
-          average_rating:reviews(rating),
-          review_count:reviews(count)
+          variants:product_variants(*)
         `),
+        supabase.from('reviews').select('product_id, rating'),
       ]);
 
     if (categoriesResult.error) {
@@ -51,7 +50,30 @@ async function getHomePageData() {
     const collections: Collection[] = Array.isArray(collectionsResult.data) ? collectionsResult.data : [];
     const banners: Banner[] = Array.isArray(bannersResult.data) ? bannersResult.data : [];
     const allProducts: ProductWithVariants[] = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
-    const visibleProducts = allProducts.filter(p => !p.archived);
+
+    const reviewsByProduct: Record<string, any[]> = {};
+    (reviewsResult.data || []).forEach((review: any) => {
+      if (!reviewsByProduct[review.product_id]) {
+        reviewsByProduct[review.product_id] = [];
+      }
+      reviewsByProduct[review.product_id].push(review);
+    });
+
+    const productsWithRatings = allProducts.map(product => {
+      const reviews = reviewsByProduct[product.id] || [];
+      const average_rating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : undefined;
+      const review_count = reviews.length;
+
+      return {
+        ...product,
+        average_rating,
+        review_count,
+      };
+    });
+
+    const visibleProducts = productsWithRatings.filter(p => !p.archived);
 
     const collectionProducts = await Promise.all(
       collections.map(async (collection) => {

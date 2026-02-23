@@ -16,17 +16,43 @@ interface ProductsPageProps {
 
 async function getProductsByTag(tag: string) {
   const supabase = supabasePublic;
-  const [categoriesResult, brandsResult, collectionsResult, productsResult] = await Promise.all([
+  const [categoriesResult, brandsResult, collectionsResult, productsResult, reviewsResult] = await Promise.all([
     supabase.from('categories').select('*').order('name'),
     supabase.from('brands').select('*').order('name'),
     supabase.from('collections').select('*').order('sort_order'),
-    supabase.from('products').select('*, brand:brands(*), variants:product_variants(*)').eq('archived', false),
+    supabase.from('products').select(`
+      *,
+      brand:brands(*),
+      variants:product_variants(*)
+    `).eq('archived', false),
+    supabase.from('reviews').select('product_id, rating'),
   ]);
 
   const categories: Category[] = categoriesResult.data || [];
   const brands: Brand[] = brandsResult.data || [];
   const collections: Collection[] = collectionsResult.data || [];
-  const allProducts: ProductWithVariants[] = (productsResult.data || []) as ProductWithVariants[];
+
+  const reviewsByProduct: Record<string, any[]> = {};
+  (reviewsResult.data || []).forEach((review: any) => {
+    if (!reviewsByProduct[review.product_id]) {
+      reviewsByProduct[review.product_id] = [];
+    }
+    reviewsByProduct[review.product_id].push(review);
+  });
+
+  const allProducts: ProductWithVariants[] = ((productsResult.data || []) as ProductWithVariants[]).map(product => {
+    const reviews = reviewsByProduct[product.id] || [];
+    const average_rating = reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : undefined;
+    const review_count = reviews.length;
+
+    return {
+      ...product,
+      average_rating,
+      review_count,
+    };
+  });
 
   const tagNormalized = tag.toLowerCase().replace(/-/g, '_');
 

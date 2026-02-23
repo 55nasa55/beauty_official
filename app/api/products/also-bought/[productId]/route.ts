@@ -52,23 +52,45 @@ export async function GET(
     return NextResponse.json([]);
   }
 
-  // 3️⃣ Fetch full product data
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select(`
-      *,
-      brand:brands(*),
-      variants:product_variants(*),
-      average_rating:reviews(rating),
-      review_count:reviews(count)
-    `)
-    .in("id", topProductIds)
-    .eq("archived", false);
+  // 3️⃣ Fetch full product data and reviews
+  const [productsResult, reviewsResult] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*, brand:brands(*), variants:product_variants(*)")
+      .in("id", topProductIds)
+      .eq("archived", false),
+    supabase
+      .from("reviews")
+      .select("product_id, rating")
+      .in("product_id", topProductIds),
+  ]);
 
-  if (productsError) {
-    console.error("AlsoBought products fetch error:", productsError);
+  if (productsResult.error) {
+    console.error("AlsoBought products fetch error:", productsResult.error);
     return NextResponse.json([], { status: 200 });
   }
 
-  return NextResponse.json(products || []);
+  const reviewsByProduct: Record<string, any[]> = {};
+  (reviewsResult.data || []).forEach(review => {
+    if (!reviewsByProduct[review.product_id]) {
+      reviewsByProduct[review.product_id] = [];
+    }
+    reviewsByProduct[review.product_id].push(review);
+  });
+
+  const productsWithRatings = (productsResult.data || []).map((product: any) => {
+    const reviews = reviewsByProduct[product.id] || [];
+    const average_rating = reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : undefined;
+    const review_count = reviews.length;
+
+    return {
+      ...product,
+      average_rating,
+      review_count,
+    };
+  });
+
+  return NextResponse.json(productsWithRatings);
 }
