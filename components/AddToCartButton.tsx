@@ -46,6 +46,9 @@ export function AddToCartButton({
     setIsChecking(true);
 
     try {
+      // 🔍 DEBUG LOG — SHOWS VARIANT ID RECEIVED
+      console.log("DEBUG ADD TO CART RECEIVED VARIANT ID:", variantId);
+
       const result = await supabasePublic
         .from('product_variants')
         .select('stock_quantity, track_inventory')
