@@ -4,7 +4,7 @@ import { useCart } from '@/lib/cart-context';
 import { X, Minus, Plus, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sheet,
@@ -96,7 +96,9 @@ export function MiniCart() {
     return (item.price - stock.memberPrice) * item.quantity;
   };
 
-  const totalSavings = items.reduce((sum, item) => sum + computeSavings(item), 0);
+  const totalSavings = useMemo(() => {
+    return items.reduce((sum, item) => sum + computeSavings(item), 0);
+  }, [items, stockInfo]);
 
   const handleCheckout = async () => {
     if (hasStockIssues) {
