@@ -36,6 +36,8 @@ interface Product {
   image: string;
   price: number;
   compareAtPrice: number | null;
+  average_rating?: number;
+  review_count?: number;
 }
 
 export default function CollectionsPage() {
@@ -512,6 +514,8 @@ export default function CollectionsPage() {
                             updated_at: '',
                           },
                         ],
+                        average_rating: product.average_rating,
+                        review_count: product.review_count,
                       };
                       return (
                         <ProductCard key={product.id} product={productWithVariants as any} />
