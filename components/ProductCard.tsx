@@ -88,7 +88,7 @@ export function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
             <AddToCartButton
-              variantId={defaultVariant.id}
+              variantId={(defaultVariant as any).variant_id ?? defaultVariant.id}
               productId={product.id}
               productName={product.name}
               productSlug={product.slug}
