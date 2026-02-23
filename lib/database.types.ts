@@ -260,4 +260,6 @@ export type Collection = Database['public']['Tables']['collections']['Row'];
 export type ProductWithVariants = Product & {
   variants: ProductVariant[];
   brand?: Brand;
+  average_rating?: number;
+  review_count?: number;
 };

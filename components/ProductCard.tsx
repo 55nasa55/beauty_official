@@ -77,6 +77,65 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
         </Link>
+
+        {/* ⭐ Compact Rating Block */}
+        {product.average_rating !== undefined && (
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            {/* Stars + half-stars */}
+            <div className="flex items-center">
+              {Array.from({ length: 5 }).map((_, i) => {
+                const filled = i + 1 <= Math.floor(product.average_rating!);
+                const half =
+                  !filled &&
+                  i < product.average_rating! &&
+                  product.average_rating! < i + 1;
+
+                return (
+                  <svg
+                    key={i}
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    className="w-3.5 h-3.5"
+                    stroke="currentColor"
+                    fill={
+                      filled
+                        ? "#FBBF24"
+                        : half
+                        ? "url(#halfGradient)"
+                        : "none"
+                    }
+                  >
+                    <defs>
+                      <linearGradient id="halfGradient">
+                        <stop offset="50%" stopColor="#FBBF24" />
+                        <stop offset="50%" stopColor="transparent" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M10 2.5l2.933 5.528L19 8.91l-4.4 3.636 1.278 5.545L10 15l-5.878 3.09L5.4 12.545 1 8.91l6.067-.882L10 2.5z"
+                      strokeWidth="1"
+                      stroke={filled || half ? "#FBBF24" : "#D1D5DB"}
+                    />
+                  </svg>
+                );
+              })}
+            </div>
+
+            {/* Numeric rating */}
+            <span className="font-medium">{product.average_rating.toFixed(1)}</span>
+
+            {/* Review count link */}
+            {product.review_count !== undefined && (
+              <Link
+                href={`/product/${product.slug}#reviews`}
+                className="text-blue-600 hover:underline"
+              >
+                See all {product.review_count} reviews
+              </Link>
+            )}
+          </div>
+        )}
+
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
