@@ -33,13 +33,6 @@ export function ProductCard({ product }: ProductCardProps) {
     defaultVariant.compare_at_price > 0 &&
     defaultVariant.compare_at_price > defaultVariant.price;
 
-  // 🔍 DEBUG LOGS — TEMPORARY
-  console.log("DEBUG PRODUCT VARIANT:", defaultVariant);
-  console.log(
-    "DEBUG VARIANT ID SENT:",
-    (defaultVariant as any).variant_id ?? defaultVariant.id
-  );
-
   return (
     <div className="group">
       <Link href={`/product/${product.slug}`}>
@@ -154,7 +147,7 @@ export function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
             <AddToCartButton
-              variantId={(defaultVariant as any).variant_id ?? defaultVariant.id}
+              variantId={defaultVariant.id}
               productId={product.id}
               productName={product.name}
               productSlug={product.slug}
