@@ -22,7 +22,7 @@ interface StockInfo {
   variantId: string;
   liveStock: number;
   trackInventory: boolean;
-  memberPrice: number | null;
+  memberPriceCents: number | null;
 }
 
 export function MiniCart() {
@@ -45,7 +45,7 @@ export function MiniCart() {
       const variantIds = items.map(item => item.variantId);
       const result = await supabasePublic
         .from('product_variants')
-        .select('id, stock_quantity, track_inventory, member_price')
+        .select('id, stock_quantity, track_inventory, member_price_cents')
         .in('id', variantIds);
 
       if (result.data) {
@@ -53,7 +53,7 @@ export function MiniCart() {
           id: string;
           stock_quantity: number;
           track_inventory: boolean;
-          member_price: number | null;
+          member_price_cents: number | null;
         }>;
 
         setStockInfo(
@@ -61,7 +61,7 @@ export function MiniCart() {
             variantId: v.id,
             liveStock: v.stock_quantity,
             trackInventory: v.track_inventory,
-            memberPrice: v.member_price,
+            memberPriceCents: v.member_price_cents,
           }))
         );
       }
@@ -92,8 +92,10 @@ export function MiniCart() {
 
   const computeSavings = (item: typeof items[0]) => {
     const stock = stockInfo.find(s => s.variantId === item.variantId);
-    if (!stock || !stock.memberPrice) return 0;
-    return (item.price - stock.memberPrice) * item.quantity;
+    if (!stock || stock.memberPriceCents == null) return 0;
+
+    const memberPrice = stock.memberPriceCents / 100;
+    return (item.price - memberPrice) * item.quantity;
   };
 
   const totalSavings = useMemo(() => {
@@ -185,7 +187,7 @@ export function MiniCart() {
               {items.map((item) => {
                 const stockStatus = getStockStatus(item.variantId, item.quantity);
                 const stock = stockInfo.find(s => s.variantId === item.variantId);
-                const memberPrice = stock?.memberPrice;
+                const memberPrice = stock?.memberPriceCents != null ? stock.memberPriceCents / 100 : null;
 
                 return (
                   <div key={item.variantId} className="flex gap-4 border-b pb-4">
