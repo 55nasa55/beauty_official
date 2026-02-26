@@ -81,34 +81,80 @@ export default async function EntryPage() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </div>
+
+            {/* Price Comparison Cards (now inside hero) */}
+            <div className="mt-12 w-full flex justify-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl w-full mx-auto px-6">
+                <div className="bg-white/80 backdrop-blur-xl rounded-xl p-8 text-center border border-gray-200 shadow-sm">
+                  <div className="text-sm text-gray-500 mb-2">Retail</div>
+                  <div className="text-2xl font-bold text-red-500 line-through mb-4">$18</div>
+                  <div className="text-sm text-gray-700 mb-2">Our Price</div>
+                  <div className="text-3xl font-bold text-gray-900">$15.49</div>
+                </div>
+                <div className="bg-white/80 backdrop-blur-xl rounded-xl p-8 text-center border border-gray-200 shadow-sm">
+                  <div className="text-sm text-gray-500 mb-2">Retail</div>
+                  <div className="text-2xl font-bold text-red-500 line-through mb-4">$22</div>
+                  <div className="text-sm text-gray-700 mb-2">Our Price</div>
+                  <div className="text-3xl font-bold text-gray-900">$19.50</div>
+                </div>
+                <div className="bg-white/80 backdrop-blur-xl rounded-xl p-8 text-center border border-gray-200 shadow-sm">
+                  <div className="text-sm text-gray-500 mb-2">Retail</div>
+                  <div className="text-2xl font-bold text-red-500 line-through mb-4">$15</div>
+                  <div className="text-sm text-gray-700 mb-2">Our Price</div>
+                  <div className="text-3xl font-bold text-gray-900">$12.99</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Price Comparison Cards */}
-        <section className="mb-32 mx-auto max-w-[1100px] px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
-              <div className="text-sm text-gray-500 mb-2">Retail</div>
-              <div className="text-2xl font-bold text-red-500 line-through mb-4">$18</div>
-              <div className="text-sm text-gray-700 mb-2">Our Price</div>
-              <div className="text-3xl font-bold text-gray-900">$15.49</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
-              <div className="text-sm text-gray-500 mb-2">Retail</div>
-              <div className="text-2xl font-bold text-red-500 line-through mb-4">$22</div>
-              <div className="text-sm text-gray-700 mb-2">Our Price</div>
-              <div className="text-3xl font-bold text-gray-900">$19.50</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
-              <div className="text-sm text-gray-500 mb-2">Retail</div>
-              <div className="text-2xl font-bold text-red-500 line-through mb-4">$15</div>
-              <div className="text-sm text-gray-700 mb-2">Our Price</div>
-              <div className="text-3xl font-bold text-gray-900">$12.99</div>
-            </div>
-          </div>
-        </section>
-
         <div className="mx-auto max-w-[1100px] px-6 py-16 sm:py-24">
+
+          {/* Shop Essentials (restored & simplified) */}
+          <section className="mt-32 mb-32">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                Shop essentials members buy most
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link
+                href="/collections/korean-beauty"
+                className="inline-flex items-center px-6 py-3 text-base font-medium text-gray-900 bg-white border-2 border-gray-300 hover:border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+              >
+                Korean Beauty
+              </Link>
+
+              <Link
+                href="/collections/suncare"
+                className="inline-flex items-center px-6 py-3 text-base font-medium text-gray-900 bg-white border-2 border-gray-300 hover:border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+              >
+                Suncare
+              </Link>
+
+              <Link
+                href="/collections/japanese-beauty"
+                className="inline-flex items-center px-6 py-3 text-base font-medium text-gray-900 bg-white border-2 border-gray-300 hover:border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+              >
+                Japanese Beauty
+              </Link>
+
+              <Link
+                href="/collections/haircare"
+                className="inline-flex items-center px-6 py-3 text-base font-medium text-gray-900 bg-white border-2 border-gray-300 hover:border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+              >
+                Haircare
+              </Link>
+
+              <Link
+                href="/"
+                className="inline-flex items-center px-6 py-3 text-base font-medium text-gray-900 bg-white border-2 border-gray-300 hover:border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
+              >
+                Browse All
+              </Link>
+            </div>
+          </section>
 
           {/* Why Prices Are Lower */}
           <section className="py-16 bg-gray-50">
