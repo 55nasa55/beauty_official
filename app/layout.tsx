@@ -1,12 +1,13 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Playfair_Display } from 'next/font/google';
 import { CartProvider } from '@/lib/cart-context';
 import { AddedToCartModal } from '@/components/cart/AddedToCartModal';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
+const playfairDisplay = Playfair_Display({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Cosmetic Club - Premium Beauty & Skincare',
@@ -21,6 +22,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
+          `
+        }} />
+      </head>
       <body className={inter.className}>
         <Providers>
           <CartProvider>
