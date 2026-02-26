@@ -82,23 +82,63 @@ export default function AboutPage() {
                   We created CosClub for shoppers who love beauty and skincare but are tired of overpaying. Our goal is to make it easier to shop quality products at prices that feel fair.
                 </p>
               </div>
-              <div className="relative h-[350px] bg-gradient-to-br from-gray-50 to-white rounded-2xl overflow-hidden flex items-center justify-center p-12">
-                <div className="relative w-full">
+              <div className="relative h-[350px] flex items-center justify-center p-8">
+                <div className="relative w-full max-w-[400px] h-[200px]">
+                  {/* Bottom Layer - Member Price (revealed) */}
                   <div
-                    className="absolute top-0 left-0 w-full h-24 rounded-lg flex items-center justify-center text-xl font-semibold text-gray-600 bg-gray-100 shadow-lg transform -rotate-2"
-                    style={{ fontFamily: "'Inter', sans-serif" }}
-                  >
-                    Standard Price
-                  </div>
-                  <div
-                    className="absolute top-8 left-0 w-full h-24 rounded-lg flex items-center justify-center text-2xl font-bold text-white shadow-xl transform rotate-1"
+                    className="absolute inset-0 rounded-md flex items-center justify-center text-2xl font-bold text-white"
                     style={{
                       backgroundColor: "#9DCBF3",
-                      fontFamily: "'Inter', sans-serif"
+                      fontFamily: "'Inter', sans-serif",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
                     }}
                   >
                     Member Price
                   </div>
+
+                  {/* Top Layer - Standard Price (peeling) */}
+                  <div
+                    className="absolute inset-0 rounded-md flex items-center justify-center text-xl font-semibold bg-white"
+                    style={{
+                      fontFamily: "'Inter', sans-serif",
+                      color: "#555",
+                      border: "2px solid #E5E7EB",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                      clipPath: "polygon(0 0, 85% 0, 100% 15%, 100% 100%, 0 100%)"
+                    }}
+                  >
+                    Standard Price
+                  </div>
+
+                  {/* Peeling Corner */}
+                  <div
+                    className="absolute"
+                    style={{
+                      top: "-8px",
+                      right: "12%",
+                      width: "80px",
+                      height: "80px",
+                      background: "linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%)",
+                      clipPath: "polygon(100% 0, 0 0, 100% 100%)",
+                      boxShadow: "-2px 2px 6px rgba(0, 0, 0, 0.2)",
+                      transform: "rotate(0deg)",
+                      borderTopRightRadius: "4px"
+                    }}
+                  />
+
+                  {/* Curl shadow under the peel */}
+                  <div
+                    className="absolute"
+                    style={{
+                      top: "0",
+                      right: "12%",
+                      width: "90px",
+                      height: "20px",
+                      background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.15), transparent)",
+                      clipPath: "polygon(100% 0, 30% 0, 100% 100%)",
+                      transform: "translateY(-2px)"
+                    }}
+                  />
                 </div>
               </div>
             </div>
