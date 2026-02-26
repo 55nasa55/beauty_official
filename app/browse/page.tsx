@@ -29,7 +29,6 @@ export default function BrowseAllPage() {
   // Filters
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
 
   // Sorting
   const [sort, setSort] = useState("newest");
@@ -38,7 +37,6 @@ export default function BrowseAllPage() {
   const [openFilters, setOpenFilters] = useState({
     brands: true,
     categories: true,
-    tags: false,
   });
 
   useEffect(() => {
@@ -47,7 +45,7 @@ export default function BrowseAllPage() {
 
   useEffect(() => {
     fetchProducts(0, false);
-  }, [selectedBrands, selectedCategories, selectedTags, sort]);
+  }, [selectedBrands, selectedCategories, sort]);
 
   async function loadInitialData() {
     setLoading(true);
@@ -72,9 +70,6 @@ export default function BrowseAllPage() {
     }
     if (selectedCategories.size > 0) {
       query = query.in("category_id", Array.from(selectedCategories));
-    }
-    if (selectedTags.size > 0) {
-      query = query.contains("tags", Array.from(selectedTags));
     }
     return query;
   }
@@ -227,40 +222,6 @@ export default function BrowseAllPage() {
                         onCheckedChange={() => toggleSet(c.id, setSelectedCategories)}
                       />
                       <Label>{c.name}</Label>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-
-           {/* Tags */}
-            <div>
-              <div
-                className="flex justify-between items-center cursor-pointer mb-2"
-                onClick={() =>
-                  setOpenFilters((prev) => ({ ...prev, tags: !prev.tags }))
-                }
-              >
-                <h3 className="text-lg font-semibold">Tags</h3>
-                {openFilters.tags ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              </div>
-
-              {openFilters.tags && (
-                <div className="space-y-2">
-                  {Array.from(
-                    new Set(
-                      products
-                        .flatMap((p) => p.tags || [])
-                        .filter((tag) => typeof tag === "string")
-                    )
-                  ).map((tag) => (
-                    <div key={tag} className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={selectedTags.has(tag)}
-                        onCheckedChange={() => toggleSet(tag, setSelectedTags)}
-                      />
-                      <Label>{tag}</Label>
                     </div>
                   ))}
                 </div>
