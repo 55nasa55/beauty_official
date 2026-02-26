@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
-export function BrowseAsGuestButton({ className }: { className?: string }) {
+export function BrowseAsGuestButton({ className, label = "Browse as Guest" }: { className?: string; label?: string }) {
   const router = useRouter();
 
   const handleClick = () => {
@@ -15,7 +15,7 @@ export function BrowseAsGuestButton({ className }: { className?: string }) {
       onClick={handleClick}
       className={className}
     >
-      Browse as Guest
+      {label}
     </button>
   );
 }
