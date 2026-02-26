@@ -128,7 +128,7 @@ export default function AboutPage() {
                     Standard Price
                   </text>
 
-                  {/* Peel corner */}
+                  {/* Peel Fold */}
                   <path d="M300 40 L345 60 L300 80 Z" fill="#F3F4F6" />
                   <path
                     d="M300 40 C315 50 315 70 300 80"
@@ -136,7 +136,7 @@ export default function AboutPage() {
                     strokeWidth="1"
                   />
 
-                  {/* Blue reveal */}
+                  {/* Blue Reveal Behind Fold */}
                   <path d="M300 40 L345 60 L300 80 Z" fill="#9DCBF3" opacity="0.35" />
                 </svg>
               </div>
