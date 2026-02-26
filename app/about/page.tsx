@@ -82,64 +82,64 @@ export default function AboutPage() {
                   We created CosClub for shoppers who love beauty and skincare but are tired of overpaying. Our goal is to make it easier to shop quality products at prices that feel fair.
                 </p>
               </div>
-              <div className="w-full flex justify-center py-12">
-                <svg
-                  width="360"
-                  height="220"
-                  viewBox="0 0 360 220"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-full max-w-[360px]"
-                >
-                  {/* Member Price Layer */}
-                  <rect x="40" y="90" width="280" height="110" rx="14" fill="#9DCBF3" />
-                  <text
-                    x="180"
-                    y="155"
-                    textAnchor="middle"
-                    fontFamily="Inter"
-                    fontSize="22"
-                    fontWeight="700"
-                    fill="white"
-                  >
-                    Member Price
-                  </text>
+<div className="w-full flex justify-center py-12">
+  <svg
+    width="360"
+    height="220"
+    viewBox="0 0 360 220"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-full max-w-[360px]"
+  >
+    {/* Member Price Layer */}
+    <rect x="40" y="90" width="280" height="110" rx="14" fill="#9DCBF3" />
+    <text
+      x="180"
+      y="155"
+      textAnchor="middle"
+      fontFamily="Inter"
+      fontSize="22"
+      fontWeight="700"
+      fill="white"
+    >
+      Member Price
+    </text>
 
-                  {/* Standard Price */}
-                  <rect
-                    x="40"
-                    y="40"
-                    width="260"
-                    height="100"
-                    rx="12"
-                    fill="white"
-                    stroke="#E5E7EB"
-                    strokeWidth="1.5"
-                  />
-                  <text
-                    x="170"
-                    y="100"
-                    textAnchor="middle"
-                    fontFamily="Inter"
-                    fontSize="18"
-                    fontWeight="600"
-                    fill="#444"
-                  >
-                    Standard Price
-                  </text>
+    {/* Standard Price */}
+    <rect
+      x="40"
+      y="40"
+      width="260"
+      height="100"
+      rx="12"
+      fill="white"
+      stroke="#E5E7EB"
+      strokeWidth="1.5"
+    />
+    <text
+      x="170"
+      y="100"
+      textAnchor="middle"
+      fontFamily="Inter"
+      fontSize="18"
+      fontWeight="600"
+      fill="#444"
+    >
+      Standard Price
+    </text>
 
-                  {/* Peel Fold */}
-                  <path d="M300 40 L345 60 L300 80 Z" fill="#F3F4F6" />
-                  <path
-                    d="M300 40 C315 50 315 70 300 80"
-                    stroke="#D1D5DB"
-                    strokeWidth="1"
-                  />
+    {/* Peel Fold */}
+    <path d="M300 40 L345 60 L300 80 Z" fill="#F3F4F6" />
+    <path
+      d="M300 40 C315 50 315 70 300 80"
+      stroke="#D1D5DB"
+      strokeWidth="1"
+    />
 
-                  {/* Blue Reveal Behind Fold */}
-                  <path d="M300 40 L345 60 L300 80 Z" fill="#9DCBF3" opacity="0.35" />
-                </svg>
-              </div>
+    {/* Blue Reveal Behind Fold */}
+    <path d="M300 40 L345 60 L300 80 Z" fill="#9DCBF3" opacity="0.35" />
+  </svg>
+</div>
             </div>
           </div>
         </section>
