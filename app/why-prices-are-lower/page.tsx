@@ -37,7 +37,7 @@ export default function WhyPricesAreLowerPage() {
       <main className="flex-1">
         {/* SECTION 1 - HERO BANNER */}
         <section
-          className="w-full pt-24 pb-24"
+          className="w-full py-24"
           style={{
             background: "linear-gradient(to bottom, #ffffff, #F4F9FF)",
           }}
@@ -46,12 +46,8 @@ export default function WhyPricesAreLowerPage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               How Membership Pricing Works
             </h1>
-            <p className="text-xl md:text-2xl mb-4 text-gray-700">
+            <p className="text-xl md:text-2xl mb-10 text-gray-700 max-w-[900px] mx-auto">
               CosClub is built to make beauty shopping easier, more affordable, and more transparent.
-            </p>
-            <p className="text-base text-gray-600 mb-8 max-w-[800px] mx-auto">
-              We offer two ways to shop: Guest and Member. Guests can browse and purchase at standard pricing,
-              while members unlock lower pricing on eligible products.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
@@ -75,13 +71,13 @@ export default function WhyPricesAreLowerPage() {
                 style={{
                   border: "1px solid #9DCBF3",
                   color: "#9DCBF3",
-                  backgroundColor: "transparent",
+                  backgroundColor: "white",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#EAF4FF";
+                  e.currentTarget.style.backgroundColor = "#9DCBF31A";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.backgroundColor = "white";
                 }}
               >
                 Browse Products
@@ -115,7 +111,6 @@ export default function WhyPricesAreLowerPage() {
                 className="rounded-2xl p-8"
                 style={{
                   backgroundColor: "#9DCBF31A",
-                  border: "2px solid #9DCBF3",
                 }}
               >
                 <h3 className="text-2xl font-bold mb-2">Join as a Member</h3>
@@ -198,7 +193,7 @@ export default function WhyPricesAreLowerPage() {
               {/* Step 1 */}
               <div className="text-center">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4 text-lg"
                   style={{ backgroundColor: "#9DCBF3" }}
                 >
                   1
@@ -209,7 +204,7 @@ export default function WhyPricesAreLowerPage() {
               {/* Step 2 */}
               <div className="text-center">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4 text-lg"
                   style={{ backgroundColor: "#9DCBF3" }}
                 >
                   2
@@ -220,7 +215,7 @@ export default function WhyPricesAreLowerPage() {
               {/* Step 3 */}
               <div className="text-center">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4 text-lg"
                   style={{ backgroundColor: "#9DCBF3" }}
                 >
                   3
@@ -231,7 +226,7 @@ export default function WhyPricesAreLowerPage() {
               {/* Step 4 */}
               <div className="text-center">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4"
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold mx-auto mb-4 text-lg"
                   style={{ backgroundColor: "#9DCBF3" }}
                 >
                   4
