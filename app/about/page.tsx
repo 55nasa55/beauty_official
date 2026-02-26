@@ -82,109 +82,22 @@ export default function AboutPage() {
                   We created CosClub for shoppers who love beauty and skincare but are tired of overpaying. Our goal is to make it easier to shop quality products at prices that feel fair.
                 </p>
               </div>
-              <div className="relative h-[350px] flex items-center justify-center p-8">
-                <svg
-                  width="330"
-                  height="200"
-                  viewBox="0 0 330 200"
-                  className="w-full max-w-[330px]"
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  {/* Bottom Layer - Member Price (Full Sticker) */}
-                  <rect
-                    x="0"
-                    y="70"
-                    width="330"
-                    height="130"
-                    rx="12"
-                    fill="#9DCBF3"
-                  />
-                  <text
-                    x="165"
-                    y="145"
-                    textAnchor="middle"
-                    fill="white"
-                    fontSize="21"
-                    fontWeight="700"
-                  >
+              <div className="w-full flex justify-center py-12">
+                <svg width="360" height="220" viewBox="0 0 360 220" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[360px]">
+                  <rect x="40" y="90" width="280" height="110" rx="14" fill="#9DCBF3"/>
+                  <text x="180" y="155" textAnchor="middle" fontFamily="Inter" fontSize="22" fontWeight="700" fill="white">
                     Member Price
                   </text>
 
-                  {/* Top Layer - Standard Price (Base Rectangle) */}
-                  <defs>
-                    <clipPath id="peelClip">
-                      <path d="M 0,0 L 230,0 Q 240,10 250,20 L 250,120 Q 250,132 238,132 L 12,132 Q 0,132 0,120 Z" />
-                    </clipPath>
-
-                    {/* Shadow filter for peel */}
-                    <filter id="peelShadow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-                      <feOffset dx="2" dy="2" result="offsetblur"/>
-                      <feComponentTransfer>
-                        <feFuncA type="linear" slope="0.3"/>
-                      </feComponentTransfer>
-                      <feMerge>
-                        <feMergeNode/>
-                        <feMergeNode in="SourceGraphic"/>
-                      </feMerge>
-                    </filter>
-                  </defs>
-
-                  {/* Standard Price White Sticker */}
-                  <rect
-                    x="0"
-                    y="0"
-                    width="300"
-                    height="120"
-                    rx="12"
-                    fill="white"
-                    stroke="#E5E7EB"
-                    strokeWidth="1"
-                    clipPath="url(#peelClip)"
-                  />
-                  <text
-                    x="120"
-                    y="70"
-                    textAnchor="middle"
-                    fill="#555555"
-                    fontSize="20"
-                    fontWeight="600"
-                    clipPath="url(#peelClip)"
-                  >
+                  <rect x="40" y="40" width="260" height="100" rx="12" fill="white" stroke="#E5E7EB" strokeWidth="1.5"/>
+                  <text x="170" y="100" textAnchor="middle" fontFamily="Inter" fontSize="18" fontWeight="600" fill="#444">
                     Standard Price
                   </text>
 
-                  {/* Peeled Corner - Large Triangular Flap */}
-                  {/* Underside of peel (gray gradient) */}
-                  <defs>
-                    <linearGradient id="peelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#f3f4f6" />
-                      <stop offset="100%" stopColor="#d1d5db" />
-                    </linearGradient>
-                  </defs>
+                  <path d="M300 40 L345 60 L300 80 Z" fill="#F3F4F6"/>
+                  <path d="M300 40 C315 50 315 70 300 80" stroke="#D1D5DB" strokeWidth="1"/>
 
-                  {/* Shadow under the flap */}
-                  <path
-                    d="M 250,20 L 295,0 L 330,45 Z"
-                    fill="rgba(0, 0, 0, 0.12)"
-                    transform="translate(2, 3)"
-                  />
-
-                  {/* The actual peeled flap */}
-                  <path
-                    d="M 250,20 L 295,0 L 330,45 Z"
-                    fill="url(#peelGradient)"
-                    stroke="#E5E7EB"
-                    strokeWidth="1"
-                  />
-
-                  {/* Small edge detail on flap */}
-                  <path
-                    d="M 250,20 L 295,0"
-                    stroke="#d1d5db"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
+                  <path d="M300 40 L345 60 L300 80 Z" fill="#9DCBF3" opacity="0.35"/>
                 </svg>
               </div>
             </div>
