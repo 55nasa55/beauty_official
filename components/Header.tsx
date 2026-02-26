@@ -188,6 +188,13 @@ export function Header({ categories, brands, collections }: HeaderProps) {
               Brands
             </Link>
 
+            <Link
+              href="/browse"
+              className="text-sm font-normal text-black/70 hover:text-black transition-colors"
+            >
+              Browse All
+            </Link>
+
             {collections.slice(0, 4).map((collection) => (
               <Link
                 key={collection.id}

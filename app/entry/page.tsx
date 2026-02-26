@@ -148,7 +148,7 @@ export default async function EntryPage() {
               </Link>
 
               <Link
-                href="/"
+                href="/browse"
                 className="inline-flex items-center px-6 py-3 text-base font-medium text-gray-900 bg-white border-2 border-gray-300 hover:border-gray-900 hover:bg-gray-50 transition-colors rounded-lg"
               >
                 Browse All
