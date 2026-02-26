@@ -7,7 +7,7 @@ export function BrowseAsGuestButton({ className, label = "Browse as Guest" }: { 
 
   const handleClick = () => {
     document.cookie = "cc_guest_bypass=true; path=/; max-age=604800";
-    router.push('/browse');
+    router.push('/');
   };
 
   return (
