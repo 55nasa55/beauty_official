@@ -71,34 +71,15 @@ export default function AboutPage() {
               </p>
             </div>
 
-            {/* CLEAN SVG — FINAL VERSION */}
-            <div className="w-full flex justify-center py-12">
-              <svg
-                width="360"
-                height="220"
-                viewBox="0 0 360 220"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-full max-w-[360px]"
-              >
-                <rect x="40" y="90" width="280" height="110" rx="14" fill="#9DCBF3" />
-                <text x="180" y="155" text-anchor="middle"
-                  font-family="Inter" font-size="22" font-weight="700" fill="white">
-                  Member Price
-                </text>
-
-                <rect x="40" y="40" width="260" height="100" rx="12"
-                  fill="white" stroke="#E5E7EB" stroke-width="1.5" />
-                <text x="170" y="100" text-anchor="middle"
-                  font-family="Inter" font-size="18" font-weight="600" fill="#444">
-                  Standard Price
-                </text>
-
-                <path d="M300 40 L345 60 L300 80 Z" fill="#F3F4F6" />
-                <path d="M300 40 C315 50 315 70 300 80"
-                  stroke="#D1D5DB" stroke-width="1" />
-
-                <path d="M300 40 L345 60 L300 80 Z" fill="#9DCBF3" opacity="0.35" />
-              </svg>
+<div className="w-full flex justify-center py-12 overflow-hidden">
+              <img
+                src="https://www.shutterstock.com/image-vector/illustration-id-card-gift-ribbon-260nw-2693886509.jpg"
+                alt="Pricing Illustration"
+                className="w-full max-w-[360px] object-contain"
+                style={{
+                  clipPath: "inset(0 0 50px 0)",
+                }}
+              />
             </div>
 
           </div>
