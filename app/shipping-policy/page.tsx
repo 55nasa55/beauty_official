@@ -1,10 +1,19 @@
 import React from "react";
 import { Clock3, MapPin, Package } from "lucide-react";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { supabasePublic } from "@/lib/supabase/public";
 
-export default function ShippingPolicyPage() {
+export default async function ShippingPolicyPage() {
+  const { data: categories } = await supabasePublic.from("categories").select("*");
+  const { data: brands } = await supabasePublic.from("brands").select("*");
+  const { data: collections } = await supabasePublic.from("collections").select("*");
+
   return (
-    <div className="w-full">
-      <div className="max-w-5xl mx-auto px-4 py-12">
+    <>
+      <Header categories={categories ?? []} brands={brands ?? []} collections={collections ?? []} />
+      <main className="w-full">
+        <div className="max-w-5xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold text-center mb-4">Shipping Policy</h1>
         <p className="text-center text-gray-600 mb-12">
           We're committed to getting your order to you as quickly and reliably as possible.
@@ -122,6 +131,8 @@ export default function ShippingPolicyPage() {
           </a>
         </div>
       </div>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }

@@ -1,12 +1,19 @@
-"use client";
-
 import React from "react";
 import { ShieldCheck, AlertTriangle, X } from "lucide-react";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { supabasePublic } from "@/lib/supabase/public";
 
-export default function ReturnPolicyPage() {
+export default async function ReturnPolicyPage() {
+  const { data: categories } = await supabasePublic.from("categories").select("*");
+  const { data: brands } = await supabasePublic.from("brands").select("*");
+  const { data: collections } = await supabasePublic.from("collections").select("*");
+
   return (
-    <div className="w-full">
-      <div className="max-w-5xl mx-auto px-4 py-12">
+    <>
+      <Header categories={categories ?? []} brands={brands ?? []} collections={collections ?? []} />
+      <main className="w-full">
+        <div className="max-w-5xl mx-auto px-4 py-12">
 
         {/* Header */}
         <h1 className="text-4xl font-bold text-center mb-4">Return Policy</h1>
@@ -199,6 +206,8 @@ export default function ReturnPolicyPage() {
           </a>
         </div>
       </div>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }
