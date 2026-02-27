@@ -16,23 +16,28 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Shop</h4>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>
-                <Link href="/category/skincare" className="hover:text-gray-900 transition-colors">
-                  Skincare
+                <Link href="/category/korean-beauty" className="hover:text-gray-900 transition-colors">
+                  Korean Beauty
                 </Link>
               </li>
               <li>
-                <Link href="/category/makeup" className="hover:text-gray-900 transition-colors">
-                  Makeup
+                <Link href="/category/suncare" className="hover:text-gray-900 transition-colors">
+                  Suncare
                 </Link>
               </li>
               <li>
-                <Link href="/category/hair" className="hover:text-gray-900 transition-colors">
-                  Hair
+                <Link href="/category/japanese-beauty" className="hover:text-gray-900 transition-colors">
+                  Japanese Beauty
                 </Link>
               </li>
               <li>
-                <Link href="/brands" className="hover:text-gray-900 transition-colors">
-                  All Brands
+                <Link href="/category/haircare" className="hover:text-gray-900 transition-colors">
+                  Haircare
+                </Link>
+              </li>
+              <li>
+                <Link href="/browse" className="hover:text-gray-900 transition-colors">
+                  Browse All
                 </Link>
               </li>
             </ul>
@@ -47,18 +52,23 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
-                  Shipping
+                <Link href="/shipping-policy" className="hover:text-gray-900 transition-colors">
+                  Shipping Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
-                  Returns
+                <Link href="/return-policy" className="hover:text-gray-900 transition-colors">
+                  Return Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
+                <Link href="/faq" className="hover:text-gray-900 transition-colors">
                   FAQ
+                </Link>
+              </li>
+              <li>
+                <Link href="/how-pricing-works" className="hover:text-gray-900 transition-colors">
+                  How Pricing Works
                 </Link>
               </li>
             </ul>
@@ -68,17 +78,17 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
-                  About Us
+                <Link href="/contact" className="hover:text-gray-900 transition-colors">
+                  Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
+                <Link href="/privacy-policy" className="hover:text-gray-900 transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-gray-900 transition-colors">
+                <Link href="/terms-of-service" className="hover:text-gray-900 transition-colors">
                   Terms of Service
                 </Link>
               </li>
