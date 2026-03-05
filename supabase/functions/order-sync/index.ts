@@ -10,6 +10,7 @@ const corsHeaders = {
 interface Order {
   id: string;
   order_number: string;
+  public_order_number?: number;
   customer_email?: string;
   customer_name?: string;
   shipping_address?: {
@@ -440,7 +441,9 @@ async function processCheckShipment(
   const trackingNumber = veeqoOrder.deliver_to?.tracking_number;
   const customerEmail = order.customer_email;
   const customerName = order.customer_name || "Customer";
-  const orderNumber = order.order_number;
+  const displayOrderNumber = order.public_order_number
+    ? `COS-${order.public_order_number}`
+    : order.order_number;
 
   if (
     deliveryStatus === "shipped" &&
@@ -451,14 +454,14 @@ async function processCheckShipment(
     console.log("Order shipped - sending tracking email");
 
     const emailHtml = generateShippingNotificationEmail({
-      order_number: orderNumber,
+      order_number: displayOrderNumber,
       customer_name: customerName,
       tracking_number: trackingNumber,
     });
 
     await sendEmail(
       customerEmail,
-      `Your Cosmetic Club order #${orderNumber} has shipped`,
+      `Your Cosmetic Club order #${displayOrderNumber} has shipped`,
       emailHtml,
       resendApiKey
     );
@@ -495,14 +498,14 @@ async function processCheckShipment(
     console.log("Order delivered - sending delivery email");
 
     const emailHtml = generateDeliveryNotificationEmail({
-      order_number: orderNumber,
+      order_number: displayOrderNumber,
       customer_name: customerName,
       order_id: order.id,
     });
 
     await sendEmail(
       customerEmail,
-      `Your Cosmetic Club order #${orderNumber} has been delivered`,
+      `Your Cosmetic Club order #${displayOrderNumber} has been delivered`,
       emailHtml,
       resendApiKey
     );

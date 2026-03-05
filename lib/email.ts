@@ -14,6 +14,7 @@ interface OrderItem {
 
 interface Order {
   order_number: string;
+  public_order_number?: number;
   customer_name: string;
   customer_email: string;
   shipping_address: {
@@ -72,8 +73,12 @@ export async function sendTrackingEmail(
   carrier?: string
 ) {
   try {
+    const displayOrderNumber = order.public_order_number
+      ? `COS-${order.public_order_number}`
+      : order.order_number;
+
     const html = generateShippingNotificationEmail({
-      order_number: order.order_number,
+      order_number: displayOrderNumber,
       customer_name: order.customer_name,
       tracking_number: trackingNumber,
     });
@@ -82,7 +87,7 @@ export async function sendTrackingEmail(
     const result = await resend.emails.send({
       from: 'Cosmetic Club <orders@cosclubusa.com>',
       to: order.customer_email,
-      subject: `Your Order Has Shipped - #${order.order_number}`,
+      subject: `Your Order Has Shipped - #${displayOrderNumber}`,
       html,
       text,
     });
@@ -96,8 +101,12 @@ export async function sendTrackingEmail(
 
 export async function sendDeliveredEmail(order: Order) {
   try {
+    const displayOrderNumber = order.public_order_number
+      ? `COS-${order.public_order_number}`
+      : order.order_number;
+
     const html = generateDeliveryNotificationEmail({
-      order_number: order.order_number,
+      order_number: displayOrderNumber,
       customer_name: order.customer_name,
       order_id: order.id,
     });
@@ -106,7 +115,7 @@ export async function sendDeliveredEmail(order: Order) {
     const result = await resend.emails.send({
       from: 'Cosmetic Club <orders@cosclubusa.com>',
       to: order.customer_email,
-      subject: `Your Order Has Been Delivered - #${order.order_number}`,
+      subject: `Your Order Has Been Delivered - #${displayOrderNumber}`,
       html,
       text,
     });
