@@ -182,7 +182,10 @@ export async function POST(req: NextRequest) {
         };
       });
 
-      await supabase.from("order_items").insert(items);
+      const { data: insertedItems } = await supabase
+        .from("order_items")
+        .insert(items)
+        .select();
 
       // ------------------------------
       // Atomic Inventory Decrement
@@ -234,6 +237,27 @@ export async function POST(req: NextRequest) {
         console.log(
           `Stock updated for variant ${variant_id}: -${quantity} (new ${updatedStock})`
         );
+      }
+
+      // ------------------------------
+      // Create Queue Jobs
+      // ------------------------------
+      try {
+        await supabase.from("order_sync_jobs").insert([
+          {
+            order_id: order.id,
+            job_type: "send_confirmation_email",
+            status: "pending",
+          },
+          {
+            order_id: order.id,
+            job_type: "push_to_veeqo",
+            status: "pending",
+          }
+        ]);
+        console.log("✅ Queue jobs created (email + Veeqo sync)");
+      } catch (jobError) {
+        console.error("❌ Failed to create queue jobs:", jobError);
       }
 
       console.log("✅ Order created:", order.id);
