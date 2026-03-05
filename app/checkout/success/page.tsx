@@ -9,7 +9,7 @@ import { useCart } from '@/lib/cart-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Category, Brand, Collection } from '@/lib/database.types';
-import { CheckCircle, Package, MapPin, CreditCard } from 'lucide-react';
+import { CircleCheck as CheckCircle, Package, MapPin, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -42,6 +42,7 @@ interface Order {
   shipping_address: any;
   billing_address: any;
   created_at: string;
+  public_order_number: number | null;
 }
 
 export default function CheckoutSuccessPage() {
@@ -77,7 +78,7 @@ export default function CheckoutSuccessPage() {
       if (sessionId) {
         const { data: orderData } = await supabase
           .from('orders')
-          .select('*')
+          .select('id, stripe_session_id, status, total_amount, currency, shipping_address, billing_address, created_at, public_order_number')
           .eq('stripe_session_id', sessionId)
           .maybeSingle();
 
@@ -175,8 +176,12 @@ export default function CheckoutSuccessPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Order ID:</span>
-                    <span className="font-medium">{order.id}</span>
+                    <span className="text-gray-600">Order Number:</span>
+                    <span className="font-medium">
+                      {order.public_order_number
+                        ? `COS-${order.public_order_number}`
+                        : 'Processing...'}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Status:</span>
@@ -311,7 +316,7 @@ export default function CheckoutSuccessPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-gray-600 mb-4">
-                  We couldn't find your order details.
+                  Order confirmed. Your order number will appear shortly.
                 </p>
                 <p className="text-sm text-gray-500">
                   If you just completed your purchase, please wait a moment and refresh
