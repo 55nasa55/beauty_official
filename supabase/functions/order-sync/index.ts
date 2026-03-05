@@ -49,7 +49,7 @@ interface VeeqoOrderPayload {
     email: string;
   };
   line_items: Array<{
-    sellable_id: number;
+    title: string;
     quantity: number;
     price: number;
   }>;
@@ -89,13 +89,13 @@ function buildVeeqoOrder(
       email: order.customer_email || '',
     },
     line_items: orderItems.map((item) => ({
-      sellable_id: parseInt(item.variant_id || item.product_id || '0'),
+      title: item.product_name + (item.variant_name ? ` - ${item.variant_name}` : ''),
       quantity: item.quantity,
       price: parseFloat(item.price.toString()),
     })),
     channel_id: options.channelId,
     customer: {
-      email: order.customer_email || '',
+      email: order.customer_email || 'customer@example.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
     },
