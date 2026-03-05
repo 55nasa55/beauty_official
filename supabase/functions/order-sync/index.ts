@@ -108,6 +108,217 @@ function buildVeeqoOrder(
   return veeqoOrder;
 }
 
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  resendApiKey: string
+) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${resendApiKey}`,
+    },
+    body: JSON.stringify({
+      from: "Cosmetic Club <orders@cosclubusa.com>",
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Email send failed: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
+function generateShippingNotificationEmail(details: {
+  order_number: string;
+  customer_name: string;
+  tracking_number: string;
+}): string {
+  const logoUrl =
+    "https://gwwnscgpfurcbkqmfpbq.supabase.co/storage/v1/object/public/product-images/brands/1771321073443-xg7gsjxpzfq.jpg";
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Order Has Shipped</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          <tr>
+            <td align="center" style="padding: 40px 40px 20px 40px;">
+              <img src="${logoUrl}" alt="Cosmetic Club" style="max-width: 140px; height: auto; display: block;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 40px 30px 40px;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #111827; line-height: 1.2;">
+                Your order has shipped
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-bottom: 8px;">
+                    <span style="font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Customer</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 20px;">
+                    <div style="font-size: 16px; color: #111827; font-weight: 500;">${details.customer_name}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 8px;">
+                    <span style="font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Order Number</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 20px;">
+                    <div style="font-size: 18px; color: #111827; font-weight: 600;">#${details.order_number}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 8px;">
+                    <span style="font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Number</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 0;">
+                    <div style="font-size: 18px; color: #111827; font-weight: 600; font-family: 'Courier New', monospace;">${details.tracking_number}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+              <div style="text-align: center; font-size: 16px; font-weight: 500; color: #111827; margin-bottom: 4px;">
+                Cosmetic Club
+              </div>
+              <div style="text-align: center; font-size: 14px; color: #6b7280;">
+                <a href="mailto:orders@cosclubusa.com" style="color: #3b82f6; text-decoration: none;">orders@cosclubusa.com</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+function generateDeliveryNotificationEmail(details: {
+  order_number: string;
+  customer_name: string;
+  order_id?: string;
+}): string {
+  const logoUrl =
+    "https://gwwnscgpfurcbkqmfpbq.supabase.co/storage/v1/object/public/product-images/brands/1771321073443-xg7gsjxpzfq.jpg";
+  const orderUrl = details.order_id
+    ? `https://cosclubusa.com/account?order=${details.order_id}`
+    : "https://cosclubusa.com/account";
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Order Has Been Delivered</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          <tr>
+            <td align="center" style="padding: 40px 40px 20px 40px;">
+              <img src="${logoUrl}" alt="Cosmetic Club" style="max-width: 140px; height: auto; display: block;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 40px 30px 40px;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: #111827; line-height: 1.2;">
+                Your order has been delivered
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-bottom: 8px;">
+                    <span style="font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Customer</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 20px;">
+                    <div style="font-size: 16px; color: #111827; font-weight: 500;">${details.customer_name}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 8px;">
+                    <span style="font-size: 14px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Order Number</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 0;">
+                    <div style="font-size: 18px; color: #111827; font-weight: 600;">#${details.order_number}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 40px 30px 40px;">
+              <p style="margin: 0; font-size: 16px; color: #4b5563; line-height: 1.5;">
+                We hope you enjoy your purchase.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 40px 40px 40px;">
+              <a href="${orderUrl}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 6px; font-size: 16px; font-weight: 600; text-align: center;">
+                View Order
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+              <div style="text-align: center; font-size: 16px; font-weight: 500; color: #111827; margin-bottom: 4px;">
+                Cosmetic Club
+              </div>
+              <div style="text-align: center; font-size: 14px; color: #6b7280;">
+                <a href="mailto:orders@cosclubusa.com" style="color: #3b82f6; text-decoration: none;">orders@cosclubusa.com</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
 async function processPushToVeeqo(
   supabase: any,
   job: any,
@@ -179,6 +390,130 @@ async function processPushToVeeqo(
   console.log("Created check_shipment job");
 }
 
+async function processCheckShipment(
+  supabase: any,
+  job: any,
+  veeqoApiKey: string,
+  resendApiKey: string
+) {
+  console.log(`Processing check_shipment for order ${job.order_id}`);
+
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", job.order_id)
+    .single();
+
+  if (orderError || !order) {
+    throw new Error(`Order not found: ${job.order_id}`);
+  }
+
+  if (!order.veeqo_order_id) {
+    throw new Error(
+      `Order ${job.order_id} does not have a veeqo_order_id yet`
+    );
+  }
+
+  const veeqoResponse = await fetch(
+    `https://api.veeqo.com/orders/${order.veeqo_order_id}`,
+    {
+      method: "GET",
+      headers: {
+        "x-api-key": veeqoApiKey,
+      },
+    }
+  );
+
+  if (!veeqoResponse.ok) {
+    const errorText = await veeqoResponse.text();
+    throw new Error(`Veeqo API error: ${veeqoResponse.status} - ${errorText}`);
+  }
+
+  const veeqoOrder = await veeqoResponse.json();
+  console.log("Veeqo order status:", veeqoOrder.deliver_to?.delivery_status);
+
+  const deliveryStatus = veeqoOrder.deliver_to?.delivery_status;
+  const trackingNumber = veeqoOrder.deliver_to?.tracking_number;
+  const customerEmail = order.customer_email;
+  const customerName = order.customer_name || "Customer";
+  const orderNumber = order.order_number;
+
+  if (
+    deliveryStatus === "shipped" &&
+    !order.tracking_email_sent &&
+    trackingNumber &&
+    customerEmail
+  ) {
+    console.log("Order shipped - sending tracking email");
+
+    const emailHtml = generateShippingNotificationEmail({
+      order_number: orderNumber,
+      customer_name: customerName,
+      tracking_number: trackingNumber,
+    });
+
+    await sendEmail(
+      customerEmail,
+      `Your Cosmetic Club order #${orderNumber} has shipped`,
+      emailHtml,
+      resendApiKey
+    );
+
+    await supabase
+      .from("orders")
+      .update({ tracking_email_sent: true })
+      .eq("id", job.order_id);
+
+    console.log("Tracking email sent");
+
+    await supabase.from("order_sync_jobs").insert({
+      order_id: job.order_id,
+      job_type: "check_shipment",
+      status: "pending",
+    });
+
+    console.log("Created new check_shipment job to monitor delivery");
+  } else if (
+    deliveryStatus === "delivered" &&
+    !order.delivery_email_sent &&
+    customerEmail
+  ) {
+    console.log("Order delivered - sending delivery email");
+
+    const emailHtml = generateDeliveryNotificationEmail({
+      order_number: orderNumber,
+      customer_name: customerName,
+      order_id: order.id,
+    });
+
+    await sendEmail(
+      customerEmail,
+      `Your Cosmetic Club order #${orderNumber} has been delivered`,
+      emailHtml,
+      resendApiKey
+    );
+
+    await supabase
+      .from("orders")
+      .update({ delivery_email_sent: true })
+      .eq("id", job.order_id);
+
+    console.log("Delivery email sent - order lifecycle complete");
+  } else if (deliveryStatus !== "shipped" && deliveryStatus !== "delivered") {
+    console.log(
+      `Order not shipped yet (status: ${deliveryStatus}), will check again later`
+    );
+
+    await supabase.from("order_sync_jobs").insert({
+      order_id: job.order_id,
+      job_type: "check_shipment",
+      status: "pending",
+    });
+  } else {
+    console.log("No action needed - emails already sent or missing data");
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -245,6 +580,12 @@ Deno.serve(async (req: Request) => {
             veeqoChannelId,
             veeqoWarehouseId || ""
           );
+        } else if (job.job_type === "check_shipment") {
+          const resendApiKey = Deno.env.get("RESEND_API_KEY");
+          if (!resendApiKey) {
+            throw new Error("Missing RESEND_API_KEY configuration");
+          }
+          await processCheckShipment(supabase, job, veeqoApiKey, resendApiKey);
         }
 
         await supabase
