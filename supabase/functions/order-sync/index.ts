@@ -612,6 +612,8 @@ Deno.serve(async (req: Request) => {
             throw new Error("Missing RESEND_API_KEY configuration");
           }
           await processCheckShipment(supabase, job, veeqoApiKey, resendApiKey);
+        } else {
+          console.log(`Unknown job type: ${job.job_type}, marking as completed`);
         }
 
         await supabase

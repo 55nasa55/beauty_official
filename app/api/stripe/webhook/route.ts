@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-10-29.clover",
@@ -239,24 +240,49 @@ export async function POST(req: NextRequest) {
       }
 
       // ------------------------------
-      // Create Queue Jobs
+      // Send Confirmation Email Immediately
       // ------------------------------
       try {
-        await supabase.from("order_sync_jobs").insert([
+        const emailItems = items.map((item: any) => ({
+          product_name: item.product_name || 'Product',
+          quantity: item.quantity,
+          price: item.price,
+        }));
+
+        await sendOrderConfirmationEmail(
           {
-            order_id: order.id,
-            job_type: "send_confirmation_email",
-            status: "pending",
+            order_number: orderData.order_number,
+            customer_name: orderData.customer_name || 'Customer',
+            customer_email: orderData.customer_email || '',
+            shipping_address: orderData.shipping_address || {
+              line1: '',
+              city: '',
+              state: '',
+              postal_code: '',
+              country: 'US',
+            },
+            total: orderData.total_amount,
+            id: order.id,
           },
-          {
-            order_id: order.id,
-            job_type: "push_to_veeqo",
-            status: "pending",
-          }
-        ]);
-        console.log("✅ Queue jobs created (email + Veeqo sync)");
+          emailItems
+        );
+        console.log("✅ Confirmation email sent immediately");
+      } catch (emailError) {
+        console.error("❌ Failed to send confirmation email:", emailError);
+      }
+
+      // ------------------------------
+      // Create Queue Job for Veeqo
+      // ------------------------------
+      try {
+        await supabase.from("order_sync_jobs").insert({
+          order_id: order.id,
+          job_type: "push_to_veeqo",
+          status: "pending",
+        });
+        console.log("✅ Veeqo sync job created");
       } catch (jobError) {
-        console.error("❌ Failed to create queue jobs:", jobError);
+        console.error("❌ Failed to create Veeqo sync job:", jobError);
       }
 
       console.log("✅ Order created:", order.id);
