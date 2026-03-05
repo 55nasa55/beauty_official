@@ -226,12 +226,11 @@ export async function POST(req: NextRequest) {
             variant_id,
             change_amount: -quantity,
             reason: "webhook_sale",
-            created_by: "system-webhook"
+            created_by: null
           });
 
         if (auditError) {
           console.error("Inventory audit log failed:", auditError);
-          throw auditError;
         }
 
         console.log(
