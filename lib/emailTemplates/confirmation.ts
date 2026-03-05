@@ -20,13 +20,40 @@ interface OrderDetails {
   total: number;
 }
 
+function formatAddress(address: OrderDetails['shipping_address']): string {
+  if (!address) return "No shipping address provided";
+
+  const parts = [
+    address.line1,
+    address.line2,
+    address.city && address.state
+      ? `${address.city}, ${address.state}`
+      : address.city || address.state,
+    address.postal_code,
+    address.country
+  ];
+
+  return parts.filter(Boolean).join("<br>");
+}
+
+function formatOrderNumber(orderNumber: string): string {
+  if (orderNumber.startsWith('cs_')) {
+    const numericPart = orderNumber.split('_').pop() || '';
+    const shortId = parseInt(numericPart.substring(0, 8), 36) % 100000;
+    return `COS-${shortId}`;
+  }
+  return `COS-${orderNumber}`;
+}
+
 export function generateOrderConfirmationEmail(
   order: OrderDetails,
   items: OrderItem[]
 ): string {
   const logoUrl = "https://gwwnscgpfurcbkqmfpbq.supabase.co/storage/v1/object/public/product-images/brands/1771321073443-xg7gsjxpzfq.jpg";
+  const customerName = order.customer_name || "Customer";
+  const formattedOrderNumber = formatOrderNumber(order.order_number);
 
-  const itemsHtml = items
+  const itemsHtml = items && items.length > 0 ? items
     .map(
       (item) => `
     <tr>
@@ -57,14 +84,15 @@ export function generateOrderConfirmationEmail(
     </tr>
   `
     )
-    .join("");
-
-  const shippingAddressHtml = `
-    ${order.shipping_address.line1}<br />
-    ${order.shipping_address.line2 ? `${order.shipping_address.line2}<br />` : ""}
-    ${order.shipping_address.city}, ${order.shipping_address.state} ${order.shipping_address.postal_code}<br />
-    ${order.shipping_address.country}
+    .join("") : `
+    <tr>
+      <td style="padding: 16px 0; text-align: center; color: #6b7280;">
+        Order details unavailable
+      </td>
+    </tr>
   `;
+
+  const shippingAddressHtml = formatAddress(order.shipping_address);
 
   return `
 <!DOCTYPE html>
@@ -83,7 +111,9 @@ export function generateOrderConfirmationEmail(
           <!-- Logo -->
           <tr>
             <td align="center" style="padding: 40px 40px 20px 40px;">
-              <img src="${logoUrl}" alt="Cosmetic Club" style="max-width: 140px; height: auto; display: block;" />
+              <div style="background:#ffffff;padding:12px 18px;border-radius:8px;display:inline-block;">
+                <img src="${logoUrl}" alt="Cosmetic Club" style="max-width:140px;height:auto;display:block;" />
+              </div>
             </td>
           </tr>
 
@@ -107,7 +137,7 @@ export function generateOrderConfirmationEmail(
                 </tr>
                 <tr>
                   <td style="padding-bottom: 20px;">
-                    <div style="font-size: 16px; color: #111827; font-weight: 500;">${order.customer_name}</div>
+                    <div style="font-size: 16px; color: #111827; font-weight: 500;">${customerName}</div>
                   </td>
                 </tr>
                 <tr>
@@ -117,7 +147,7 @@ export function generateOrderConfirmationEmail(
                 </tr>
                 <tr>
                   <td>
-                    <div style="font-size: 18px; color: #111827; font-weight: 600;">#${order.order_number}</div>
+                    <div style="font-size: 18px; color: #111827; font-weight: 600;">${formattedOrderNumber}</div>
                   </td>
                 </tr>
               </table>
