@@ -381,13 +381,17 @@ async function processPushToVeeqo(
     .update({ veeqo_order_id: veeqoOrder.id.toString() })
     .eq("id", job.order_id);
 
+  const nextCheck = new Date();
+  nextCheck.setMinutes(nextCheck.getMinutes() + 10);
+
   await supabase.from("order_sync_jobs").insert({
     order_id: job.order_id,
     job_type: "check_shipment",
     status: "pending",
+    next_run_at: nextCheck.toISOString(),
   });
 
-  console.log("Created check_shipment job");
+  console.log("Created check_shipment job scheduled for", nextCheck.toISOString());
 }
 
 async function processCheckShipment(
@@ -466,13 +470,23 @@ async function processCheckShipment(
 
     console.log("Tracking email sent");
 
+    const nextCheck = new Date();
+    if (job.attempts < 12) {
+      nextCheck.setMinutes(nextCheck.getMinutes() + 10);
+    } else if (job.attempts < 48) {
+      nextCheck.setHours(nextCheck.getHours() + 1);
+    } else {
+      nextCheck.setHours(nextCheck.getHours() + 6);
+    }
+
     await supabase.from("order_sync_jobs").insert({
       order_id: job.order_id,
       job_type: "check_shipment",
       status: "pending",
+      next_run_at: nextCheck.toISOString(),
     });
 
-    console.log("Created new check_shipment job to monitor delivery");
+    console.log("Created new check_shipment job to monitor delivery, scheduled for", nextCheck.toISOString());
   } else if (
     deliveryStatus === "delivered" &&
     !order.delivery_email_sent &&
@@ -504,10 +518,20 @@ async function processCheckShipment(
       `Order not shipped yet (status: ${deliveryStatus}), will check again later`
     );
 
+    const nextCheck = new Date();
+    if (job.attempts < 12) {
+      nextCheck.setMinutes(nextCheck.getMinutes() + 10);
+    } else if (job.attempts < 48) {
+      nextCheck.setHours(nextCheck.getHours() + 1);
+    } else {
+      nextCheck.setHours(nextCheck.getHours() + 6);
+    }
+
     await supabase.from("order_sync_jobs").insert({
       order_id: job.order_id,
       job_type: "check_shipment",
       status: "pending",
+      next_run_at: nextCheck.toISOString(),
     });
   } else {
     console.log("No action needed - emails already sent or missing data");
@@ -540,6 +564,7 @@ Deno.serve(async (req: Request) => {
       .from("order_sync_jobs")
       .select("*")
       .eq("status", "pending")
+      .lte("next_run_at", new Date().toISOString())
       .order("created_at", { ascending: true })
       .limit(10);
 
@@ -568,6 +593,7 @@ Deno.serve(async (req: Request) => {
           .update({
             status: "processing",
             attempts: job.attempts + 1,
+            processing_started_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq("id", job.id);
