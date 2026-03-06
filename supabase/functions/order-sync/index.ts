@@ -7,6 +7,59 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+async function createVeeqoProduct(
+  productName: string,
+  price: number,
+  veeqoApiKey: string
+): Promise<number> {
+  const payload = {
+    title: productName,
+    variants: [
+      {
+        title: productName,
+        sku: `${productName}-${Date.now()}`
+          .replace(/\s+/g, "-")
+          .toLowerCase(),
+        cost_price: price,
+        retail_price: price
+      }
+    ]
+  };
+
+  const response = await fetch("https://api.veeqo.com/products", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": veeqoApiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Veeqo product creation error: ${response.status} - ${errorText}`);
+  }
+
+  const createdProduct = await response.json();
+
+  console.log("Full Veeqo product response:", JSON.stringify(createdProduct, null, 2));
+
+  const sellableId =
+    createdProduct?.variants?.[0]?.id ||
+    createdProduct?.variants?.[0]?.sellable_id ||
+    createdProduct?.id ||
+    null;
+
+  if (!sellableId) {
+    console.error("Veeqo product response:", createdProduct);
+    throw new Error("Created product but no sellable ID returned");
+  }
+
+  console.log("Created Veeqo sellable:", sellableId);
+
+  return sellableId;
+}
+
 interface Order {
   id: string;
   order_number: string;
@@ -49,7 +102,7 @@ interface VeeqoOrderPayload {
     email: string;
   };
   line_items_attributes: Array<{
-    title: string;
+    sellable_id: number;
     quantity: number;
     price_per_unit: number;
   }>;
@@ -65,18 +118,34 @@ interface VeeqoOrderPayload {
 }
 
 
-function buildVeeqoOrder(
+async function buildVeeqoOrder(
   order: Order,
   orderItems: OrderItem[],
   options: {
     warehouseId?: number;
     channelId: number;
+    veeqoApiKey: string;
   }
-): VeeqoOrderPayload {
+): Promise<VeeqoOrderPayload> {
   const shippingAddress = order.shipping_address || {};
   const customerName = order.customer_name || '';
   const [firstName, ...lastNameParts] = customerName.split(' ');
   const lastName = lastNameParts.join(' ') || firstName;
+
+  const lineItems = [];
+  for (const item of orderItems) {
+    const sellableId = await createVeeqoProduct(
+      item.variant_name || item.product_name,
+      parseFloat(item.price.toString()),
+      options.veeqoApiKey
+    );
+
+    lineItems.push({
+      sellable_id: sellableId,
+      quantity: item.quantity,
+      price_per_unit: parseFloat(item.price.toString()),
+    });
+  }
 
   const veeqoOrder: VeeqoOrderPayload = {
     deliver_to: {
@@ -90,11 +159,7 @@ function buildVeeqoOrder(
       country: shippingAddress.country || 'US',
       email: order.customer_email || 'guest@cosclubusa.com',
     },
-    line_items_attributes: orderItems.map((item) => ({
-      title: item.variant_name || item.product_name,
-      quantity: item.quantity,
-      price_per_unit: parseFloat(item.price.toString()),
-    })),
+    line_items_attributes: lineItems,
     channel_id: options.channelId,
     customer_attributes: {
       email: order.customer_email || 'guest@cosclubusa.com',
@@ -356,9 +421,10 @@ async function processPushToVeeqo(
     throw new Error(`Order items not found for order: ${job.order_id}`);
   }
 
-  const veeqoPayload = buildVeeqoOrder(order, orderItems, {
+  const veeqoPayload = await buildVeeqoOrder(order, orderItems, {
     channelId: parseInt(veeqoChannelId),
     warehouseId: veeqoWarehouseId ? parseInt(veeqoWarehouseId) : undefined,
+    veeqoApiKey: veeqoApiKey,
   });
 
   console.log(
