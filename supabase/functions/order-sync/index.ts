@@ -64,31 +64,6 @@ interface VeeqoOrderPayload {
   number?: string;
 }
 
-async function searchVeeqoProduct(
-  productName: string,
-  veeqoApiKey: string
-): Promise<any> {
-  const searchUrl = `https://api.veeqo.com/products?query=${encodeURIComponent(
-    productName
-  )}`;
-
-  const response = await fetch(searchUrl, {
-    method: "GET",
-    headers: {
-      "x-api-key": veeqoApiKey,
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Veeqo product search error: ${response.status} - ${errorText}`
-    );
-  }
-
-  const products = await response.json();
-  return products.length > 0 ? products[0] : null;
-}
 
 async function createVeeqoProduct(
   productName: string,
@@ -139,29 +114,50 @@ async function createVeeqoProduct(
 }
 
 async function resolveOrCreateSellable(
+  supabase: any,
   item: OrderItem,
   veeqoApiKey: string
 ): Promise<number> {
-  console.log(`Resolving sellable for: ${item.product_name}`);
+  console.log(`Resolving sellable for: ${item.product_name} (variant_id: ${item.variant_id})`);
 
-  const existingProduct = await searchVeeqoProduct(
-    item.product_name,
-    veeqoApiKey
-  );
+  // Step 1: Check if variant has a stored sellable ID
+  if (item.variant_id) {
+    const { data: variant, error: variantError } = await supabase
+      .from("product_variants")
+      .select("veeqo_sellable_id")
+      .eq("id", item.variant_id)
+      .maybeSingle();
 
-  if (existingProduct && existingProduct.sellables?.length > 0) {
-    const sellableId = existingProduct.sellables[0].id;
-    console.log(`Found existing sellable ID: ${sellableId}`);
-    return sellableId;
+    if (!variantError && variant?.veeqo_sellable_id) {
+      console.log(`Using existing sellable: ${variant.veeqo_sellable_id}`);
+      return variant.veeqo_sellable_id;
+    }
   }
 
-  console.log(`No existing product found, creating new one`);
-  return await createVeeqoProduct(
+  // Step 2: Create new sellable in Veeqo
+  console.log(`Creating new Veeqo sellable for: ${item.product_name}`);
+  const sellableId = await createVeeqoProduct(
     item.product_name,
     item.variant_name || item.product_name,
     parseFloat(item.price.toString()),
     veeqoApiKey
   );
+
+  // Step 3: Save sellable ID back to database
+  if (item.variant_id) {
+    const { error: updateError } = await supabase
+      .from("product_variants")
+      .update({ veeqo_sellable_id: sellableId })
+      .eq("id", item.variant_id);
+
+    if (updateError) {
+      console.error(`Failed to save sellable ID to database:`, updateError);
+    } else {
+      console.log(`Saved sellable id: ${sellableId} for variant: ${item.variant_id}`);
+    }
+  }
+
+  return sellableId;
 }
 
 function buildVeeqoOrder(
@@ -457,7 +453,7 @@ async function processPushToVeeqo(
 
   const orderItemsWithSellables = [];
   for (const item of orderItems) {
-    const sellableId = await resolveOrCreateSellable(item, veeqoApiKey);
+    const sellableId = await resolveOrCreateSellable(supabase, item, veeqoApiKey);
     console.log(`Resolved sellable ID: ${sellableId}`);
     orderItemsWithSellables.push({ item, sellableId });
   }
