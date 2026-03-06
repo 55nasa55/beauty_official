@@ -41,9 +41,9 @@ interface VeeqoOrderPayload {
     first_name: string;
     last_name: string;
     address1: string;
-    address2?: string;
+    address2: string;
     city: string;
-    state?: string;
+    state: string;
     zip: string;
     country: string;
     email: string;
@@ -60,6 +60,7 @@ interface VeeqoOrderPayload {
     first_name: string;
     last_name: string;
   };
+  payment_status: string;
   number?: string;
 }
 
@@ -80,13 +81,13 @@ function buildVeeqoOrder(
     deliver_to: {
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
-      address1: shippingAddress.line1 || '',
-      address2: shippingAddress.line2,
-      city: shippingAddress.city || '',
-      state: shippingAddress.state,
-      zip: shippingAddress.postal_code || '',
+      address1: shippingAddress.line1 || 'Unknown',
+      address2: shippingAddress.line2 || '',
+      city: shippingAddress.city || 'Unknown',
+      state: shippingAddress.state || '',
+      zip: shippingAddress.postal_code || '00000',
       country: shippingAddress.country || 'US',
-      email: order.customer_email || '',
+      email: order.customer_email || 'guest@cosclubusa.com',
     },
     line_items_attributes: orderItems.map((item) => ({
       title: item.product_name + (item.variant_name ? ` - ${item.variant_name}` : ''),
@@ -95,10 +96,11 @@ function buildVeeqoOrder(
     })),
     channel_id: options.channelId,
     customer: {
-      email: order.customer_email || 'guest@example.com',
+      email: order.customer_email || 'guest@cosclubusa.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
     },
+    payment_status: 'paid',
     number: order.order_number,
   };
 
@@ -340,7 +342,7 @@ async function processPushToVeeqo(
   }
 
   if (order.veeqo_order_id) {
-    console.log(`Order already has veeqo_order_id: ${order.veeqo_order_id}`);
+    console.log(`Order already synced to Veeqo: ${order.veeqo_order_id}`);
     return;
   }
 
@@ -358,7 +360,10 @@ async function processPushToVeeqo(
     warehouseId: veeqoWarehouseId ? parseInt(veeqoWarehouseId) : undefined,
   });
 
-  console.log("Creating Veeqo order:", JSON.stringify(veeqoPayload, null, 2));
+  console.log(
+    "Creating Veeqo order payload:",
+    JSON.stringify(veeqoPayload, null, 2)
+  );
 
   const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
     method: "POST",
