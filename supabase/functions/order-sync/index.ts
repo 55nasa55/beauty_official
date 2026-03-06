@@ -71,16 +71,18 @@ async function createVeeqoProduct(
   price: number,
   veeqoApiKey: string
 ): Promise<number> {
-  const payload = {
-    title: productName,
-    variants: [
-      {
-        title: variantName || productName,
-        price: price,
-      },
-    ],
-  };
-
+const payload = {
+  title: productName,
+  variants: [
+    {
+      title: variantName || productName,
+      sku: `cos-${crypto.randomUUID()}`,
+      cost_price: price,
+      retail_price: price,
+    },
+  ],
+};
+  
   console.log(
     "Creating Veeqo product:",
     JSON.stringify(payload, null, 2)
