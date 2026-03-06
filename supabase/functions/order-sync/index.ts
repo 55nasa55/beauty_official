@@ -51,11 +51,11 @@ interface VeeqoOrderPayload {
   line_items_attributes: Array<{
     title: string;
     quantity: number;
-    price: number;
+    price_per_unit: number;
   }>;
   channel_id: number;
   warehouse_id?: number;
-  customer: {
+  customer_attributes: {
     email: string;
     first_name: string;
     last_name: string;
@@ -93,10 +93,10 @@ function buildVeeqoOrder(
     line_items_attributes: orderItems.map((item) => ({
       title: item.variant_name || item.product_name,
       quantity: item.quantity,
-      price: parseFloat(item.price.toString()),
+      price_per_unit: parseFloat(item.price.toString()),
     })),
     channel_id: options.channelId,
-    customer: {
+    customer_attributes: {
       email: order.customer_email || 'guest@cosclubusa.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
