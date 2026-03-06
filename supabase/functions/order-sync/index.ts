@@ -105,20 +105,38 @@ const payload = {
   }
 
   const createdProduct = await response.json();
-  console.log("Veeqo product response:", JSON.stringify(createdProduct, null, 2));
+
+  console.log("Veeqo product created:", createdProduct);
+
+  const productId = createdProduct.id;
+
+  const productResponse = await fetch(`https://api.veeqo.com/products/${productId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": veeqoApiKey,
+    },
+  });
+
+  if (!productResponse.ok) {
+    const errorText = await productResponse.text();
+    throw new Error(`Veeqo product fetch error: ${productResponse.status} - ${errorText}`);
+  }
+
+  const productData = await productResponse.json();
+
+  console.log("Fetched product details:", JSON.stringify(productData, null, 2));
 
   const createdSellableId =
-    createdProduct?.variants?.[0]?.id ||
-    createdProduct?.variants?.[0]?.sellable_id ||
-    createdProduct?.variants_attributes?.[0]?.id ||
+    productData?.variants?.[0]?.id ||
+    productData?.variants?.[0]?.sellable_id ||
+    productData?.sellables?.[0]?.id ||
     null;
 
   if (!createdSellableId) {
-    console.error("Veeqo product response:", createdProduct);
     throw new Error("Created product but no sellable ID returned");
   }
 
-  console.log("Created Veeqo sellable:", createdSellableId);
   return createdSellableId;
 }
 
