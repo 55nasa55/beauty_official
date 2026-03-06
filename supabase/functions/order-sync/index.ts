@@ -102,15 +102,15 @@ async function createVeeqoProduct(
     );
   }
 
-  const product = await response.json();
-  const sellableId = product.sellables?.[0]?.id;
+  const createdProduct = await response.json();
+  const createdSellableId = createdProduct.variants?.[0]?.id;
 
-  if (!sellableId) {
+  if (!createdSellableId) {
     throw new Error("Created product but no sellable ID returned");
   }
 
-  console.log(`Created Veeqo product "${productName}" with sellable ID: ${sellableId}`);
-  return sellableId;
+  console.log(`Created Veeqo sellable: ${createdSellableId}`);
+  return createdSellableId;
 }
 
 async function resolveOrCreateSellable(
