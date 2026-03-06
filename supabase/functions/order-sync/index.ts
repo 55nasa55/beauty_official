@@ -49,7 +49,7 @@ interface VeeqoOrderPayload {
     email: string;
   };
   line_items_attributes: Array<{
-    title: string;
+    sellable_id: number;
     quantity: number;
     price: number;
   }>;
@@ -64,9 +64,109 @@ interface VeeqoOrderPayload {
   number?: string;
 }
 
+async function searchVeeqoProduct(
+  productName: string,
+  veeqoApiKey: string
+): Promise<any> {
+  const searchUrl = `https://api.veeqo.com/products?query=${encodeURIComponent(
+    productName
+  )}`;
+
+  const response = await fetch(searchUrl, {
+    method: "GET",
+    headers: {
+      "x-api-key": veeqoApiKey,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Veeqo product search error: ${response.status} - ${errorText}`
+    );
+  }
+
+  const products = await response.json();
+  return products.length > 0 ? products[0] : null;
+}
+
+async function createVeeqoProduct(
+  productName: string,
+  variantName: string,
+  price: number,
+  veeqoApiKey: string
+): Promise<number> {
+  const payload = {
+    title: productName,
+    variants: [
+      {
+        title: variantName || productName,
+        price: price,
+      },
+    ],
+  };
+
+  console.log(
+    "Creating Veeqo product:",
+    JSON.stringify(payload, null, 2)
+  );
+
+  const response = await fetch("https://api.veeqo.com/products", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": veeqoApiKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Veeqo product creation error: ${response.status} - ${errorText}`
+    );
+  }
+
+  const product = await response.json();
+  const sellableId = product.sellables?.[0]?.id;
+
+  if (!sellableId) {
+    throw new Error("Created product but no sellable ID returned");
+  }
+
+  console.log(`Created Veeqo product "${productName}" with sellable ID: ${sellableId}`);
+  return sellableId;
+}
+
+async function resolveOrCreateSellable(
+  item: OrderItem,
+  veeqoApiKey: string
+): Promise<number> {
+  console.log(`Resolving sellable for: ${item.product_name}`);
+
+  const existingProduct = await searchVeeqoProduct(
+    item.product_name,
+    veeqoApiKey
+  );
+
+  if (existingProduct && existingProduct.sellables?.length > 0) {
+    const sellableId = existingProduct.sellables[0].id;
+    console.log(`Found existing sellable ID: ${sellableId}`);
+    return sellableId;
+  }
+
+  console.log(`No existing product found, creating new one`);
+  return await createVeeqoProduct(
+    item.product_name,
+    item.variant_name || item.product_name,
+    parseFloat(item.price.toString()),
+    veeqoApiKey
+  );
+}
+
 function buildVeeqoOrder(
   order: Order,
-  orderItems: OrderItem[],
+  orderItemsWithSellables: Array<{ item: OrderItem; sellableId: number }>,
   options: {
     warehouseId?: number;
     channelId: number;
@@ -89,8 +189,8 @@ function buildVeeqoOrder(
       country: shippingAddress.country || 'US',
       email: order.customer_email || 'guest@cosclubusa.com',
     },
-    line_items_attributes: orderItems.map((item) => ({
-      title: item.product_name + (item.variant_name ? ` - ${item.variant_name}` : ''),
+    line_items_attributes: orderItemsWithSellables.map(({ item, sellableId }) => ({
+      sellable_id: sellableId,
       quantity: item.quantity,
       price: parseFloat(item.price.toString()),
     })),
@@ -355,7 +455,14 @@ async function processPushToVeeqo(
     throw new Error(`Order items not found for order: ${job.order_id}`);
   }
 
-  const veeqoPayload = buildVeeqoOrder(order, orderItems, {
+  const orderItemsWithSellables = [];
+  for (const item of orderItems) {
+    const sellableId = await resolveOrCreateSellable(item, veeqoApiKey);
+    console.log(`Resolved sellable ID: ${sellableId}`);
+    orderItemsWithSellables.push({ item, sellableId });
+  }
+
+  const veeqoPayload = buildVeeqoOrder(order, orderItemsWithSellables, {
     channelId: parseInt(veeqoChannelId),
     warehouseId: veeqoWarehouseId ? parseInt(veeqoWarehouseId) : undefined,
   });
