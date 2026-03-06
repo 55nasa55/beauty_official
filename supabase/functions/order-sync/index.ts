@@ -49,7 +49,7 @@ interface VeeqoOrderPayload {
     email: string;
   };
   line_items_attributes: Array<{
-    sellable_id: number;
+    title: string;
     quantity: number;
     price: number;
   }>;
@@ -65,131 +65,9 @@ interface VeeqoOrderPayload {
 }
 
 
-async function createVeeqoProduct(
-  productName: string,
-  variantName: string,
-  price: number,
-  veeqoApiKey: string
-): Promise<number> {
-const payload = {
-  title: productName,
-  variants: [
-    {
-      title: variantName || productName,
-      sku: `cos-${crypto.randomUUID()}`,
-      cost_price: price,
-      retail_price: price,
-    },
-  ],
-};
-  
-  console.log(
-    "Creating Veeqo product:",
-    JSON.stringify(payload, null, 2)
-  );
-
-  const response = await fetch("https://api.veeqo.com/products", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": veeqoApiKey,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Veeqo product creation error: ${response.status} - ${errorText}`
-    );
-  }
-
-  const createdProduct = await response.json();
-
-  console.log("Veeqo product created:", createdProduct);
-
-  const productId = createdProduct.id;
-
-  const productResponse = await fetch(`https://api.veeqo.com/products/${productId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": veeqoApiKey,
-    },
-  });
-
-  if (!productResponse.ok) {
-    const errorText = await productResponse.text();
-    throw new Error(`Veeqo product fetch error: ${productResponse.status} - ${errorText}`);
-  }
-
-  const productData = await productResponse.json();
-
-  console.log("Fetched product details:", JSON.stringify(productData, null, 2));
-
-  const createdSellableId =
-    productData?.variants?.[0]?.id ||
-    productData?.variants?.[0]?.sellable_id ||
-    productData?.sellables?.[0]?.id ||
-    null;
-
-  if (!createdSellableId) {
-    throw new Error("Created product but no sellable ID returned");
-  }
-
-  return createdSellableId;
-}
-
-async function resolveOrCreateSellable(
-  supabase: any,
-  item: OrderItem,
-  veeqoApiKey: string
-): Promise<number> {
-  console.log(`Resolving sellable for: ${item.product_name} (variant_id: ${item.variant_id})`);
-
-  // Step 1: Check if variant has a stored sellable ID
-  if (item.variant_id) {
-    const { data: variant, error: variantError } = await supabase
-      .from("product_variants")
-      .select("veeqo_sellable_id")
-      .eq("id", item.variant_id)
-      .maybeSingle();
-
-    if (!variantError && variant?.veeqo_sellable_id) {
-      console.log(`Using existing sellable: ${variant.veeqo_sellable_id}`);
-      return variant.veeqo_sellable_id;
-    }
-  }
-
-  // Step 2: Create new sellable in Veeqo
-  console.log(`Creating new Veeqo sellable for: ${item.product_name}`);
-  const sellableId = await createVeeqoProduct(
-    item.product_name,
-    item.variant_name || item.product_name,
-    parseFloat(item.price.toString()),
-    veeqoApiKey
-  );
-
-  // Step 3: Save sellable ID back to database
-  if (item.variant_id) {
-    const { error: updateError } = await supabase
-      .from("product_variants")
-      .update({ veeqo_sellable_id: sellableId })
-      .eq("id", item.variant_id);
-
-    if (updateError) {
-      console.error(`Failed to save sellable ID to database:`, updateError);
-    } else {
-      console.log(`Saved sellable id: ${sellableId} for variant: ${item.variant_id}`);
-    }
-  }
-
-  return sellableId;
-}
-
 function buildVeeqoOrder(
   order: Order,
-  orderItemsWithSellables: Array<{ item: OrderItem; sellableId: number }>,
+  orderItems: OrderItem[],
   options: {
     warehouseId?: number;
     channelId: number;
@@ -212,8 +90,8 @@ function buildVeeqoOrder(
       country: shippingAddress.country || 'US',
       email: order.customer_email || 'guest@cosclubusa.com',
     },
-    line_items_attributes: orderItemsWithSellables.map(({ item, sellableId }) => ({
-      sellable_id: sellableId,
+    line_items_attributes: orderItems.map((item) => ({
+      title: item.variant_name || item.product_name,
       quantity: item.quantity,
       price: parseFloat(item.price.toString()),
     })),
@@ -478,14 +356,7 @@ async function processPushToVeeqo(
     throw new Error(`Order items not found for order: ${job.order_id}`);
   }
 
-  const orderItemsWithSellables = [];
-  for (const item of orderItems) {
-    const sellableId = await resolveOrCreateSellable(supabase, item, veeqoApiKey);
-    console.log(`Resolved sellable ID: ${sellableId}`);
-    orderItemsWithSellables.push({ item, sellableId });
-  }
-
-  const veeqoPayload = buildVeeqoOrder(order, orderItemsWithSellables, {
+  const veeqoPayload = buildVeeqoOrder(order, orderItems, {
     channelId: parseInt(veeqoChannelId),
     warehouseId: veeqoWarehouseId ? parseInt(veeqoWarehouseId) : undefined,
   });
