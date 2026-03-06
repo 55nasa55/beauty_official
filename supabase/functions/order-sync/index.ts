@@ -48,7 +48,7 @@ interface VeeqoOrderPayload {
     country: string;
     email: string;
   };
-  line_items: Array<{
+  line_items_attributes: Array<{
     title: string;
     quantity: number;
     price: number;
@@ -88,14 +88,14 @@ function buildVeeqoOrder(
       country: shippingAddress.country || 'US',
       email: order.customer_email || '',
     },
-    line_items: orderItems.map((item) => ({
+    line_items_attributes: orderItems.map((item) => ({
       title: item.product_name + (item.variant_name ? ` - ${item.variant_name}` : ''),
       quantity: item.quantity,
       price: parseFloat(item.price.toString()),
     })),
     channel_id: options.channelId,
     customer: {
-      email: order.customer_email || 'customer@example.com',
+      email: order.customer_email || 'guest@example.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
     },
