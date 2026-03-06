@@ -105,6 +105,7 @@ const payload = {
   }
 
   const createdProduct = await response.json();
+  console.log("Veeqo product response:", JSON.stringify(createdProduct, null, 2));
 
   const createdSellableId =
     createdProduct?.variants?.[0]?.id ||
