@@ -44,24 +44,21 @@ async function createVeeqoProduct(
 
   const createdProduct = await response.json();
 
-  console.log(
-    "Full Veeqo product response:",
-    JSON.stringify(createdProduct, null, 2)
-  );
+console.log(
+  "Full Veeqo product response:",
+  JSON.stringify(createdProduct, null, 2)
+);
 
-  const sellableId =
-    createdProduct?.variants?.[0]?.id ||
-    createdProduct?.variants?.[0]?.sellable_id ||
-    createdProduct?.variants_attributes?.[0]?.id ||
-    createdProduct?.id ||
-    null;
+const sellableId =
+  createdProduct?.variants?.[0]?.sellable_id ||
+  createdProduct?.variants?.[0]?.id ||
+  null;
 
-  if (!sellableId) {
-    throw new Error("Could not determine sellable_id from Veeqo response");
-  }
-
-  return sellableId;
+if (!sellableId) {
+  throw new Error("Could not determine sellable_id from Veeqo response");
 }
+
+return sellableId;
 
 interface Order {
   id: string;
