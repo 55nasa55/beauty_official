@@ -444,7 +444,9 @@ const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
     "Content-Type": "application/json",
     "x-api-key": veeqoApiKey,
   },
-  body: JSON.stringify(veeqoPayload),
+  body: JSON.stringify({
+    order: veeqoPayload
+  }),
 });
 
 if (!veeqoResponse.ok) {
