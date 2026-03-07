@@ -435,21 +435,24 @@ async function processPushToVeeqo(
     JSON.stringify(veeqoPayload, null, 2)
   );
 
+console.log("VEEQO ORDER PAYLOAD:");
+console.log(JSON.stringify(veeqoPayload, null, 2));
+
 const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
     "x-api-key": veeqoApiKey,
   },
-  body: JSON.stringify({
-    order: veeqoPayload
-  }),
+  body: JSON.stringify(veeqoPayload),
 });
 
-  if (!veeqoResponse.ok) {
-    const errorText = await veeqoResponse.text();
-    throw new Error(`Veeqo API error: ${veeqoResponse.status} - ${errorText}`);
-  }
+if (!veeqoResponse.ok) {
+  const errorText = await veeqoResponse.text();
+  console.error("VEEQO ORDER ERROR:");
+  console.error(errorText);
+  throw new Error(`Veeqo API error: ${veeqoResponse.status} - ${errorText}`);
+}
 
   const veeqoOrder = await veeqoResponse.json();
   console.log("Veeqo order created:", veeqoOrder.id);
