@@ -14,7 +14,7 @@ async function createVeeqoProduct(
 ): Promise<number> {
   const payload = {
     title: productName,
-    variants: [
+    variants_attributes: [
       {
         title: productName,
         sku: `${productName}-${Date.now()}`
@@ -37,25 +37,28 @@ async function createVeeqoProduct(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Veeqo product creation error: ${response.status} - ${errorText}`);
+    throw new Error(
+      `Veeqo product creation error: ${response.status} - ${errorText}`
+    );
   }
 
   const createdProduct = await response.json();
 
-  console.log("Full Veeqo product response:", JSON.stringify(createdProduct, null, 2));
+  console.log(
+    "Full Veeqo product response:",
+    JSON.stringify(createdProduct, null, 2)
+  );
 
   const sellableId =
     createdProduct?.variants?.[0]?.id ||
     createdProduct?.variants?.[0]?.sellable_id ||
+    createdProduct?.variants_attributes?.[0]?.id ||
     createdProduct?.id ||
     null;
 
   if (!sellableId) {
-    console.error("Veeqo product response:", createdProduct);
-    throw new Error("Created product but no sellable ID returned");
+    throw new Error("Could not determine sellable_id from Veeqo response");
   }
-
-  console.log("Created Veeqo sellable:", sellableId);
 
   return sellableId;
 }
