@@ -43,7 +43,7 @@ async function createVeeqoProduct(
   }
 
   const createdProduct = await response.json();
-
+// Testing Testing Testing
 console.log(
   "Full Veeqo product response:",
   JSON.stringify(createdProduct, null, 2)
