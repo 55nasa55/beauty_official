@@ -435,7 +435,7 @@ async function processPushToVeeqo(
     JSON.stringify(veeqoPayload, null, 2)
   );
 
-  const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
+const veeqoResponse = await fetch("https://api.veeqo.com/orders/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
