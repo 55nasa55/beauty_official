@@ -7,58 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-async function createVeeqoProduct(
-  productName: string,
-  price: number,
-  veeqoApiKey: string
-): Promise<number> {
-  const payload = {
-    title: productName,
-    variants: [
-      {
-        title: productName,
-        sku: `${productName}-${Date.now()}`
-          .replace(/\s+/g, "-")
-          .toLowerCase(),
-        cost_price: price,
-        retail_price: price
-      }
-    ]
-  };
-
-  const response = await fetch("https://api.veeqo.com/products", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": veeqoApiKey
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Veeqo product creation error: ${response.status} - ${errorText}`
-    );
-  }
-
-  const createdProduct = await response.json();
-// Testing Testing Testing
-console.log(
-  "Full Veeqo product response:",
-  JSON.stringify(createdProduct, null, 2)
-);
-
-const sellableId =
-  createdProduct?.variants?.[0]?.sellable_id ||
-  createdProduct?.variants?.[0]?.id ||
-  null;
-
-if (!sellableId) {
-  throw new Error("Could not determine sellable_id from Veeqo response");
-}
-
-return sellableId;
 
 interface Order {
   id: string;
@@ -87,6 +35,11 @@ interface OrderItem {
   quantity: number;
   price: number;
   sku?: string;
+}
+
+interface Product {
+  id: string;
+  veeqo_sellable_id?: number | null;
 }
 
 interface VeeqoOrderPayload {
@@ -119,12 +72,12 @@ interface VeeqoOrderPayload {
 
 
 async function buildVeeqoOrder(
+  supabase: any,
   order: Order,
   orderItems: OrderItem[],
   options: {
     warehouseId?: number;
     channelId: number;
-    veeqoApiKey: string;
   }
 ): Promise<VeeqoOrderPayload> {
   const shippingAddress = order.shipping_address || {};
@@ -134,14 +87,26 @@ async function buildVeeqoOrder(
 
   const lineItems = [];
   for (const item of orderItems) {
-    const sellableId = await createVeeqoProduct(
-      item.variant_name || item.product_name,
-      parseFloat(item.price.toString()),
-      options.veeqoApiKey
-    );
+    if (!item.product_id) {
+      throw new Error(`Missing product_id for order item ${item.id}`);
+    }
+
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("id, veeqo_sellable_id")
+      .eq("id", item.product_id)
+      .single();
+
+    if (productError || !product) {
+      throw new Error(`Product not found: ${item.product_id}`);
+    }
+
+    if (!product.veeqo_sellable_id) {
+      throw new Error(`Missing Veeqo sellable_id for product ${product.id}`);
+    }
 
     lineItems.push({
-      sellable_id: sellableId,
+      sellable_id: product.veeqo_sellable_id,
       quantity: item.quantity,
       price_per_unit: parseFloat(item.price.toString()),
     });
@@ -421,10 +386,9 @@ async function processPushToVeeqo(
     throw new Error(`Order items not found for order: ${job.order_id}`);
   }
 
-  const veeqoPayload = await buildVeeqoOrder(order, orderItems, {
+  const veeqoPayload = await buildVeeqoOrder(supabase, order, orderItems, {
     channelId: parseInt(veeqoChannelId),
     warehouseId: veeqoWarehouseId ? parseInt(veeqoWarehouseId) : undefined,
-    veeqoApiKey: veeqoApiKey,
   });
 
   console.log(

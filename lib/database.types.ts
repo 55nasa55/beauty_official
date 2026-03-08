@@ -80,6 +80,8 @@ export interface Database {
           member_price_cents: number | null
           archived: boolean
           archived_at: string | null
+          veeqo_product_id: number | null
+          veeqo_sellable_id: number | null
           created_at: string
           updated_at: string
         }
@@ -98,6 +100,8 @@ export interface Database {
           member_price_cents?: number | null
           archived?: boolean
           archived_at?: string | null
+          veeqo_product_id?: number | null
+          veeqo_sellable_id?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -113,6 +117,8 @@ export interface Database {
           is_featured?: boolean
           is_best_seller?: boolean
           is_new?: boolean
+          veeqo_product_id?: number | null
+          veeqo_sellable_id?: number | null
           member_price_cents?: number | null
           archived?: boolean
           archived_at?: string | null
