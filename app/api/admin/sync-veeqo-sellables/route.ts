@@ -57,43 +57,43 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      let product = null;
+      let variant = null;
 
-      const { data: productBySku } = await supabase
-        .from('products')
+      const { data: variantBySku } = await supabase
+        .from('product_variants')
         .select('id, veeqo_sellable_id, veeqo_product_id')
         .eq('sku', skuCode)
         .maybeSingle();
 
-      if (productBySku) {
-        product = productBySku;
+      if (variantBySku) {
+        variant = variantBySku;
       } else if (productId) {
-        const { data: productByVeeqoId } = await supabase
-          .from('products')
+        const { data: variantByVeeqoId } = await supabase
+          .from('product_variants')
           .select('id, veeqo_sellable_id, veeqo_product_id')
           .eq('veeqo_product_id', productId)
           .maybeSingle();
 
-        if (productByVeeqoId) {
-          product = productByVeeqoId;
+        if (variantByVeeqoId) {
+          variant = variantByVeeqoId;
         }
       }
 
-      if (!product) {
+      if (!variant) {
         skipped++;
         continue;
       }
 
       const { error: updateError } = await supabase
-        .from('products')
+        .from('product_variants')
         .update({
           veeqo_sellable_id: sellableId,
-          veeqo_product_id: productId || product.veeqo_product_id,
+          veeqo_product_id: productId || variant.veeqo_product_id,
         })
-        .eq('id', product.id);
+        .eq('id', variant.id);
 
       if (updateError) {
-        console.error(`Failed to update product ${product.id}:`, updateError);
+        console.error(`Failed to update variant ${variant.id}:`, updateError);
         skipped++;
       } else {
         synced++;

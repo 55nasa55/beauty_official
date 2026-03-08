@@ -37,7 +37,7 @@ interface OrderItem {
   sku?: string;
 }
 
-interface Product {
+interface Variant {
   id: string;
   veeqo_sellable_id?: number | null;
 }
@@ -87,26 +87,26 @@ async function buildVeeqoOrder(
 
   const lineItems = [];
   for (const item of orderItems) {
-    if (!item.product_id) {
-      throw new Error(`Missing product_id for order item ${item.id}`);
+    if (!item.variant_id) {
+      throw new Error(`Missing variant_id for order item ${item.id}`);
     }
 
-    const { data: product, error: productError } = await supabase
-      .from("products")
+    const { data: variant, error: variantError } = await supabase
+      .from("product_variants")
       .select("id, veeqo_sellable_id")
-      .eq("id", item.product_id)
+      .eq("id", item.variant_id)
       .single();
 
-    if (productError || !product) {
-      throw new Error(`Product not found: ${item.product_id}`);
+    if (variantError || !variant) {
+      throw new Error(`Variant not found: ${item.variant_id}`);
     }
 
-    if (!product.veeqo_sellable_id) {
-      throw new Error(`Missing Veeqo sellable_id for product ${product.id}`);
+    if (!variant.veeqo_sellable_id) {
+      throw new Error(`Missing Veeqo sellable_id for variant ${variant.id}`);
     }
 
     lineItems.push({
-      sellable_id: product.veeqo_sellable_id,
+      sellable_id: variant.veeqo_sellable_id,
       quantity: item.quantity,
       price_per_unit: parseFloat(item.price.toString()),
     });

@@ -141,6 +141,8 @@ export interface Database {
           low_stock_threshold: number
           images: string[]
           specs: Json
+          veeqo_product_id: number | null
+          veeqo_sellable_id: number | null
           created_at: string
           updated_at: string
         }
@@ -158,6 +160,8 @@ export interface Database {
           low_stock_threshold?: number
           images?: string[]
           specs?: Json
+          veeqo_product_id?: number | null
+          veeqo_sellable_id?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -175,6 +179,8 @@ export interface Database {
           low_stock_threshold?: number
           images?: string[]
           specs?: Json
+          veeqo_product_id?: number | null
+          veeqo_sellable_id?: number | null
           created_at?: string
           updated_at?: string
         }
