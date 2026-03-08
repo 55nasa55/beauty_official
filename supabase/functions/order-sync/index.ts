@@ -14,7 +14,7 @@ async function createVeeqoProduct(
 ): Promise<number> {
   const payload = {
     title: productName,
-    variants_attributes: [
+    variants: [
       {
         title: productName,
         sku: `${productName}-${Date.now()}`
