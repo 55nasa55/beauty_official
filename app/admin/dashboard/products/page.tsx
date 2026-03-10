@@ -11,11 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter, Archive, ArchiveRestore, Upload } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Package, ChevronDown, ChevronUp, Search, X, ChevronLeft, ChevronRight, Filter, Archive, ArchiveRestore, Upload } from 'lucide-react';
 import { ProductInfoSectionsEditor } from '@/components/admin/products/info/ProductInfoSectionsEditor';
 import { ProductInfoImagesEditor } from '@/components/admin/products/info/ProductInfoImagesEditor';
 import { ProductReviewsAdmin } from '@/components/admin/ProductReviewsAdmin';
 import { ProductSubratingsEditor } from '@/components/admin/ProductSubratingsEditor';
+import SyncVeeqoSellablesButton from '@/components/admin/SyncVeeqoSellablesButton';
 
 interface Product {
   id: string;
@@ -987,16 +988,19 @@ export default function ProductsManagementPage() {
           <p className="text-gray-600">Manage your product catalog and variations</p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-4">
+          <SyncVeeqoSellablesButton />
+
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -1160,6 +1164,7 @@ export default function ProductsManagementPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Dialog open={isVariantDialogOpen} onOpenChange={(open) => {
