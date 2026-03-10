@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: NextRequest) {
   try {
+    const adminCheck = await requireAdmin();
+
+    if ("error" in adminCheck) {
+      return NextResponse.json(
+        { error: adminCheck.error },
+        { status: adminCheck.status }
+      );
+    }
+
     const supabase = createSupabaseServerClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: admin } = await supabase
-      .from('admins')
-      .select('id')
-      .eq('email', user.email)
-      .single();
-
-    if (!admin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
 
     const veeqoApiKey = process.env.VEEQO_API_KEY;
     if (!veeqoApiKey) {
