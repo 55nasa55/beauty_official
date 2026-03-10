@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const { data: admin } = await supabase
       .from('admins')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('email', user.email)
       .single();
 
     if (!admin) {
@@ -43,6 +43,24 @@ export async function POST(request: NextRequest) {
 
     const sellables = await response.json();
 
+    const { data: variants } = await supabase
+      .from('product_variants')
+      .select('id, sku, veeqo_product_id');
+
+    const skuMap = new Map();
+    const productMap = new Map();
+
+    if (variants) {
+      for (const variant of variants) {
+        if (variant.sku) {
+          skuMap.set(variant.sku, variant);
+        }
+        if (variant.veeqo_product_id) {
+          productMap.set(variant.veeqo_product_id, variant);
+        }
+      }
+    }
+
     let synced = 0;
     let updated = 0;
     let skipped = 0;
@@ -59,24 +77,10 @@ export async function POST(request: NextRequest) {
 
       let variant = null;
 
-      const { data: variantBySku } = await supabase
-        .from('product_variants')
-        .select('id, veeqo_sellable_id, veeqo_product_id')
-        .eq('sku', skuCode)
-        .maybeSingle();
-
-      if (variantBySku) {
-        variant = variantBySku;
-      } else if (productId) {
-        const { data: variantByVeeqoId } = await supabase
-          .from('product_variants')
-          .select('id, veeqo_sellable_id, veeqo_product_id')
-          .eq('veeqo_product_id', productId)
-          .maybeSingle();
-
-        if (variantByVeeqoId) {
-          variant = variantByVeeqoId;
-        }
+      if (skuCode && skuMap.has(skuCode)) {
+        variant = skuMap.get(skuCode);
+      } else if (productId && productMap.has(productId)) {
+        variant = productMap.get(productId);
       }
 
       if (!variant) {
