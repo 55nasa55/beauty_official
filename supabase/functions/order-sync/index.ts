@@ -53,6 +53,7 @@ interface VeeqoOrderPayload {
     zip: string;
     country: string;
     email: string;
+    phone?: string;
   };
   line_items_attributes: Array<{
     sellable_id: number;
@@ -65,6 +66,7 @@ interface VeeqoOrderPayload {
     email: string;
     first_name: string;
     last_name: string;
+    phone?: string;
   };
   payment_status: string;
   payments_attributes?: Array<{
@@ -122,10 +124,16 @@ async function buildVeeqoOrder(
     0
   );
 
+  const shippingName = shippingAddress.name || customerName;
+  const [shippingFirstName, ...shippingLastNameParts] = (shippingName || '').split(' ');
+  const shippingLastName = shippingLastNameParts.join(' ') || shippingFirstName || 'Customer';
+  const finalShippingFirstName = shippingFirstName || firstName || 'Guest';
+  const finalShippingLastName = shippingLastName || lastName || 'Customer';
+
   const veeqoOrder: VeeqoOrderPayload = {
     deliver_to: {
-      first_name: firstName || 'Guest',
-      last_name: lastName || 'Customer',
+      first_name: finalShippingFirstName,
+      last_name: finalShippingLastName,
       address1: shippingAddress.line1 || 'Unknown',
       address2: shippingAddress.line2 || '',
       city: shippingAddress.city || 'Unknown',
@@ -133,6 +141,7 @@ async function buildVeeqoOrder(
       zip: shippingAddress.postal_code || '00000',
       country: shippingAddress.country || 'US',
       email: order.customer_email || 'guest@cosclubusa.com',
+      phone: '',
     },
     line_items_attributes: lineItems,
     channel_id: options.channelId,
@@ -140,6 +149,7 @@ async function buildVeeqoOrder(
       email: order.customer_email || 'guest@cosclubusa.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
+      phone: '',
     },
     payment_status: 'paid',
     payments_attributes: [
