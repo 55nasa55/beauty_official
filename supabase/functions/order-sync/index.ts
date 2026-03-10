@@ -67,6 +67,11 @@ interface VeeqoOrderPayload {
     last_name: string;
   };
   payment_status: string;
+  payments_attributes?: Array<{
+    amount: number;
+    payment_type: string;
+  }>;
+  fulfillment_status?: string;
   number?: string;
 }
 
@@ -112,6 +117,11 @@ async function buildVeeqoOrder(
     });
   }
 
+  const orderTotal = lineItems.reduce(
+    (sum, item) => sum + item.price_per_unit * item.quantity,
+    0
+  );
+
   const veeqoOrder: VeeqoOrderPayload = {
     deliver_to: {
       first_name: firstName || 'Guest',
@@ -132,6 +142,13 @@ async function buildVeeqoOrder(
       last_name: lastName || 'Customer',
     },
     payment_status: 'paid',
+    payments_attributes: [
+      {
+        amount: orderTotal,
+        payment_type: 'external',
+      },
+    ],
+    fulfillment_status: 'unfulfilled',
     number: order.order_number,
   };
 
