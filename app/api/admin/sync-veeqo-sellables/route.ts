@@ -25,23 +25,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Veeqo API key not configured' }, { status: 500 });
     }
 
-    const response = await fetch('https://api.veeqo.com/sellables', {
-      method: 'GET',
-      headers: {
-        'x-api-key': veeqoApiKey,
-        'Content-Type': 'application/json',
-      },
-    });
+    const allSellables: any[] = [];
+    let page = 1;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json(
-        { error: `Veeqo API error: ${response.status} - ${errorText}` },
-        { status: response.status }
+    while (true) {
+      const response = await fetch(
+        `https://api.veeqo.com/sellables?page=${page}`,
+        {
+          method: "GET",
+          headers: {
+            "x-api-key": veeqoApiKey,
+            "Content-Type": "application/json",
+          },
+        }
       );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Veeqo API error: ${response.status} - ${errorText}`);
+      }
+
+      const sellablesPage = await response.json();
+
+      if (!Array.isArray(sellablesPage) || sellablesPage.length === 0) {
+        break;
+      }
+
+      allSellables.push(...sellablesPage);
+
+      page++;
     }
 
-    const sellables = await response.json();
+    const sellables = allSellables;
+    console.log(`Fetched ${sellables.length} sellables from Veeqo`);
 
     const { data: variants } = await supabase
       .from('product_variants')
