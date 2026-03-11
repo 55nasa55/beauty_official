@@ -446,16 +446,35 @@ async function processPushToVeeqo(
 console.log("VEEQO ORDER PAYLOAD:");
 console.log(JSON.stringify(veeqoPayload, null, 2));
 
+const requestBody = {
+  order: veeqoPayload
+};
+
+console.log("=== VEEQO REQUEST BODY ===");
+console.log(JSON.stringify(requestBody, null, 2));
+
 const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
     "x-api-key": veeqoApiKey,
   },
-  body: JSON.stringify({
-    order: veeqoPayload
-  }),
+  body: JSON.stringify(requestBody),
 });
+
+const responseText = await veeqoResponse.text();
+
+console.log("=== VEEQO RAW RESPONSE ===");
+console.log(responseText);
+
+if (!veeqoResponse.ok) {
+  throw new Error(`Veeqo API error: ${veeqoResponse.status} - ${responseText}`);
+}
+
+const veeqoOrder = JSON.parse(responseText);
+
+console.log("=== PARSED VEEQO ORDER ===");
+console.log(JSON.stringify(veeqoOrder, null, 2));
 
 if (!veeqoResponse.ok) {
   const errorText = await veeqoResponse.text();
