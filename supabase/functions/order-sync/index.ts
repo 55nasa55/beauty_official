@@ -64,12 +64,13 @@ interface VeeqoOrderPayload {
   }>;
   channel_id: number;
   warehouse_id?: number;
-  contact_attributes: {
+  customer_attributes: {
     email: string;
     first_name: string;
     last_name: string;
     phone?: string;
   };
+  delivery_method: string;
   payment_status: string;
   payments_attributes?: Array<{
     amount: number;
@@ -165,12 +166,13 @@ async function buildVeeqoOrder(
     },
     line_items_attributes: lineItems,
     channel_id: options.channelId,
-    contact_attributes: {
+    customer_attributes: {
       email: order.customer_email || 'guest@cosclubusa.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
       phone: '',
     },
+    delivery_method: 'Shipping',
     payment_status: 'paid',
     payments_attributes: [
       {
