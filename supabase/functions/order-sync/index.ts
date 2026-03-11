@@ -21,7 +21,9 @@ interface Order {
     state?: string;
     postal_code?: string;
     country?: string;
+    name?: string;
   };
+  billing_address?: any;
   veeqo_order_id?: string;
 }
 
@@ -87,7 +89,23 @@ async function buildVeeqoOrder(
     channelId: number;
   }
 ): Promise<VeeqoOrderPayload> {
-  const shippingAddress = order.shipping_address || {};
+  let shippingAddress: any = {};
+
+  if (order.shipping_address) {
+    shippingAddress = order.shipping_address;
+  } else if (order.billing_address) {
+    try {
+      if (typeof order.billing_address === 'string') {
+        shippingAddress = JSON.parse(order.billing_address);
+      } else {
+        shippingAddress = order.billing_address;
+      }
+    } catch (err) {
+      console.error("Failed to parse billing_address JSON", err);
+      shippingAddress = {};
+    }
+  }
+
   const customerName = order.customer_name || '';
   const [firstName, ...lastNameParts] = customerName.split(' ');
   const lastName = lastNameParts.join(' ') || firstName;
@@ -114,8 +132,8 @@ async function buildVeeqoOrder(
 
     lineItems.push({
       sellable_id: variant.veeqo_sellable_id,
-      quantity: item.quantity,
-      price_per_unit: parseFloat(item.price.toString()),
+      quantity: Number(item.quantity) || 1,
+      price_per_unit: Number(item.price) || 0,
     });
   }
 
@@ -129,6 +147,9 @@ async function buildVeeqoOrder(
   const shippingLastName = shippingLastNameParts.join(' ') || shippingFirstName || 'Customer';
   const finalShippingFirstName = shippingFirstName || firstName || 'Guest';
   const finalShippingLastName = shippingLastName || lastName || 'Customer';
+
+  console.log("Parsed shipping address:", shippingAddress);
+  console.log("Veeqo line items:", lineItems);
 
   const veeqoOrder: VeeqoOrderPayload = {
     deliver_to: {
