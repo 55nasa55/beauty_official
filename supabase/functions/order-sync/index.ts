@@ -467,6 +467,9 @@ if (!veeqoResponse.ok) {
 
   const veeqoOrder = await veeqoResponse.json();
   console.log("Veeqo order created:", veeqoOrder.id);
+  console.log("Full Veeqo API response:");
+console.log(JSON.stringify(veeqoOrder, null, 2));
+
 
   await supabase
     .from("orders")
