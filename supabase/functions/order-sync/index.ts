@@ -45,7 +45,7 @@ interface Variant {
 }
 
 interface VeeqoOrderPayload {
-  deliver_to: {
+  deliver_to_attributes: {
     first_name: string;
     last_name: string;
     address1: string;
@@ -153,7 +153,7 @@ async function buildVeeqoOrder(
   console.log("Veeqo line items:", lineItems);
 
   const veeqoOrder: VeeqoOrderPayload = {
-    deliver_to: {
+    deliver_to_attributes: {
       first_name: finalShippingFirstName,
       last_name: finalShippingLastName,
       address1: shippingAddress.line1 || 'Unknown',
