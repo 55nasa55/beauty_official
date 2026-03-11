@@ -438,56 +438,48 @@ async function processPushToVeeqo(
     warehouseId: veeqoWarehouseId ? parseInt(veeqoWarehouseId) : undefined,
   });
 
-  console.log(
-    "Creating Veeqo order payload:",
-    JSON.stringify(veeqoPayload, null, 2)
-  );
+  console.log("=== VEEQO PAYLOAD SENT ===");
+  console.log(JSON.stringify(veeqoPayload, null, 2));
 
-console.log("VEEQO ORDER PAYLOAD:");
-console.log(JSON.stringify(veeqoPayload, null, 2));
+  const requestBody = {
+    order: veeqoPayload
+  };
 
-const requestBody = {
-  order: veeqoPayload
-};
+  console.log("=== VEEQO REQUEST BODY ===");
+  console.log(JSON.stringify(requestBody, null, 2));
 
-console.log("=== VEEQO REQUEST BODY ===");
-console.log(JSON.stringify(requestBody, null, 2));
+  const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": veeqoApiKey,
+    },
+    body: JSON.stringify(requestBody),
+  });
 
-const veeqoResponse = await fetch("https://api.veeqo.com/orders", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": veeqoApiKey,
-  },
-  body: JSON.stringify(requestBody),
-});
+  const responseText = await veeqoResponse.text();
 
-const responseText = await veeqoResponse.text();
+  console.log("=== VEEQO RAW RESPONSE ===");
+  console.log(responseText);
 
-console.log("=== VEEQO RAW RESPONSE ===");
-console.log(responseText);
+  if (!veeqoResponse.ok) {
+    throw new Error(`Veeqo API error ${veeqoResponse.status}: ${responseText}`);
+  }
 
-if (!veeqoResponse.ok) {
-  throw new Error(`Veeqo API error: ${veeqoResponse.status} - ${responseText}`);
-}
+  let veeqoOrder;
 
-const veeqoOrder = JSON.parse(responseText);
+  try {
+    veeqoOrder = JSON.parse(responseText);
+  } catch (err) {
+    console.error("Failed to parse Veeqo response JSON");
+    console.error(responseText);
+    throw err;
+  }
 
-console.log("=== PARSED VEEQO ORDER ===");
-console.log(JSON.stringify(veeqoOrder, null, 2));
+  console.log("=== PARSED VEEQO ORDER OBJECT ===");
+  console.log(JSON.stringify(veeqoOrder, null, 2));
 
-if (!veeqoResponse.ok) {
-  const errorText = await veeqoResponse.text();
-  console.error("VEEQO ORDER ERROR:");
-  console.error(errorText);
-  throw new Error(`Veeqo API error: ${veeqoResponse.status} - ${errorText}`);
-}
-
-  const veeqoOrder = await veeqoResponse.json();
   console.log("Veeqo order created:", veeqoOrder.id);
-  console.log("Full Veeqo API response:");
-console.log(JSON.stringify(veeqoOrder, null, 2));
-
 
   await supabase
     .from("orders")
