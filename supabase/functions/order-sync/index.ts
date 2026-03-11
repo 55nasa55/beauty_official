@@ -161,7 +161,6 @@ async function buildVeeqoOrder(
       state: shippingAddress.state || '',
       zip: shippingAddress.postal_code || '00000',
       country: shippingAddress.country || 'US',
-      email: order.customer_email || 'guest@cosclubusa.com',
       phone: '',
     },
     line_items_attributes: lineItems,
