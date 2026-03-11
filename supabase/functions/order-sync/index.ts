@@ -64,7 +64,7 @@ interface VeeqoOrderPayload {
   }>;
   channel_id: number;
   warehouse_id?: number;
-  customer_attributes: {
+  contact_attributes: {
     email: string;
     first_name: string;
     last_name: string;
@@ -165,7 +165,7 @@ async function buildVeeqoOrder(
     },
     line_items_attributes: lineItems,
     channel_id: options.channelId,
-    customer_attributes: {
+    contact_attributes: {
       email: order.customer_email || 'guest@cosclubusa.com',
       first_name: firstName || 'Guest',
       last_name: lastName || 'Customer',
