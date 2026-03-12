@@ -734,7 +734,7 @@ Deno.serve(async (req: Request) => {
           .from("order_sync_jobs")
           .update({
             status: newStatus,
-            error_message: error.message,
+            error_message: String(error),
             updated_at: new Date().toISOString(),
           })
           .eq("id", job.id);
@@ -743,7 +743,7 @@ Deno.serve(async (req: Request) => {
           job_id: job.id,
           job_type: job.job_type,
           status: "error",
-          error: error.message,
+          error: String(error),
         });
       }
     }
