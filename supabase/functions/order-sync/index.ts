@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// TEST 6
+// TEST 7
 interface Order {
   id: string;
   order_number: string;
