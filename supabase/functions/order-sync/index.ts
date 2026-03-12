@@ -652,10 +652,14 @@ Deno.serve(async (req: Request) => {
       throw new Error("Missing Veeqo configuration");
     }
 
+    const staleTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
     const { data: pendingJobs, error: jobsError } = await supabase
       .from("order_sync_jobs")
       .select("*")
-      .eq("status", "pending")
+      .or(
+        `status.eq.pending,and(status.eq.processing,processing_started_at.lt.${staleTime})`
+      )
       .lte("next_run_at", new Date().toISOString())
       .order("created_at", { ascending: true })
       .limit(10);
