@@ -409,6 +409,7 @@ async function processPushToVeeqo(
   veeqoChannelId: string,
   veeqoWarehouseId: string
 ) {
+  console.log("ENTER processPushToVeeqo for order:", job.order_id);
   console.log(`Processing push_to_veeqo for order ${job.order_id}`);
 
   const { data: order, error: orderError } = await supabase
@@ -507,6 +508,7 @@ async function processCheckShipment(
   veeqoApiKey: string,
   resendApiKey: string
 ) {
+  console.log("ENTER processCheckShipment for order:", job.order_id);
   console.log(`Processing check_shipment for order ${job.order_id}`);
 
   const { data: order, error: orderError } = await supabase
@@ -668,6 +670,9 @@ Deno.serve(async (req: Request) => {
       throw jobsError;
     }
 
+    console.log("WORKER START");
+    console.log("Pending jobs found:", pendingJobs?.length || 0);
+
     if (!pendingJobs || pendingJobs.length === 0) {
       return new Response(
         JSON.stringify({ message: "No pending jobs", processed: 0 }),
@@ -684,6 +689,15 @@ Deno.serve(async (req: Request) => {
 
     for (const job of pendingJobs) {
       try {
+        console.log("-----");
+        console.log("Starting job:", job.id);
+        console.log("Job type:", job.job_type);
+        console.log("Current attempts:", job.attempts);
+        console.log("Current status:", job.status);
+        console.log("Next run at:", job.next_run_at);
+
+        console.log("Setting job to processing:", job.id);
+
         await supabase
           .from("order_sync_jobs")
           .update({
@@ -693,6 +707,10 @@ Deno.serve(async (req: Request) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", job.id);
+
+        console.log("Job set to processing:", job.id);
+
+        console.log("Executing job handler for:", job.job_type, "job:", job.id);
 
         if (job.job_type === "push_to_veeqo") {
           await processPushToVeeqo(
@@ -712,6 +730,8 @@ Deno.serve(async (req: Request) => {
           console.log(`Unknown job type: ${job.job_type}, marking as completed`);
         }
 
+        console.log("About to mark job completed:", job.id);
+
         await supabase
           .from("order_sync_jobs")
           .update({
@@ -721,6 +741,8 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", job.id);
 
+        console.log("Job marked completed:", job.id);
+
         results.push({
           job_id: job.id,
           job_type: job.job_type,
@@ -729,7 +751,10 @@ Deno.serve(async (req: Request) => {
 
         console.log(`✅ Job ${job.id} completed`);
       } catch (error) {
-        console.error(`❌ Job ${job.id} failed:`, error);
+        console.error("JOB FAILED");
+        console.error("Job id:", job.id);
+        console.error("Job type:", job.job_type);
+        console.error("Error:", error);
 
         const maxAttempts = 3;
         const newStatus = job.attempts + 1 >= maxAttempts ? "failed" : "pending";
