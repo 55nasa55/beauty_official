@@ -643,7 +643,25 @@ async function processCheckShipment(
       next_run_at: nextCheck.toISOString(),
     });
   } else {
-    console.log("No action needed - emails already sent or missing data");
+    console.log("Continuing shipment polling");
+
+    const nextCheck = new Date();
+
+    if (job.attempts < 12) {
+      nextCheck.setMinutes(nextCheck.getMinutes() + 10);
+    } else if (job.attempts < 48) {
+      nextCheck.setHours(nextCheck.getHours() + 1);
+    } else {
+      nextCheck.setHours(nextCheck.getHours() + 6);
+    }
+
+    await supabase.from("order_sync_jobs").insert({
+      order_id: job.order_id,
+      job_type: "check_shipment",
+      status: "pending",
+      attempts: job.attempts + 1,
+      next_run_at: nextCheck.toISOString(),
+    });
   }
 }
 
