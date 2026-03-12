@@ -571,6 +571,7 @@ async function processCheckShipment(
       emailHtml,
       resendApiKey
     );
+    
 
     await supabase
       .from("orders")
