@@ -621,15 +621,24 @@ async function processCheckShipment(
     nextCheck.setHours(nextCheck.getHours() + 6);
   }
 
-  await supabase.from("order_sync_jobs").insert({
-    order_id: job.order_id,
-    job_type: "check_shipment",
-    status: "pending",
-    attempts: job.attempts + 1,
-    next_run_at: nextCheck.toISOString(),
-  });
+  const { error: insertError } = await supabase
+    .from("order_sync_jobs")
+    .insert({
+      order_id: job.order_id,
+      job_type: "check_shipment",
+      status: "pending",
+      attempts: job.attempts + 1,
+      next_run_at: nextCheck.toISOString(),
+    });
 
-  console.log("Next shipment check scheduled:", nextCheck.toISOString());
+  if (insertError) {
+    console.error("❌ FAILED TO INSERT NEXT CHECK_SHIPMENT JOB");
+    console.error("Order ID:", job.order_id);
+    console.error("Job attempts:", job.attempts);
+    console.error("Supabase error:", insertError);
+  } else {
+    console.log("✅ Next shipment check scheduled:", nextCheck.toISOString());
+  }
 }
 
 Deno.serve(async (req: Request) => {
