@@ -670,7 +670,7 @@ Deno.serve(async (req: Request) => {
       throw jobsError;
     }
 
-    console.log("WORKER START");
+    console.log("=== WORKER START ===");
     console.log("Pending jobs found:", pendingJobs?.length || 0);
 
     if (!pendingJobs || pendingJobs.length === 0) {
@@ -690,15 +690,15 @@ Deno.serve(async (req: Request) => {
     for (const job of pendingJobs) {
       try {
         console.log("-----");
-        console.log("Starting job:", job.id);
+        console.log("Processing job:", job.id);
         console.log("Job type:", job.job_type);
-        console.log("Current attempts:", job.attempts);
         console.log("Current status:", job.status);
+        console.log("Current attempts:", job.attempts);
         console.log("Next run at:", job.next_run_at);
 
         console.log("Setting job to processing:", job.id);
 
-        await supabase
+        const { error: processingError } = await supabase
           .from("order_sync_jobs")
           .update({
             status: "processing",
@@ -708,9 +708,13 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", job.id);
 
-        console.log("Job set to processing:", job.id);
+        if (processingError) {
+          console.error("❌ FAILED TO SET PROCESSING:", processingError);
+        } else {
+          console.log("✅ Job set to processing:", job.id);
+        }
 
-        console.log("Executing job handler for:", job.job_type, "job:", job.id);
+        console.log("Executing handler:", job.job_type, "for job:", job.id);
 
         if (job.job_type === "push_to_veeqo") {
           await processPushToVeeqo(
@@ -732,7 +736,7 @@ Deno.serve(async (req: Request) => {
 
         console.log("About to mark job completed:", job.id);
 
-        await supabase
+        const { error: completionError } = await supabase
           .from("order_sync_jobs")
           .update({
             status: "completed",
@@ -740,6 +744,14 @@ Deno.serve(async (req: Request) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", job.id);
+
+        if (completionError) {
+          console.error("❌ COMPLETION UPDATE FAILED");
+          console.error("Job id:", job.id);
+          console.error("Supabase error:", completionError);
+        } else {
+          console.log("✅ COMPLETION UPDATE SUCCEEDED:", job.id);
+        }
 
         console.log("Job marked completed:", job.id);
 
