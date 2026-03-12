@@ -545,20 +545,20 @@ async function processCheckShipment(
 
   const deliveryStatus = veeqoOrder.deliver_to?.delivery_status;
   const trackingNumber = veeqoOrder.deliver_to?.tracking_number;
+
   const customerEmail = order.customer_email;
   const customerName = order.customer_name || "Customer";
   const displayOrderNumber = order.public_order_number
     ? `COS-${order.public_order_number}`
     : order.order_number;
 
+  // send tracking email
   if (
     deliveryStatus === "shipped" &&
     !order.tracking_email_sent &&
     trackingNumber &&
     customerEmail
   ) {
-    console.log("Order shipped - sending tracking email");
-
     const emailHtml = generateShippingNotificationEmail({
       order_number: displayOrderNumber,
       customer_name: customerName,
@@ -571,7 +571,6 @@ async function processCheckShipment(
       emailHtml,
       resendApiKey
     );
-    
 
     await supabase
       .from("orders")
@@ -579,31 +578,14 @@ async function processCheckShipment(
       .eq("id", job.order_id);
 
     console.log("Tracking email sent");
+  }
 
-    const nextCheck = new Date();
-    if (job.attempts < 12) {
-      nextCheck.setMinutes(nextCheck.getMinutes() + 10);
-    } else if (job.attempts < 48) {
-      nextCheck.setHours(nextCheck.getHours() + 1);
-    } else {
-      nextCheck.setHours(nextCheck.getHours() + 6);
-    }
-
-    await supabase.from("order_sync_jobs").insert({
-      order_id: job.order_id,
-      job_type: "check_shipment",
-      status: "pending",
-      next_run_at: nextCheck.toISOString(),
-    });
-
-    console.log("Created new check_shipment job to monitor delivery, scheduled for", nextCheck.toISOString());
-  } else if (
+  // send delivery email
+  if (
     deliveryStatus === "delivered" &&
     !order.delivery_email_sent &&
     customerEmail
   ) {
-    console.log("Order delivered - sending delivery email");
-
     const emailHtml = generateDeliveryNotificationEmail({
       order_number: displayOrderNumber,
       customer_name: customerName,
@@ -622,48 +604,30 @@ async function processCheckShipment(
       .update({ delivery_email_sent: true })
       .eq("id", job.order_id);
 
-    console.log("Delivery email sent - order lifecycle complete");
-  } else if (deliveryStatus !== "shipped" && deliveryStatus !== "delivered") {
-    console.log(
-      `Order not shipped yet (status: ${deliveryStatus}), will check again later`
-    );
-
-    const nextCheck = new Date();
-    if (job.attempts < 12) {
-      nextCheck.setMinutes(nextCheck.getMinutes() + 10);
-    } else if (job.attempts < 48) {
-      nextCheck.setHours(nextCheck.getHours() + 1);
-    } else {
-      nextCheck.setHours(nextCheck.getHours() + 6);
-    }
-
-    await supabase.from("order_sync_jobs").insert({
-      order_id: job.order_id,
-      job_type: "check_shipment",
-      status: "pending",
-      next_run_at: nextCheck.toISOString(),
-    });
-  } else {
-    console.log("Continuing shipment polling");
-
-    const nextCheck = new Date();
-
-    if (job.attempts < 12) {
-      nextCheck.setMinutes(nextCheck.getMinutes() + 10);
-    } else if (job.attempts < 48) {
-      nextCheck.setHours(nextCheck.getHours() + 1);
-    } else {
-      nextCheck.setHours(nextCheck.getHours() + 6);
-    }
-
-    await supabase.from("order_sync_jobs").insert({
-      order_id: job.order_id,
-      job_type: "check_shipment",
-      status: "pending",
-      attempts: job.attempts + 1,
-      next_run_at: nextCheck.toISOString(),
-    });
+    console.log("Delivery email sent - stopping polling");
+    return;
   }
+
+  // schedule next polling job
+  const nextCheck = new Date();
+
+  if (job.attempts < 12) {
+    nextCheck.setMinutes(nextCheck.getMinutes() + 10);
+  } else if (job.attempts < 48) {
+    nextCheck.setHours(nextCheck.getHours() + 1);
+  } else {
+    nextCheck.setHours(nextCheck.getHours() + 6);
+  }
+
+  await supabase.from("order_sync_jobs").insert({
+    order_id: job.order_id,
+    job_type: "check_shipment",
+    status: "pending",
+    attempts: job.attempts + 1,
+    next_run_at: nextCheck.toISOString(),
+  });
+
+  console.log("Next shipment check scheduled:", nextCheck.toISOString());
 }
 
 Deno.serve(async (req: Request) => {
