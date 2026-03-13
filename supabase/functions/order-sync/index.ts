@@ -548,7 +548,36 @@ async function processCheckShipment(
   console.log("Veeqo order status:", veeqoOrder.deliver_to?.delivery_status);
 
   const deliveryStatus = veeqoOrder.deliver_to?.delivery_status;
-  const trackingNumber = veeqoOrder.deliver_to?.tracking_number;
+
+  let trackingNumber = null;
+
+  if (veeqoOrder.allocations?.length) {
+    trackingNumber = veeqoOrder.allocations
+      .map(a => a.shipment?.tracking_number)
+      .find(Boolean);
+  }
+
+  if (!trackingNumber && veeqoOrder.shipments?.length) {
+    trackingNumber = veeqoOrder.shipments
+      .map(s => s.tracking_number)
+      .find(Boolean);
+  }
+
+  if (!trackingNumber && veeqoOrder.fulfillments?.length) {
+    trackingNumber = veeqoOrder.fulfillments
+      .map(f => f.tracking_number)
+      .find(Boolean);
+  }
+
+  if (!trackingNumber) {
+    trackingNumber = veeqoOrder.deliver_to?.tracking_number;
+  }
+
+  console.log("=== TRACKING PARSER RESULT ===");
+  console.log("trackingNumber:", trackingNumber);
+  console.log("allocations:", veeqoOrder.allocations);
+  console.log("shipments:", veeqoOrder.shipments);
+  console.log("fulfillments:", veeqoOrder.fulfillments);
 
   console.log("=== TRACKING DEBUG ===");
   console.log("deliveryStatus:", deliveryStatus);
