@@ -553,19 +553,19 @@ async function processCheckShipment(
 
   if (veeqoOrder.allocations?.length) {
     trackingNumber = veeqoOrder.allocations
-      .map(a => a.shipment?.tracking_number)
+      .map(a => a.shipment?.tracking_number?.tracking_number)
       .find(Boolean);
   }
 
   if (!trackingNumber && veeqoOrder.shipments?.length) {
     trackingNumber = veeqoOrder.shipments
-      .map(s => s.tracking_number)
+      .map(s => s.tracking_number?.tracking_number || s.tracking_number)
       .find(Boolean);
   }
 
   if (!trackingNumber && veeqoOrder.fulfillments?.length) {
     trackingNumber = veeqoOrder.fulfillments
-      .map(f => f.tracking_number)
+      .map(f => f.tracking_number?.tracking_number || f.tracking_number)
       .find(Boolean);
   }
 
