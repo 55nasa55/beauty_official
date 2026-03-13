@@ -632,6 +632,11 @@ async function processCheckShipment(
     }
   }
 
+  if (trackingNumber) {
+    console.log("TEST MODE: forcing delivered = true because tracking exists");
+    delivered = true;
+  }
+
   // send tracking email
   if (
     trackingNumber &&
