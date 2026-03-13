@@ -550,10 +550,15 @@ async function processCheckShipment(
   const deliveryStatus = veeqoOrder.deliver_to?.delivery_status;
 
   let trackingNumber = null;
+  let shipmentId = null;
 
   if (veeqoOrder.allocations?.length) {
     trackingNumber = veeqoOrder.allocations
       .map(a => a.shipment?.tracking_number?.tracking_number)
+      .find(Boolean);
+
+    shipmentId = veeqoOrder.allocations
+      .map(a => a.shipment?.tracking_number?.shipment_id)
       .find(Boolean);
   }
 
@@ -575,6 +580,7 @@ async function processCheckShipment(
 
   console.log("=== TRACKING PARSER RESULT ===");
   console.log("trackingNumber:", trackingNumber);
+  console.log("shipmentId:", shipmentId);
   console.log("allocations:", veeqoOrder.allocations);
   console.log("shipments:", veeqoOrder.shipments);
   console.log("fulfillments:", veeqoOrder.fulfillments);
@@ -599,6 +605,32 @@ async function processCheckShipment(
     customerEmail,
     trackingEmailSent: order.tracking_email_sent
   });
+
+  // fetch tracking events to determine delivery status
+  let delivered = false;
+
+  if (shipmentId) {
+    const trackingEventsResponse = await fetch(
+      `https://api.veeqo.com/shipping/tracking_events/${shipmentId}`,
+      {
+        method: "GET",
+        headers: {
+          "x-api-key": veeqoApiKey,
+        },
+      }
+    );
+
+    if (trackingEventsResponse.ok) {
+      const trackingEvents = await trackingEventsResponse.json();
+
+      console.log("=== TRACKING EVENTS ===");
+      console.log(JSON.stringify(trackingEvents, null, 2));
+
+      delivered = trackingEvents.some(event =>
+        event.status?.toLowerCase().includes("deliver")
+      );
+    }
+  }
 
   // send tracking email
   if (
@@ -629,7 +661,7 @@ async function processCheckShipment(
 
   // send delivery email
   if (
-    deliveryStatus === "delivered" &&
+    delivered &&
     !order.delivery_email_sent &&
     customerEmail
   ) {
