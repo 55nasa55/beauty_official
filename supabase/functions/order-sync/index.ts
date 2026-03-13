@@ -602,9 +602,8 @@ async function processCheckShipment(
 
   // send tracking email
   if (
-    deliveryStatus === "shipped" &&
-    !order.tracking_email_sent &&
     trackingNumber &&
+    !order.tracking_email_sent &&
     customerEmail
   ) {
     const emailHtml = generateShippingNotificationEmail({
