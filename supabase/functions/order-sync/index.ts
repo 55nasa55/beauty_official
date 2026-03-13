@@ -543,16 +543,33 @@ async function processCheckShipment(
   }
 
   const veeqoOrder = await veeqoResponse.json();
+  console.log("=== FULL VEEQO ORDER RESPONSE ===");
+  console.log(JSON.stringify(veeqoOrder, null, 2));
   console.log("Veeqo order status:", veeqoOrder.deliver_to?.delivery_status);
 
   const deliveryStatus = veeqoOrder.deliver_to?.delivery_status;
   const trackingNumber = veeqoOrder.deliver_to?.tracking_number;
+
+  console.log("=== TRACKING DEBUG ===");
+  console.log("deliveryStatus:", deliveryStatus);
+  console.log("trackingNumber:", trackingNumber);
+  console.log("deliver_to object:", veeqoOrder.deliver_to);
+  console.log("fulfillments:", veeqoOrder.fulfillments);
+  console.log("shipments:", veeqoOrder.shipments);
 
   const customerEmail = order.customer_email;
   const customerName = order.customer_name || "Customer";
   const displayOrderNumber = order.public_order_number
     ? `COS-${order.public_order_number}`
     : order.order_number;
+
+  console.log("=== EMAIL CONDITION CHECK ===");
+  console.log({
+    deliveryStatus,
+    trackingNumber,
+    customerEmail,
+    trackingEmailSent: order.tracking_email_sent
+  });
 
   // send tracking email
   if (
