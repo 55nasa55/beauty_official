@@ -115,7 +115,11 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
 
             {/* Numeric rating */}
-            <span className="font-medium">{product.average_rating.toFixed(1)}</span>
+            <span className="font-medium">
+              {typeof product.average_rating === "number"
+                ? product.average_rating.toFixed(1)
+                : "0.0"}
+            </span>
 
             {/* Review count link */}
             {product.review_count !== undefined && (
