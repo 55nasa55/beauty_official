@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
           name,
           slug
         ),
-        variants:product_variants(
+        variants:product_variants!left(
           id,
           product_id,
           name,
