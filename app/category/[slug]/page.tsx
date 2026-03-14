@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ProductCard } from '@/components/ProductCard';
-import { Category, Brand, Collection } from '@/lib/database.types';
+import { Category, Brand, Collection, ProductWithVariants } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -27,19 +27,6 @@ interface FacetOption {
   value: string;
 }
 
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  brand: string;
-  category: string;
-  image: string;
-  price: number;
-  compareAtPrice: number | null;
-  average_rating?: number;
-  review_count?: number;
-}
 
 export default function CategoryPage() {
   const params = useParams();
@@ -52,7 +39,7 @@ export default function CategoryPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [facets, setFacets] = useState<Facet[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithVariants[]>([]);
   const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set());
   const [offset, setOffset] = useState(0);
   const [limit] = useState(24);
@@ -269,37 +256,9 @@ export default function CategoryPage() {
               {products.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                    {products.map((product) => {
-                      const productWithVariants = {
-                        id: product.id,
-                        name: product.name,
-                        slug: product.slug,
-                        description: product.description,
-                        category: product.category,
-                        brand: { name: product.brand },
-                        variants: [
-                          {
-                            id: '',
-                            product_id: product.id,
-                            name: '',
-                            price: product.price,
-                            member_price_cents: null,
-                            compare_at_price: product.compareAtPrice ?? 0,
-                            images: product.image ? [product.image] : [],
-                            specs: {},
-                            sku: '',
-                            stock: 999,
-                            created_at: '',
-                            updated_at: '',
-                          },
-                        ],
-                        average_rating: product.average_rating,
-                        review_count: product.review_count,
-                      };
-                      return (
-                        <ProductCard key={product.id} product={productWithVariants as any} />
-                      );
-                    })}
+                    {products.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
                   </div>
 
                   {hasMore && (

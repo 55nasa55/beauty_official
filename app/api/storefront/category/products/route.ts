@@ -168,78 +168,42 @@ export async function GET(request: NextRequest) {
 
     const { data: productsData, error: productsError } = await supabase
       .from('products')
-      .select('id, name, slug, description, category_id, brand_id')
+      .select(`
+        id,
+        name,
+        slug,
+        description,
+        average_rating,
+        review_count,
+        brand:brands(
+          name,
+          slug
+        ),
+        variants:product_variants(
+          id,
+          product_id,
+          name,
+          price,
+          member_price_cents,
+          compare_at_price,
+          images,
+          stock,
+          sku,
+          specs,
+          created_at,
+          updated_at
+        )
+      `)
       .in('id', productIds)
       .eq('archived', false);
 
     if (productsError) throw productsError;
 
-    const brandIds = Array.from(new Set((productsData || []).map(p => p.brand_id).filter(Boolean)));
-    const categoryIds = Array.from(new Set((productsData || []).map(p => p.category_id).filter(Boolean)));
-
-    const [brandsResult, categoriesResult, variantsResult, reviewsResult] = await Promise.all([
-      brandIds.length > 0
-        ? supabase.from('brands').select('id, name').in('id', brandIds)
-        : Promise.resolve({ data: [] }),
-      categoryIds.length > 0
-        ? supabase.from('categories').select('id, name').in('id', categoryIds)
-        : Promise.resolve({ data: [] }),
-      supabase.from('product_variants').select('*').in('product_id', productIds),
-      supabase.from('reviews').select('product_id, rating').in('product_id', productIds),
-    ]);
-
-    const brandsMap: Record<string, string> = {};
-    (brandsResult.data || []).forEach(brand => {
-      brandsMap[brand.id] = brand.name;
-    });
-
-    const categoriesMap: Record<string, string> = {};
-    (categoriesResult.data || []).forEach(cat => {
-      categoriesMap[cat.id] = cat.name;
-    });
-
-    const variantsByProduct: Record<string, any[]> = {};
-    (variantsResult.data || []).forEach(variant => {
-      if (!variantsByProduct[variant.product_id]) {
-        variantsByProduct[variant.product_id] = [];
-      }
-      variantsByProduct[variant.product_id].push(variant);
-    });
-
-    const reviewsByProduct: Record<string, any[]> = {};
-    (reviewsResult.data || []).forEach(review => {
-      if (!reviewsByProduct[review.product_id]) {
-        reviewsByProduct[review.product_id] = [];
-      }
-      reviewsByProduct[review.product_id].push(review);
-    });
-
-    const products = (productsData || []).map(product => {
-      const variants = variantsByProduct[product.id] || [];
-      const lowestPriceVariant = variants.reduce((min, v) =>
-        !min || v.price < min.price ? v : min, null
-      );
-
-      const reviews = reviewsByProduct[product.id] || [];
-      const average_rating = reviews.length > 0
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-        : undefined;
-      const review_count = reviews.length;
-
-      return {
-        id: product.id,
-        name: product.name,
-        slug: product.slug,
-        description: product.description,
-        brand: product.brand_id ? brandsMap[product.brand_id] || '' : '',
-        category: product.category_id ? categoriesMap[product.category_id] || '' : '',
-        image: lowestPriceVariant?.images?.[0] || '',
-        price: lowestPriceVariant?.price || 0,
-        compareAtPrice: lowestPriceVariant?.compare_at_price || null,
-        average_rating,
-        review_count,
-      };
-    });
+    const products = (productsData || []).map(product => ({
+      ...product,
+      brand: product.brand || { name: '', slug: '' },
+      variants: product.variants || [],
+    }));
 
     const hasMore = offset + productIds.length < total;
 
