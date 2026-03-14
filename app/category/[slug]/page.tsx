@@ -12,7 +12,7 @@ import { Category, Brand, Collection } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader as Loader2 } from 'lucide-react';
 
 interface Facet {
   id: string;
@@ -283,10 +283,12 @@ export default function CategoryPage() {
                             product_id: product.id,
                             name: '',
                             price: product.price,
-                            compare_at_price: product.compareAtPrice,
+                            member_price_cents: null,
+                            compare_at_price: product.compareAtPrice ?? 0,
                             images: product.image ? [product.image] : [],
                             specs: {},
                             sku: '',
+                            stock: 999,
                             created_at: '',
                             updated_at: '',
                           },
