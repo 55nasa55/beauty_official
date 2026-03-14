@@ -181,8 +181,6 @@ export async function GET(request: NextRequest) {
         name,
         slug,
         description,
-        average_rating,
-        review_count,
         brand:brands(
           name,
           slug
@@ -212,6 +210,8 @@ export async function GET(request: NextRequest) {
 
     const products = (productsData || []).map(product => ({
       ...product,
+      average_rating: null,
+      review_count: null,
       brand: product.brand || { name: '', slug: '' },
       variants: product.variants || [],
     }));
