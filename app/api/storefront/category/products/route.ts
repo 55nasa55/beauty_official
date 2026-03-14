@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('*', { count: 'exact', head: true })
         .eq('category_id', category.id)
-        .eq('archived', false);
+        .or('archived.is.null,archived.eq.false');
 
       if (countError) throw countError;
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('id')
         .eq('category_id', category.id)
-        .eq('archived', false)
+        .or('archived.is.null,archived.eq.false')
         .order('name')
         .range(offset, offset + limit - 1);
 
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('id')
         .eq('category_id', category.id)
-        .eq('archived', false)
+        .or('archived.is.null,archived.eq.false')
         .in('id', allProductIds);
 
       if (categoryFilterError) throw categoryFilterError;
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .in('id', productIds)
-      .eq('archived', false);
+      .or('archived.is.null,archived.eq.false');
 
     if (productsError) throw productsError;
 
