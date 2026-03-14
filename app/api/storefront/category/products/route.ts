@@ -187,7 +187,6 @@ export async function GET(request: NextRequest) {
           member_price_cents,
           compare_at_price,
           images,
-          stock,
           sku,
           specs,
           created_at,
