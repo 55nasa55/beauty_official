@@ -16,7 +16,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const { user } = useAuth();
   const { isMember, loading } = useMembership();
 
-  const defaultVariant = product.variants[0];
+  const defaultVariant = product.variants?.[0];
 
   if (!defaultVariant) return null;
 
@@ -38,7 +38,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/product/${product.slug}`}>
         <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100 mb-3">
           <Image
-            src={defaultVariant.images[0] || '/placeholder.jpg'}
+            src={defaultVariant.images?.[0] || '/placeholder.jpg'}
             alt={product.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
