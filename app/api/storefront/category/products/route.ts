@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
 
     if (categoryError) throw categoryError;
 
+    console.log("CATEGORY LOOKUP");
+    console.log("categorySlug:", categorySlug);
+    console.log("resolved category id:", category?.id);
+
     if (!category) {
       return NextResponse.json(
         { error: 'Category not found' },
@@ -64,6 +68,10 @@ export async function GET(request: NextRequest) {
       if (productsError) throw productsError;
 
       productIds = (productsData || []).map(p => p.id);
+
+      console.log("CATEGORY PRODUCT IDS");
+      console.log("productIds:", productIds);
+      console.log("total count:", total);
     } else {
       const optionIds = optionIdsParam.split(',').filter(id => id.trim());
 
@@ -197,6 +205,10 @@ export async function GET(request: NextRequest) {
       .or('archived.is.null,archived.eq.false');
 
     if (productsError) throw productsError;
+
+    console.log("FINAL PRODUCT QUERY RESULT");
+    console.log("productsData:", productsData);
+    console.log("productIds used for hydration:", productIds);
 
     const products = (productsData || []).map(product => ({
       ...product,
