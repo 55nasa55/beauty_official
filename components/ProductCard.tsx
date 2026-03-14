@@ -122,7 +122,7 @@ export function ProductCard({ product }: ProductCardProps) {
             </span>
 
             {/* Review count link */}
-            {product.review_count !== undefined && (
+            {product.review_count && product.review_count > 0 && (
               <Link
                 href={`/product/${product.slug}#reviews`}
                 className="text-blue-600 hover:underline"
