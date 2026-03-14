@@ -72,7 +72,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </Link>
 
         {/* ⭐ Compact Rating Block */}
-        {product.average_rating !== undefined && (
+        {product.review_count && product.review_count > 0 && (
           <div className="flex items-center gap-2 text-xs text-gray-600">
             {/* Stars + half-stars */}
             <div className="flex items-center">
