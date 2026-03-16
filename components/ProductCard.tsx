@@ -71,15 +71,6 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
 
-        {(() => {
-          console.log("ProductCard rating data", {
-            name: product.name,
-            review_count: product.review_count,
-            average_rating: product.average_rating
-          });
-          return null;
-        })()}
-
         {/* ⭐ Compact Rating Block */}
         {product.review_count && product.review_count > 0 && (
           <div className="flex items-center gap-2 text-xs text-gray-600">
