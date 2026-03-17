@@ -33,16 +33,17 @@ function formatAddress(address: OrderDetails['shipping_address']): string {
   if (!address) return "No shipping address provided";
 
   const parts = [
-    address.line1,
-    address.line2,
+    address.line1 || '',
+    address.line2 || '',
     address.city && address.state
       ? `${address.city}, ${address.state}`
-      : address.city || address.state,
-    address.postal_code,
-    address.country
+      : address.city || address.state || '',
+    address.postal_code || '',
+    address.country || ''
   ];
 
-  return parts.filter(Boolean).join("<br>");
+  const formatted = parts.filter(Boolean).join("<br>");
+  return formatted || "No shipping address provided";
 }
 
 function formatOrderNumber(orderNumber: string): string {
