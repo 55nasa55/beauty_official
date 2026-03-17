@@ -17,7 +17,15 @@ interface Order {
   public_order_number: number;
   customer_name: string;
   customer_email: string;
-  shipping_address: {
+  shipping_address?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
+  };
+  billing_address?: {
     line1: string;
     line2?: string;
     city: string;
