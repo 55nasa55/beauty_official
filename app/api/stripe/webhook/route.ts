@@ -133,9 +133,9 @@ export async function POST(req: NextRequest) {
       const retrievedSession = await stripe.checkout.sessions.retrieve(session.id, {
         expand: ["line_items.data.price.product"],
       });
-      const full = retrievedSession as any;
+      const full = session as any;
 
-      const lineItems = full.line_items?.data || [];
+      const lineItems = retrievedSession.line_items?.data || [];
 
       const orderData = {
         order_number: full.id,
