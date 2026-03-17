@@ -55,7 +55,7 @@ export async function sendOrderConfirmationEmail(
     const result = await resend.emails.send({
       from: 'Cosmetic Club <orders@cosclubusa.com>',
       to: order.customer_email,
-      subject: `Order Confirmation - #${order.order_number}`,
+      subject: `Order Confirmation - COS-${order.public_order_number}`,
       html,
       text,
     });
