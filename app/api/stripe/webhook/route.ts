@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert(orderData)
-        .select("id")
+        .select("id, public_order_number")
         .single();
 
       if (orderErr || !order) {
@@ -252,6 +252,7 @@ export async function POST(req: NextRequest) {
         await sendOrderConfirmationEmail(
           {
             order_number: orderData.order_number,
+            public_order_number: order.public_order_number,
             customer_name: orderData.customer_name || 'Customer',
             customer_email: orderData.customer_email || '',
             shipping_address: orderData.shipping_address || {

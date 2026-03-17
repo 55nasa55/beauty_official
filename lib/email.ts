@@ -14,7 +14,7 @@ interface OrderItem {
 
 interface Order {
   order_number: string;
-  public_order_number?: number;
+  public_order_number: number;
   customer_name: string;
   customer_email: string;
   shipping_address: {
@@ -73,9 +73,7 @@ export async function sendTrackingEmail(
   carrier?: string
 ) {
   try {
-    const displayOrderNumber = order.public_order_number
-      ? `COS-${order.public_order_number}`
-      : order.order_number;
+    const displayOrderNumber = `COS-${order.public_order_number}`;
 
     const html = generateShippingNotificationEmail({
       order_number: displayOrderNumber,
@@ -101,9 +99,7 @@ export async function sendTrackingEmail(
 
 export async function sendDeliveredEmail(order: Order) {
   try {
-    const displayOrderNumber = order.public_order_number
-      ? `COS-${order.public_order_number}`
-      : order.order_number;
+    const displayOrderNumber = `COS-${order.public_order_number}`;
 
     const html = generateDeliveryNotificationEmail({
       order_number: displayOrderNumber,

@@ -7,6 +7,7 @@ interface OrderItem {
 
 interface OrderDetails {
   order_number: string;
+  public_order_number: number;
   customer_name: string;
   customer_email: string;
   shipping_address: {
@@ -51,7 +52,7 @@ export function generateOrderConfirmationEmail(
 ): string {
   const logoUrl = "https://gwwnscgpfurcbkqmfpbq.supabase.co/storage/v1/object/public/product-images/brands/1771321073443-xg7gsjxpzfq.jpg";
   const customerName = order.customer_name || "Customer";
-  const formattedOrderNumber = formatOrderNumber(order.order_number);
+  const formattedOrderNumber = `COS-${order.public_order_number}`;
 
   const itemsHtml = items && items.length > 0 ? items
     .map(
