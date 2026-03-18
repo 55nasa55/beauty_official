@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export function HoverZoom({ src }: { src: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const [showZoom, setShowZoom] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
@@ -36,9 +37,9 @@ export function HoverZoom({ src }: { src: string }) {
   }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (!imgRef.current) return;
 
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect = imgRef.current.getBoundingClientRect();
 
     const xPx = e.clientX - rect.left;
     const yPx = e.clientY - rect.top;
@@ -46,7 +47,10 @@ export function HoverZoom({ src }: { src: string }) {
     const xPercent = (xPx / rect.width) * 100;
     const yPercent = (yPx / rect.height) * 100;
 
-    target.current = { x: xPercent, y: yPercent };
+    target.current = {
+      x: Math.min(Math.max(xPercent, 0), 100),
+      y: Math.min(Math.max(yPercent, 0), 100),
+    };
 
     const lensSize = 120;
 
@@ -66,6 +70,7 @@ export function HoverZoom({ src }: { src: string }) {
         onMouseMove={handleMouseMove}
       >
         <img
+          ref={imgRef}
           src={src}
           className="w-full h-full object-contain"
         />
