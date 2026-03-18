@@ -99,6 +99,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Calculate cart total using the same pricing logic as line items
+    let cartTotal = 0;
     const lineItems = cartItems.map((item: any) => {
       const variant = (variants as any[]).find((v: any) => v.id === item.variantId);
       if (!variant) {
@@ -116,6 +118,8 @@ export async function POST(req: NextRequest) {
           priceToUse = product.member_price_cents / 100;
         }
       }
+
+      cartTotal += priceToUse * item.quantity;
 
       return {
         price_data: {
@@ -136,11 +140,43 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    // Determine shipping options based on cart total
+    let shippingOptions;
+
+    if (cartTotal >= 49) {
+      shippingOptions = [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            fixed_amount: {
+              amount: 0,
+              currency: 'usd',
+            },
+            display_name: 'Free Shipping',
+          },
+        },
+      ];
+    } else {
+      shippingOptions = [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            fixed_amount: {
+              amount: 695,
+              currency: 'usd',
+            },
+            display_name: 'Standard Shipping',
+          },
+        },
+      ];
+    }
+
     const origin = req.headers.get('origin') || 'http://localhost:3000';
 
     const sessionConfig: any = {
       mode: 'payment',
       line_items: lineItems,
+      shipping_options: shippingOptions,
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout/cancel`,
       automatic_tax: {
