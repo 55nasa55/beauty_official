@@ -57,15 +57,18 @@ export function HoverZoom({ src }: { src: string }) {
   };
 
   return (
-    <div className="relative flex">
+    <div className="relative inline-block w-full">
       <div
         ref={containerRef}
-        className="relative cursor-zoom-in"
+        className="relative w-full aspect-square cursor-zoom-in"
         onMouseEnter={() => isDesktop && setShowZoom(true)}
         onMouseLeave={() => setShowZoom(false)}
         onMouseMove={handleMouseMove}
       >
-        <img src={src} className="w-full h-auto object-cover" />
+        <img
+          src={src}
+          className="w-full h-full object-contain"
+        />
 
         {showZoom && isDesktop && (
           <div
