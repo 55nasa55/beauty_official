@@ -33,6 +33,8 @@ import { ReviewSummary } from '@/components/reviews/ReviewSummary';
 import { ReviewList } from '@/components/reviews/ReviewList';
 import { WriteReviewButton } from '@/components/reviews/WriteReviewButton';
 import { ReviewModal } from '@/components/reviews/ReviewModal';
+import { HoverZoom } from '@/components/product/HoverZoom';
+import { ImageModal } from '@/components/product/ImageModal';
 
 export default function ProductPage() {
   const params = useParams();
@@ -57,6 +59,8 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImageIndex, setModalImageIndex] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -271,13 +275,15 @@ export default function ProductPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             <div className="space-y-4">
-              <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
-                <Image
+              <div
+                className="relative aspect-square overflow-hidden rounded-lg bg-gray-100"
+                onClick={() => {
+                  setModalImageIndex(selectedImageIndex);
+                  setShowImageModal(true);
+                }}
+              >
+                <HoverZoom
                   src={selectedVariant.images[selectedImageIndex] || '/placeholder.jpg'}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                  priority
                 />
               </div>
 
@@ -532,6 +538,14 @@ export default function ProductPage() {
       </main>
 
       <Footer />
+
+      {showImageModal && (
+        <ImageModal
+          images={selectedVariant.images}
+          initialIndex={modalImageIndex}
+          onClose={() => setShowImageModal(false)}
+        />
+      )}
     </div>
   );
 }
