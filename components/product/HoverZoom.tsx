@@ -15,7 +15,7 @@ export function HoverZoom({ src }: { src: string }) {
 
   return (
     <div
-      className="relative cursor-zoom-in w-full h-full"
+      className="relative cursor-zoom-in w-full h-full overflow-visible"
       onMouseEnter={() => setShowZoom(true)}
       onMouseLeave={() => setShowZoom(false)}
       onMouseMove={handleMouseMove}
@@ -23,17 +23,16 @@ export function HoverZoom({ src }: { src: string }) {
       <img src={src} alt="" className="w-full h-full object-cover" />
 
       {showZoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none hidden md:flex">
-          <div className="w-[500px] h-[500px] overflow-hidden rounded-xl shadow-2xl bg-white">
-            <img
-              src={src}
-              alt=""
-              className="w-[150%] h-[150%] object-cover"
-              style={{
-                transform: `translate(-${position.x}%, -${position.y}%)`,
-              }}
-            />
-          </div>
+        <div className="absolute left-full ml-6 top-0 w-[500px] h-[500px] overflow-hidden rounded-xl shadow-2xl bg-white pointer-events-none hidden md:block border border-gray-200">
+          <div
+            className="w-full h-full"
+            style={{
+              backgroundImage: `url(${src})`,
+              backgroundSize: "200%",
+              backgroundPosition: `${position.x}% ${position.y}%`,
+              backgroundRepeat: "no-repeat",
+            }}
+          />
         </div>
       )}
     </div>

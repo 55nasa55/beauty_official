@@ -276,7 +276,7 @@ export default function ProductPage() {
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             <div className="space-y-4">
               <div
-                className="relative aspect-square overflow-hidden rounded-lg bg-gray-100"
+                className="relative aspect-square overflow-visible rounded-lg bg-gray-100"
                 onClick={() => {
                   setModalImageIndex(selectedImageIndex);
                   setShowImageModal(true);
