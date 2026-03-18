@@ -222,7 +222,7 @@ export function MiniCart() {
                             </div>
                             <div
                               className="text-xs text-blue-600 underline cursor-pointer mt-1"
-                              onClick={() => router.push('/entry')}
+                              onClick={() => router.push('/pricing')}
                             >
                               Become a member to save
                             </div>
@@ -277,7 +277,7 @@ export function MiniCart() {
                     Become a member and save ${totalSavings.toFixed(2)} on this order
                   </div>
                   <button
-                    onClick={() => router.push('/entry')}
+                    onClick={() => router.push('/pricing')}
                     className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition"
                   >
                     Join Cosmetic Club
