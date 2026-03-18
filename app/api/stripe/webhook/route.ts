@@ -152,7 +152,11 @@ export async function POST(req: NextRequest) {
         tax_amount: (full.total_details?.amount_tax ?? 0) / 100,
         currency: full.currency,
         customer_email: full.customer_details?.email ?? null,
-        customer_name: full.customer_details?.name ?? null,
+        customer_name:
+          full.collected_information?.shipping_details?.name ||
+          full.shipping_details?.name ||
+          full.customer_details?.name ||
+          null,
         shipping_address:
           full.collected_information?.shipping_details?.address ||
           full.shipping_details?.address ||
