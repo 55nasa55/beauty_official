@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     // Determine shipping options based on cart total
     let shippingOptions;
 
-    if (cartTotal >= 49) {
+    if (cartTotal >= 50) {
       shippingOptions = [
         {
           shipping_rate_data: {

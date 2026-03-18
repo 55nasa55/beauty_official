@@ -286,7 +286,7 @@ export function MiniCart() {
               )}
 
               {(() => {
-                const FREE_SHIPPING_THRESHOLD = 49;
+                const FREE_SHIPPING_THRESHOLD = 50;
                 const remaining = FREE_SHIPPING_THRESHOLD - totalPrice;
                 const hasFreeShipping = totalPrice >= FREE_SHIPPING_THRESHOLD;
 
