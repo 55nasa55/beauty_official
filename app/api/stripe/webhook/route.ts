@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
   // ORDER CREATION — Restored & Fixed
   //
   if (event.type === "checkout.session.completed") {
+    console.log("=== STRIPE RAW SESSION ===");
+    console.log(JSON.stringify(event.data.object, null, 2));
     const session = event.data.object as Stripe.Checkout.Session;
     console.log("🧾 checkout.session.completed received. Mode:", session.mode);
 
