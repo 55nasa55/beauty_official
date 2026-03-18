@@ -1,7 +1,7 @@
 'use client';
 
 import { useCart } from '@/lib/cart-context';
-import { X, Minus, Plus, AlertCircle } from 'lucide-react';
+import { X, Minus, Plus, CircleAlert as AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useMemo } from 'react';
@@ -284,6 +284,35 @@ export function MiniCart() {
                   </button>
                 </div>
               )}
+
+              {(() => {
+                const FREE_SHIPPING_THRESHOLD = 49;
+                const remaining = FREE_SHIPPING_THRESHOLD - totalPrice;
+                const hasFreeShipping = totalPrice >= FREE_SHIPPING_THRESHOLD;
+
+                return hasFreeShipping ? (
+                  <div className="p-3 rounded-md bg-green-100 text-sm text-green-700 font-medium">
+                    🎉 You unlocked free shipping!
+                    <div className="mt-2 w-full h-2 bg-green-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-600 transition-all" style={{ width: '100%' }} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-md bg-gray-100 text-sm">
+                    <span className="font-medium">
+                      You're ${remaining.toFixed(2)} away from free shipping
+                    </span>
+                    <div className="mt-2 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-black transition-all"
+                        style={{
+                          width: `${Math.min((totalPrice / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <Button
                 className="w-full"
