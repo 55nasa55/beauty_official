@@ -153,7 +153,11 @@ export async function POST(req: NextRequest) {
         currency: full.currency,
         customer_email: full.customer_details?.email ?? null,
         customer_name: full.customer_details?.name ?? null,
-        shipping_address: full.shipping_details?.address || full.customer_details?.address || null,
+        shipping_address:
+          full.collected_information?.shipping_details?.address ||
+          full.shipping_details?.address ||
+          full.customer_details?.address ||
+          null,
         billing_address: full.customer_details?.address ?? null,
         tax_details: full.total_details?.breakdown ?? null,
       };
