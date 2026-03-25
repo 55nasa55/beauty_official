@@ -219,10 +219,16 @@ async function sendEmail(
   return response.json();
 }
 
+interface ShippingItem {
+  product_name: string;
+  quantity: number;
+}
+
 function generateShippingNotificationEmail(details: {
   order_number: string;
   customer_name: string;
   tracking_number: string;
+  items?: ShippingItem[];
 }): string {
   const logoUrl =
     "https://gwwnscgpfurcbkqmfpbq.supabase.co/storage/v1/object/public/product-images/brands/1771321073443-xg7gsjxpzfq.jpg";
@@ -288,6 +294,27 @@ function generateShippingNotificationEmail(details: {
               </table>
             </td>
           </tr>
+
+          ${details.items && details.items.length > 0 ? `
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Items in this shipment</h3>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${details.items.map(item => `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #111827;">
+                      ${item.product_name}
+                    </td>
+                    <td align="right" style="padding: 6px 0; font-size: 14px; color: #6b7280;">
+                      x${item.quantity}
+                    </td>
+                  </tr>
+                `).join('')}
+              </table>
+            </td>
+          </tr>
+          ` : ''}
+
           <tr>
             <td style="padding: 30px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
               <div style="text-align: center; font-size: 16px; font-weight: 500; color: #111827; margin-bottom: 4px;">
@@ -638,10 +665,19 @@ async function processCheckShipment(
     !order.tracking_email_sent &&
     customerEmail
   ) {
+    const { data: orderItems } = await supabase
+      .from("order_items")
+      .select("*")
+      .eq("order_id", job.order_id);
+
     const emailHtml = generateShippingNotificationEmail({
       order_number: displayOrderNumber,
       customer_name: customerName,
       tracking_number: trackingNumber,
+      items: orderItems?.map(item => ({
+        product_name: item.product_name,
+        quantity: item.quantity
+      }))
     });
 
     await sendEmail(

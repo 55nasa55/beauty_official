@@ -78,7 +78,8 @@ export async function sendOrderConfirmationEmail(
 export async function sendTrackingEmail(
   order: Order,
   trackingNumber: string,
-  carrier?: string
+  carrier?: string,
+  items?: OrderItem[]
 ) {
   try {
     const displayOrderNumber = `COS-${order.public_order_number}`;
@@ -87,6 +88,10 @@ export async function sendTrackingEmail(
       order_number: displayOrderNumber,
       customer_name: order.customer_name,
       tracking_number: trackingNumber,
+      items: items?.map(item => ({
+        product_name: item.product_name,
+        quantity: item.quantity
+      }))
     });
     const text = htmlToPlainText(html);
 

@@ -1,7 +1,13 @@
+interface ShippingItem {
+  product_name: string;
+  quantity: number;
+}
+
 interface ShippingDetails {
   order_number: string;
   customer_name: string;
   tracking_number: string;
+  items?: ShippingItem[];
 }
 
 type Carrier = 'USPS' | 'UPS' | 'FedEx' | 'Unknown';
@@ -9,15 +15,25 @@ type Carrier = 'USPS' | 'UPS' | 'FedEx' | 'Unknown';
 function detectCarrier(trackingNumber: string): Carrier {
   const cleaned = trackingNumber.replace(/\s+/g, '').toUpperCase();
 
-  if (/^(94|93|92|94|95)[0-9]{20}$/.test(cleaned) || /^[0-9]{20,22}$/.test(cleaned)) {
-    return 'USPS';
-  }
-
+  // UPS (most specific)
   if (/^1Z[0-9A-Z]{16}$/.test(cleaned)) {
     return 'UPS';
   }
 
-  if (/^[0-9]{12,14}$/.test(cleaned) || /^[0-9]{15}$/.test(cleaned) || /^[0-9]{20}$/.test(cleaned)) {
+  // USPS (common formats)
+  if (
+    /^(94|93|92|95)[0-9]{20}$/.test(cleaned) ||   // USPS 22-digit
+    /^[0-9]{20,22}$/.test(cleaned)                // USPS fallback
+  ) {
+    return 'USPS';
+  }
+
+  // FedEx (various formats)
+  if (
+    /^[0-9]{12}$/.test(cleaned) ||
+    /^[0-9]{14}$/.test(cleaned) ||
+    /^[0-9]{15}$/.test(cleaned)
+  ) {
     return 'FedEx';
   }
 
@@ -128,6 +144,26 @@ export function generateShippingNotificationEmail(
               <a href="${trackingUrl}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 6px; font-size: 16px; font-weight: 600; text-align: center;">
                 Track Package
               </a>
+            </td>
+          </tr>
+          ` : ''}
+
+          ${details.items && details.items.length > 0 ? `
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Items in this shipment</h3>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${details.items.map(item => `
+                  <tr>
+                    <td style="padding: 6px 0; font-size: 14px; color: #111827;">
+                      ${item.product_name}
+                    </td>
+                    <td align="right" style="padding: 6px 0; font-size: 14px; color: #6b7280;">
+                      x${item.quantity}
+                    </td>
+                  </tr>
+                `).join('')}
+              </table>
             </td>
           </tr>
           ` : ''}
