@@ -77,20 +77,15 @@ export default function CheckoutSuccessPage() {
 
       if (sessionId) {
         const res = await fetch(`/api/orders/by-session?session_id=${sessionId}`);
-        const { order: orderData } = await res.json();
+        const { order: orderData, items: itemsData } = await res.json();
 
         if (orderData) {
           setOrder(orderData as Order);
 
-          const { data: itemsData } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', orderData.id);
-
           if (itemsData && itemsData.length > 0) {
             const variantIds = itemsData
               .map((item: any) => item.variant_id)
-              .filter((id): id is string => id !== null);
+              .filter((id: any): id is string => id !== null);
 
             if (variantIds.length > 0) {
               const { data: variantsData } = await supabase
