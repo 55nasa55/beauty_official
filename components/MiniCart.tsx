@@ -40,6 +40,12 @@ export function MiniCart() {
     }
   }, [isOpen, items]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(false);
+    }
+  }, [isOpen]);
+
   const fetchStockInfo = async () => {
     try {
       const variantIds = items.map(item => item.variantId);

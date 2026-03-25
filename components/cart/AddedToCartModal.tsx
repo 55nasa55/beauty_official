@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useCart } from '@/lib/cart-context';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,12 @@ export function AddedToCartModal() {
   const { isAddedModalOpen, closeAddedModal, lastAddedItem, items } = useCart();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isAddedModalOpen) {
+      setIsLoading(false);
+    }
+  }, [isAddedModalOpen]);
 
   if (!lastAddedItem) return null;
 
