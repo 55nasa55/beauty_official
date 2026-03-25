@@ -76,11 +76,8 @@ export default function CheckoutSuccessPage() {
       setCollections(collectionsResult.data || []);
 
       if (sessionId) {
-        const { data: orderData } = await supabase
-          .from('orders')
-          .select('id, stripe_session_id, status, total_amount, currency, shipping_address, billing_address, created_at, public_order_number')
-          .eq('stripe_session_id', sessionId)
-          .maybeSingle();
+        const res = await fetch(`/api/orders/by-session?session_id=${sessionId}`);
+        const { order: orderData } = await res.json();
 
         if (orderData) {
           setOrder(orderData as Order);
