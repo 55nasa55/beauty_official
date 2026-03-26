@@ -20,10 +20,10 @@ function detectCarrier(trackingNumber: string): Carrier {
     return 'UPS';
   }
 
-  // USPS (common formats)
+  // USPS (more flexible real-world formats)
   if (
-    /^(94|93|92|95)[0-9]{20}$/.test(cleaned) ||   // USPS 22-digit
-    /^[0-9]{20,22}$/.test(cleaned)                // USPS fallback
+    /^(94|93|92|95)[0-9]{18,22}$/.test(cleaned) ||
+    /^[0-9]{20,22}$/.test(cleaned)
   ) {
     return 'USPS';
   }
