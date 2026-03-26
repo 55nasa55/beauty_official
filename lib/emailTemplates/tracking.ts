@@ -10,49 +10,40 @@ interface ShippingDetails {
   items?: ShippingItem[];
 }
 
-type Carrier = 'USPS' | 'UPS' | 'FedEx' | 'Unknown';
+function detectCarrier(trackingNumber: string): string {
+  const cleaned = trackingNumber.replace(/\s+/g, '');
 
-function detectCarrier(trackingNumber: string): Carrier {
-  const cleaned = trackingNumber.replace(/\s+/g, '').toUpperCase();
+  // UPS
+  if (/^1Z[0-9A-Z]{16}$/i.test(cleaned)) return 'UPS';
 
-  // UPS (most specific)
-  if (/^1Z[0-9A-Z]{16}$/.test(cleaned)) {
-    return 'UPS';
-  }
-
-  // USPS (more flexible real-world formats)
-  if (
-    /^(94|93|92|95)[0-9]{18,22}$/.test(cleaned) ||
-    /^[0-9]{20,22}$/.test(cleaned)
-  ) {
+  // USPS (covers 20–22 digits including your case)
+  if (/^(94|93|92|95)/.test(cleaned) || /^[0-9]{20,22}$/.test(cleaned)) {
     return 'USPS';
   }
 
-  // FedEx (various formats)
-  if (
-    /^[0-9]{12}$/.test(cleaned) ||
-    /^[0-9]{14}$/.test(cleaned) ||
-    /^[0-9]{15}$/.test(cleaned)
-  ) {
-    return 'FedEx';
-  }
+  // FedEx
+  if (/^[0-9]{12,15}$/.test(cleaned)) return 'FedEx';
 
-  return 'Unknown';
+  return 'Other';
 }
 
-function getTrackingUrl(trackingNumber: string, carrier: Carrier): string {
+function getTrackingUrl(trackingNumber: string, carrier: string): string {
   const cleaned = trackingNumber.replace(/\s+/g, '');
 
-  switch (carrier) {
-    case 'USPS':
-      return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${cleaned}`;
-    case 'UPS':
-      return `https://www.ups.com/track?tracknum=${cleaned}`;
-    case 'FedEx':
-      return `https://www.fedex.com/fedextrack/?trknbr=${cleaned}`;
-    default:
-      return '#';
+  if (carrier === 'UPS') {
+    return `https://www.ups.com/track?tracknum=${cleaned}`;
   }
+
+  if (carrier === 'USPS') {
+    return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${cleaned}`;
+  }
+
+  if (carrier === 'FedEx') {
+    return `https://www.fedex.com/fedextrack/?trknbr=${cleaned}`;
+  }
+
+  // fallback (always works)
+  return `https://www.google.com/search?q=${cleaned}+tracking`;
 }
 
 export function generateShippingNotificationEmail(
@@ -122,31 +113,28 @@ export function generateShippingNotificationEmail(
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding-bottom: ${carrier !== 'Unknown' ? '8px' : '0'};">
+                  <td style="padding-bottom: 8px;">
                     <div style="font-size: 18px; color: #111827; font-weight: 600; font-family: 'Courier New', monospace;">${details.tracking_number}</div>
                   </td>
                 </tr>
-                ${carrier !== 'Unknown' ? `
                 <tr>
-                  <td>
-                    <div style="font-size: 14px; color: #6b7280;">Carrier: ${carrier}</div>
+                  <td style="padding-top: 6px;">
+                    <div style="font-size: 14px; color: #6b7280;">
+                      Carrier: ${carrier}
+                    </div>
                   </td>
                 </tr>
-                ` : ''}
               </table>
             </td>
           </tr>
 
-          ${carrier !== 'Unknown' ? `
-          <!-- Track Package Button -->
           <tr>
-            <td align="center" style="padding: 0 40px 40px 40px;">
-              <a href="${trackingUrl}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 6px; font-size: 16px; font-weight: 600; text-align: center;">
+            <td align="center" style="padding: 20px 40px;">
+              <a href="${trackingUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
                 Track Package
               </a>
             </td>
           </tr>
-          ` : ''}
 
           ${details.items && details.items.length > 0 ? `
           <tr>
