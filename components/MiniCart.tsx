@@ -108,6 +108,23 @@ export function MiniCart() {
     return items.reduce((sum, item) => sum + computeSavings(item), 0);
   }, [items, stockInfo]);
 
+  const adjustedTotal = useMemo(() => {
+    return items.reduce((sum, item) => {
+      const stock = stockInfo.find(s => s.variantId === item.variantId);
+      const memberPrice =
+        stock?.memberPriceCents != null
+          ? stock.memberPriceCents / 100
+          : null;
+
+      const priceToUse =
+        isMember && memberPrice != null
+          ? memberPrice
+          : item.price;
+
+      return sum + priceToUse * item.quantity;
+    }, 0);
+  }, [items, stockInfo, isMember]);
+
   const handleCheckout = async () => {
     if (hasStockIssues) {
       toast({
@@ -294,7 +311,7 @@ export function MiniCart() {
             <div className="border-t pt-4 space-y-4">
               <div className="flex justify-between text-lg font-medium">
                 <span>Total</span>
-                <span>${totalPrice.toFixed(2)}</span>
+                <span>${adjustedTotal.toFixed(2)}</span>
               </div>
 
               {!isMember && totalSavings > 0 && (
@@ -313,8 +330,8 @@ export function MiniCart() {
 
               {(() => {
                 const FREE_SHIPPING_THRESHOLD = 50;
-                const remaining = FREE_SHIPPING_THRESHOLD - totalPrice;
-                const hasFreeShipping = totalPrice >= FREE_SHIPPING_THRESHOLD;
+                const remaining = FREE_SHIPPING_THRESHOLD - adjustedTotal;
+                const hasFreeShipping = adjustedTotal >= FREE_SHIPPING_THRESHOLD;
 
                 return hasFreeShipping ? (
                   <div className="p-3 rounded-md bg-green-100 text-sm text-green-700 font-medium">
@@ -332,7 +349,7 @@ export function MiniCart() {
                       <div
                         className="h-full bg-black transition-all"
                         style={{
-                          width: `${Math.min((totalPrice / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`,
+                          width: `${Math.min((adjustedTotal / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`,
                         }}
                       />
                     </div>
