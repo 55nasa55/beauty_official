@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
   //
   async function syncMembership(subscription: any) {
     const userId = subscription.metadata?.user_id;
-    if (!userId) return;
+
+    if (!userId) {
+      console.error("❌ Missing user_id in subscription metadata:", subscription.id);
+      return;
+    }
 
     const priceId = subscription.items?.data?.[0]?.price?.id;
     if (!priceId) return;
@@ -53,6 +57,8 @@ export async function POST(req: NextRequest) {
     let status = "active";
     let endedAt: string | null = null;
 
+    const now = new Date();
+
     if (["active", "trialing"].includes(subscription.status)) {
       status = "active";
     } else if (["past_due", "unpaid"].includes(subscription.status)) {
@@ -64,6 +70,11 @@ export async function POST(req: NextRequest) {
         status = "canceled";
         endedAt = currentPeriodEnd;
       }
+    }
+
+    if (currentPeriodEnd && new Date(currentPeriodEnd) < now) {
+      status = "canceled";
+      endedAt = new Date().toISOString();
     }
 
     const data = {
@@ -79,7 +90,14 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    await supabase.from("memberships").upsert(data, { onConflict: "user_id" });
+    const { error: upsertError } = await supabase
+      .from("memberships")
+      .upsert(data, { onConflict: "user_id" });
+
+    if (upsertError) {
+      console.error("❌ Membership upsert failed:", upsertError);
+    }
+
     console.log("✅ Membership updated:", data);
   }
 
@@ -91,6 +109,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "customer.subscription.updated") {
+    await syncMembership(event.data.object);
+  }
+
+  if (event.type === "customer.subscription.deleted") {
     await syncMembership(event.data.object);
   }
 
