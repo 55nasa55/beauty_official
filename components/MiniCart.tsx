@@ -195,6 +195,10 @@ export function MiniCart() {
                 const stock = stockInfo.find(s => s.variantId === item.variantId);
                 const memberPrice = stock?.memberPriceCents != null ? stock.memberPriceCents / 100 : null;
 
+                const displayPrice = isMember && memberPrice != null
+                  ? memberPrice
+                  : item.price;
+
                 return (
                   <div key={item.variantId} className="flex gap-4 border-b pb-4">
                     <div className="relative w-20 h-20 flex-shrink-0">
@@ -214,7 +218,23 @@ export function MiniCart() {
                         {item.productName}
                       </Link>
                       <p className="text-xs text-gray-500 mt-1">{item.variantName}</p>
-                      <p className="text-sm font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
+                      <div className="mt-1">
+                        <p className="text-sm font-medium">
+                          ${(displayPrice * item.quantity).toFixed(2)}
+                        </p>
+
+                        {isMember && memberPrice != null && (
+                          <p className="text-xs text-gray-400 line-through">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+
+                      {isMember && memberPrice != null && (
+                        <p className="text-xs text-green-600 mt-1">
+                          You save ${((item.price - memberPrice) * item.quantity).toFixed(2)}
+                        </p>
+                      )}
 
                       {memberPrice && (
                         isMember ? (
