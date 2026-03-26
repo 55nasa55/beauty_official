@@ -654,12 +654,6 @@ async function processCheckShipment(
     trackingNumber = veeqoOrder.deliver_to?.tracking_number;
   }
 
-  // TEMP TEST OVERRIDE (REMOVE AFTER TESTING)
-  if (!trackingNumber) {
-    console.log("Using test tracking number override");
-    trackingNumber = "934192011411209954125";
-  }
-
   console.log("=== TRACKING PARSER RESULT ===");
   console.log("trackingNumber:", trackingNumber);
   console.log("shipmentId:", shipmentId);
