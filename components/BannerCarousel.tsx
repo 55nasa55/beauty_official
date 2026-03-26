@@ -402,7 +402,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
           >
             <div
               onClick={() => handleBannerClick(banner)}
-              className="relative w-full aspect-[16/6] rounded-lg overflow-hidden cursor-pointer group"
+              className="relative w-full aspect-[16/9] md:aspect-[16/6] rounded-lg overflow-hidden cursor-pointer group"
             >
               <Image
                 src={banner.image_url}
@@ -414,8 +414,8 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                 loading={eager ? 'eager' : undefined}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
-                <h2 className="text-3xl md:text-5xl font-light mb-3 tracking-wide">
+              <div className="absolute bottom-0 left-0 right-0 p-4 md:p-12 text-white">
+                <h2 className="text-xl md:text-5xl font-light mb-3 tracking-wide">
                   {banner.title}
                 </h2>
                 <p className="text-lg md:text-xl text-white/90 max-w-2xl">
