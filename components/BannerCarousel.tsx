@@ -414,13 +414,15 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
                 loading={eager ? 'eager' : undefined}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4 md:p-12 text-white">
-                <h2 className="text-xl md:text-5xl font-light mb-3 tracking-wide">
-                  {banner.title}
-                </h2>
-                <p className="text-lg md:text-xl text-white/90 max-w-2xl">
-                  {banner.description}
-                </p>
+              <div className="absolute inset-0 flex items-center p-4 md:p-12 text-white">
+                <div className="max-w-[85%] md:max-w-full">
+                  <h2 className="text-xl sm:text-2xl md:text-5xl font-light mb-3 tracking-wide drop-shadow-md">
+                    {banner.title}
+                  </h2>
+                  <p className="text-sm sm:text-base md:text-xl text-white/90 max-w-2xl drop-shadow-md">
+                    {banner.description}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
