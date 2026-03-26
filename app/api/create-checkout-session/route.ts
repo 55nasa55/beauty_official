@@ -23,15 +23,18 @@ export async function POST(req: NextRequest) {
     if (user) {
       const { data: membership } = await supabase
         .from('memberships')
-        .select('status, current_period_end')
+        .select('status, current_period_end, ended_at')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      const now = new Date();
 
       isMember = !!(
         membership &&
         membership.status === 'active' &&
-        (!membership.current_period_end ||
-          new Date(membership.current_period_end) > new Date())
+        membership.current_period_end &&
+        new Date(membership.current_period_end) > now &&
+        !membership.ended_at
       );
     }
 
