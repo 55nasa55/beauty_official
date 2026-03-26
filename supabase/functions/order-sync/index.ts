@@ -224,12 +224,50 @@ interface ShippingItem {
   quantity: number;
 }
 
+function detectCarrier(trackingNumber: string): string {
+  const cleaned = trackingNumber.replace(/\s+/g, '');
+
+  // UPS
+  if (/^1Z[0-9A-Z]{16}$/i.test(cleaned)) return 'UPS';
+
+  // USPS (covers your current tracking format)
+  if (/^(94|93|92|95)/.test(cleaned) || /^[0-9]{20,22}$/.test(cleaned)) {
+    return 'USPS';
+  }
+
+  // FedEx
+  if (/^[0-9]{12,15}$/.test(cleaned)) return 'FedEx';
+
+  return 'Other';
+}
+
+function getTrackingUrl(trackingNumber: string, carrier: string): string {
+  const cleaned = trackingNumber.replace(/\s+/g, '');
+
+  if (carrier === 'UPS') {
+    return `https://www.ups.com/track?tracknum=${cleaned}`;
+  }
+
+  if (carrier === 'USPS') {
+    return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${cleaned}`;
+  }
+
+  if (carrier === 'FedEx') {
+    return `https://www.fedex.com/fedextrack/?trknbr=${cleaned}`;
+  }
+
+  // fallback always works
+  return `https://www.google.com/search?q=${cleaned}+tracking`;
+}
+
 function generateShippingNotificationEmail(details: {
   order_number: string;
   customer_name: string;
   tracking_number: string;
   items?: ShippingItem[];
 }): string {
+  const carrier = detectCarrier(details.tracking_number);
+  const trackingUrl = getTrackingUrl(details.tracking_number, carrier);
   const logoUrl =
     "https://gwwnscgpfurcbkqmfpbq.supabase.co/storage/v1/object/public/product-images/brands/1771321073443-xg7gsjxpzfq.jpg";
 
@@ -289,9 +327,20 @@ function generateShippingNotificationEmail(details: {
                 <tr>
                   <td style="padding-bottom: 0;">
                     <div style="font-size: 18px; color: #111827; font-weight: 600; font-family: 'Courier New', monospace;">${details.tracking_number}</div>
+                    <div style="font-size: 14px; color: #6b7280; margin-top: 6px;">
+                      Carrier: ${carrier}
+                    </div>
                   </td>
                 </tr>
               </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding: 20px 40px;">
+              <a href="${trackingUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Track Package
+              </a>
             </td>
           </tr>
 
