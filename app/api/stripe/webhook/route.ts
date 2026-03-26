@@ -28,18 +28,6 @@ export async function POST(req: NextRequest) {
   );
 
   //
-  // PERIOD CALCULATOR (YEARLY ONLY)
-  //
-  function computePeriodEnd(subscription: any) {
-    const anchor = subscription.billing_cycle_anchor;
-    if (!anchor) return null;
-
-    const end = new Date(anchor * 1000);
-    end.setFullYear(end.getFullYear() + 1);
-    return end.toISOString();
-  }
-
-  //
   // MEMBERSHIP SYNC
   //
   async function syncMembership(subscription: any) {
@@ -57,7 +45,9 @@ export async function POST(req: NextRequest) {
 
     if (!plan) return;
 
-    const currentPeriodEnd = computePeriodEnd(subscription);
+    const currentPeriodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
     if (!currentPeriodEnd) return;
 
     let status = "active";
