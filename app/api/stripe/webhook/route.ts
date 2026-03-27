@@ -117,6 +117,35 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "customer.subscription.updated") {
+    const subscription = event.data.object;
+
+    // Handle cancel at period end
+    if (subscription.cancel_at_period_end === true) {
+      await supabase
+        .from('memberships')
+        .update({
+          cancel_at_period_end: true,
+        })
+        .eq('stripe_subscription_id', subscription.id);
+
+      console.log('✅ Membership set to cancel at period end:', subscription.id);
+      return NextResponse.json({ received: true });
+    }
+
+    // Handle immediate cancellation (safety)
+    if (subscription.status === 'canceled') {
+      await supabase
+        .from('memberships')
+        .update({
+          status: 'inactive',
+          ended_at: new Date().toISOString(),
+        })
+        .eq('stripe_subscription_id', subscription.id);
+
+      console.log('✅ Membership canceled immediately:', subscription.id);
+      return NextResponse.json({ received: true });
+    }
+
     await syncMembership(event.data.object);
   }
 
