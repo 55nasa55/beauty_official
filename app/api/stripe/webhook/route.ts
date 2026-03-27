@@ -31,6 +31,11 @@ export async function POST(req: NextRequest) {
   // MEMBERSHIP SYNC
   //
   async function syncMembership(subscription: any, fallbackUserId?: string) {
+    console.log("SyncMembership called");
+    console.log("Subscription ID:", subscription.id);
+    console.log("Metadata user_id:", subscription.metadata?.user_id);
+    console.log("Fallback user_id:", fallbackUserId);
+
     const userId = subscription.metadata?.user_id || fallbackUserId;
 
     if (!userId) {
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
 
     // MEMBERSHIP CHECKOUT — DO NOT CREATE ORDER HERE
     if (session.mode === "subscription") {
-      console.log("➡️ Subscription checkout — syncing membership");
+      console.log("➡️ Subscription checkout — creating membership (PRIMARY PATH)");
 
       const userId = session.metadata?.user_id || session.client_reference_id;
 
@@ -146,7 +151,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
+      // IMPORTANT: expand items so priceId exists
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId as string, {
+        expand: ['items.data.price'],
+      });
 
       await syncMembership(subscription, userId);
 
