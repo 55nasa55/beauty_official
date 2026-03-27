@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
 
     // MEMBERSHIP CHECKOUT — DO NOT CREATE ORDER HERE
     if (session.mode === "subscription") {
-      console.log("➡️ Subscription checkout — creating membership (PRIMARY PATH)");
+      console.log("➡️ Creating membership directly from checkout session");
 
       const userId = session.metadata?.user_id || session.client_reference_id;
 
@@ -147,16 +147,59 @@ export async function POST(req: NextRequest) {
       const subscriptionId = session.subscription;
 
       if (!subscriptionId) {
-        console.error("❌ No subscription ID on session");
+        console.error("❌ Missing subscription ID");
         return NextResponse.json({ received: true });
       }
 
-      // IMPORTANT: expand items so priceId exists
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId as string, {
-        expand: ['items.data.price'],
+      // Get price ID from line items (reliable)
+      const retrievedSession = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['line_items.data.price']
       });
 
-      await syncMembership(subscription, userId);
+      const priceId = retrievedSession.line_items?.data?.[0]?.price?.id;
+
+      if (!priceId) {
+        console.error("❌ Missing price ID from session");
+        return NextResponse.json({ received: true });
+      }
+
+      // Get plan
+      const { data: plan } = await supabase
+        .from("membership_plans")
+        .select("id")
+        .eq("stripe_price_id", priceId)
+        .maybeSingle();
+
+      if (!plan) {
+        console.error("❌ No plan found for price:", priceId);
+        return NextResponse.json({ received: true });
+      }
+
+      // Create membership directly
+      const now = new Date();
+      const oneYearLater = new Date();
+      oneYearLater.setFullYear(now.getFullYear() + 1);
+
+      const { error } = await supabase
+        .from("memberships")
+        .upsert({
+          user_id: userId,
+          plan_id: plan.id,
+          status: "active",
+          stripe_subscription_id: subscriptionId,
+          stripe_customer_id: session.customer,
+          stripe_price_id: priceId,
+          current_period_end: oneYearLater.toISOString(),
+          cancel_at_period_end: false,
+          ended_at: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+
+      if (error) {
+        console.error("❌ Failed to insert membership:", error);
+      } else {
+        console.log("✅ Membership created successfully");
+      }
 
       return NextResponse.json({ received: true });
     }
