@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
   //
   // MEMBERSHIP SYNC
   //
-  async function syncMembership(subscription: any) {
-    const userId = subscription.metadata?.user_id;
+  async function syncMembership(subscription: any, fallbackUserId?: string) {
+    const userId = subscription.metadata?.user_id || fallbackUserId;
 
     if (!userId) {
       console.error("❌ Missing user_id in subscription metadata:", subscription.id);
@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
       status = "canceled";
       endedAt = new Date().toISOString();
     }
+
+    console.log("Syncing membership for user:", userId);
+    console.log("Subscription ID:", subscription.id);
 
     const data = {
       user_id: userId,
@@ -127,7 +130,26 @@ export async function POST(req: NextRequest) {
 
     // MEMBERSHIP CHECKOUT — DO NOT CREATE ORDER HERE
     if (session.mode === "subscription") {
-      console.log("➡️ Subscription checkout — skipping order creation");
+      console.log("➡️ Subscription checkout — syncing membership");
+
+      const userId = session.metadata?.user_id || session.client_reference_id;
+
+      if (!userId) {
+        console.error("❌ Missing user_id in checkout session");
+        return NextResponse.json({ received: true });
+      }
+
+      const subscriptionId = session.subscription;
+
+      if (!subscriptionId) {
+        console.error("❌ No subscription ID on session");
+        return NextResponse.json({ received: true });
+      }
+
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
+
+      await syncMembership(subscription, userId);
+
       return NextResponse.json({ received: true });
     }
 
