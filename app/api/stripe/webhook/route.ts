@@ -117,24 +117,37 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "customer.subscription.updated") {
+    console.log("=== SUBSCRIPTION UPDATED EVENT ===");
+    console.log("Event ID:", event.id);
+
     const subscription = event.data.object;
+
+    console.log("Subscription ID:", subscription.id);
+    console.log("Status:", subscription.status);
+    console.log("cancel_at:", subscription.cancel_at);
+    console.log("cancel_at_period_end:", subscription.cancel_at_period_end);
 
     // Handle cancel at period end
     if (subscription.cancel_at_period_end === true) {
-      await supabase
+      console.log("Attempting DB update for subscription:", subscription.id);
+
+      const { data, error } = await supabase
         .from('memberships')
         .update({
           cancel_at_period_end: true,
         })
         .eq('stripe_subscription_id', subscription.id);
 
+      console.log("Update result:", { data, error });
       console.log('✅ Membership set to cancel at period end:', subscription.id);
       return NextResponse.json({ received: true });
     }
 
     // Handle immediate cancellation (safety)
     if (subscription.status === 'canceled') {
-      await supabase
+      console.log("Attempting DB update for subscription:", subscription.id);
+
+      const { data, error } = await supabase
         .from('memberships')
         .update({
           status: 'inactive',
@@ -142,6 +155,7 @@ export async function POST(req: NextRequest) {
         })
         .eq('stripe_subscription_id', subscription.id);
 
+      console.log("Update result:", { data, error });
       console.log('✅ Membership canceled immediately:', subscription.id);
       return NextResponse.json({ received: true });
     }
