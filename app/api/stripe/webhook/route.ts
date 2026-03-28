@@ -164,8 +164,6 @@ export async function POST(req: NextRequest) {
     } else {
       console.log("✅ Subscription synced successfully");
     }
-
-    await syncMembership(event.data.object);
   }
 
   if (event.type === "customer.subscription.deleted") {
