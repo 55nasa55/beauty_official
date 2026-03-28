@@ -120,60 +120,47 @@ export async function POST(req: NextRequest) {
     console.log("=== SUBSCRIPTION UPDATED EVENT ===");
     console.log("Event ID:", event.id);
 
-    const subscription = event.data.object;
+    const subscription = event.data.object as any;
 
     console.log("Subscription ID:", subscription.id);
     console.log("Status:", subscription.status);
     console.log("cancel_at:", subscription.cancel_at);
     console.log("cancel_at_period_end:", subscription.cancel_at_period_end);
 
-    // Handle scheduled cancellation (Stripe uses cancel_at in this case)
-    if (subscription.cancel_at) {
-      console.log("Detected scheduled cancellation via cancel_at");
+    // Always sync cancellation fields (handles both cancellation AND reactivation)
+    const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
+    const cancelAt = subscription.cancel_at
+      ? new Date(subscription.cancel_at * 1000).toISOString()
+      : null;
 
-      const { data, error } = await supabase
-        .from('memberships')
-        .update({
-          cancel_at_period_end: true,
-        })
-        .eq('stripe_subscription_id', subscription.id);
+    const currentPeriodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
 
-      console.log("Cancel update result:", { data, error });
+    const status = subscription.status;
 
-      return NextResponse.json({ received: true });
-    }
+    console.log("SYNC SUB UPDATE", {
+      cancel_at_period_end: cancelAtPeriodEnd,
+      cancel_at: cancelAt,
+      status,
+    });
 
-    // Handle cancel at period end
-    if (subscription.cancel_at_period_end === true) {
-      console.log("Attempting DB update for subscription:", subscription.id);
+    const { data, error } = await supabase
+      .from("memberships")
+      .update({
+        cancel_at_period_end: cancelAtPeriodEnd,
+        cancel_at: cancelAt,
+        current_period_end: currentPeriodEnd,
+        status: status,
+      })
+      .eq("stripe_subscription_id", subscription.id);
 
-      const { data, error } = await supabase
-        .from('memberships')
-        .update({
-          cancel_at_period_end: true,
-        })
-        .eq('stripe_subscription_id', subscription.id);
+    console.log("Update result:", { data, error });
 
-      console.log("Update result:", { data, error });
-      console.log('✅ Membership set to cancel at period end:', subscription.id);
-      return NextResponse.json({ received: true });
-    }
-
-    // Handle immediate cancellation (safety)
-    if (subscription.status === 'canceled') {
-      console.log("Attempting DB update for subscription:", subscription.id);
-
-      const { data, error } = await supabase
-        .from('memberships')
-        .update({
-          status: 'inactive',
-          ended_at: new Date().toISOString(),
-        })
-        .eq('stripe_subscription_id', subscription.id);
-
-      console.log("Update result:", { data, error });
-      console.log('✅ Membership canceled immediately:', subscription.id);
-      return NextResponse.json({ received: true });
+    if (error) {
+      console.error("❌ Failed to sync subscription:", error);
+    } else {
+      console.log("✅ Subscription synced successfully");
     }
 
     await syncMembership(event.data.object);
