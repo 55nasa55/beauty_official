@@ -142,8 +142,10 @@ export async function POST(req: NextRequest) {
     console.log("SYNC SUB UPDATE", {
       cancel_at_period_end: cancelAtPeriodEnd,
       cancel_at: cancelAt,
+      current_period_end: currentPeriodEnd,
       status,
     });
+    console.log("NEW current_period_end:", currentPeriodEnd);
 
     const { data, error } = await supabase
       .from("memberships")
