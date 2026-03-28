@@ -119,12 +119,25 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "customer.subscription.updated") {
+    console.log("=== DEBUG START ===");
+    console.log("EVENT TYPE:", event.type);
+    console.log("EVENT OBJECT TYPE:", event.data.object.object);
+    console.log(
+      "RAW EVENT OBJECT:",
+      JSON.stringify(event.data.object, null, 2)
+    );
+
     console.log("=== SUBSCRIPTION UPDATED EVENT ===");
     console.log("Event ID:", event.id);
 
     let subscription = event.data.object as any;
 
     subscription = await stripe.subscriptions.retrieve(subscription.id);
+
+    console.log(
+      "FETCHED SUBSCRIPTION:",
+      JSON.stringify(subscription, null, 2)
+    );
 
     console.log("AFTER FETCH current_period_end:", subscription.current_period_end);
     console.log("Subscription ID:", subscription.id);
@@ -142,6 +155,8 @@ export async function POST(req: NextRequest) {
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : null;
 
+    console.log("COMPUTED currentPeriodEnd:", currentPeriodEnd);
+
     const status = subscription.status;
 
     console.log("SYNC SUB UPDATE", {
@@ -151,6 +166,13 @@ export async function POST(req: NextRequest) {
       status,
     });
     console.log("NEW current_period_end:", currentPeriodEnd);
+
+    console.log("WRITING TO DB:", {
+      cancel_at_period_end: cancelAtPeriodEnd,
+      cancel_at: cancelAt,
+      current_period_end: currentPeriodEnd,
+      status: status,
+    });
 
     const { data, error } = await supabase
       .from("memberships")
@@ -169,6 +191,8 @@ export async function POST(req: NextRequest) {
     } else {
       console.log("✅ Subscription synced successfully");
     }
+
+    console.log("=== DEBUG END ===");
   }
 
   if (event.type === "customer.subscription.deleted") {
