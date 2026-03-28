@@ -113,7 +113,9 @@ export async function POST(req: NextRequest) {
   // SUBSCRIPTION EVENTS
   //
   if (event.type === "customer.subscription.created") {
-    await syncMembership(event.data.object);
+    let subscription = event.data.object as any;
+    subscription = await stripe.subscriptions.retrieve(subscription.id);
+    await syncMembership(subscription);
   }
 
   if (event.type === "customer.subscription.updated") {
@@ -124,6 +126,7 @@ export async function POST(req: NextRequest) {
 
     subscription = await stripe.subscriptions.retrieve(subscription.id);
 
+    console.log("AFTER FETCH current_period_end:", subscription.current_period_end);
     console.log("Subscription ID:", subscription.id);
     console.log("Status:", subscription.status);
     console.log("cancel_at:", subscription.cancel_at);
@@ -169,7 +172,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "customer.subscription.deleted") {
-    await syncMembership(event.data.object);
+    let subscription = event.data.object as any;
+    subscription = await stripe.subscriptions.retrieve(subscription.id);
+    await syncMembership(subscription);
   }
 
   //
