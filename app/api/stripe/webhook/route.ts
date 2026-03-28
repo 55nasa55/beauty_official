@@ -120,7 +120,9 @@ export async function POST(req: NextRequest) {
     console.log("=== SUBSCRIPTION UPDATED EVENT ===");
     console.log("Event ID:", event.id);
 
-    const subscription = event.data.object as any;
+    let subscription = event.data.object as any;
+
+    subscription = await stripe.subscriptions.retrieve(subscription.id);
 
     console.log("Subscription ID:", subscription.id);
     console.log("Status:", subscription.status);
