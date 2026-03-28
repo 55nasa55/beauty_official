@@ -127,6 +127,22 @@ export async function POST(req: NextRequest) {
     console.log("cancel_at:", subscription.cancel_at);
     console.log("cancel_at_period_end:", subscription.cancel_at_period_end);
 
+    // Handle scheduled cancellation (Stripe uses cancel_at in this case)
+    if (subscription.cancel_at) {
+      console.log("Detected scheduled cancellation via cancel_at");
+
+      const { data, error } = await supabase
+        .from('memberships')
+        .update({
+          cancel_at_period_end: true,
+        })
+        .eq('stripe_subscription_id', subscription.id);
+
+      console.log("Cancel update result:", { data, error });
+
+      return NextResponse.json({ received: true });
+    }
+
     // Handle cancel at period end
     if (subscription.cancel_at_period_end === true) {
       console.log("Attempting DB update for subscription:", subscription.id);
