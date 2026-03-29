@@ -99,6 +99,9 @@ export default function AccountPage() {
     }
   };
 
+  const isActive = membership?.status === 'active';
+  const isPastDue = membership?.status === 'past_due';
+
   const loadOrders = async () => {
     try {
       const { data, error } = await supabase
@@ -207,7 +210,7 @@ export default function AccountPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-xl font-light tracking-wide mb-4">Membership</h2>
 
-          {isMember ? (
+          {isActive ? (
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -232,6 +235,25 @@ export default function AccountPage() {
                 className="whitespace-nowrap"
               >
                 Manage Membership
+              </Button>
+            </div>
+          ) : isPastDue ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-medium text-yellow-900 mb-2">
+                  Payment Issue
+                </h3>
+                <p className="text-sm text-yellow-800 mb-1">
+                  Your payment failed. Update your payment method to continue your membership.
+                </p>
+              </div>
+              <Button
+                onClick={handleManageMembership}
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                Fix Payment
               </Button>
             </div>
           ) : (
