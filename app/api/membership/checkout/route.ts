@@ -28,9 +28,28 @@ export async function POST(req: NextRequest) {
 
     const { data: existingMembership } = await supabase
       .from('memberships')
-      .select('stripe_customer_id')
+      .select('status, stripe_customer_id, stripe_subscription_id')
       .eq('user_id', user.id)
       .maybeSingle();
+
+    // If user has an active or past_due subscription, redirect to portal instead
+    if (existingMembership && (existingMembership.status === 'active' || existingMembership.status === 'past_due')) {
+      if (!existingMembership.stripe_customer_id) {
+        return NextResponse.json(
+          { error: 'Invalid membership state' },
+          { status: 400 }
+        );
+      }
+
+      const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: existingMembership.stripe_customer_id,
+        return_url: `${origin}/account`,
+      });
+
+      return NextResponse.json({ url: portalSession.url });
+    }
 
     let customerId = existingMembership?.stripe_customer_id;
 
