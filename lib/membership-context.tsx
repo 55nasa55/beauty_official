@@ -43,20 +43,16 @@ export function MembershipProvider({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      const now = new Date();
-      const ends = data.current_period_end ? new Date(data.current_period_end) : null;
+      // STRICT MEMBERSHIP ACCESS:
+      // Only allow access when:
+      // 1. Subscription is active (NOT past_due)
+      // 2. Current period has not ended
+      const isActive =
+        data.status === "active" &&
+        data.current_period_end &&
+        new Date(data.current_period_end) > new Date();
 
-      const status = data.status;
-
-      const activeStatus = status === "active" || status === "past_due";
-
-      const validPeriod = !ends || ends > now;
-
-      // FINAL RULE:
-      // A user is a member if:
-      // - active or past_due
-      // - AND within the billing period
-      setIsMember(activeStatus && validPeriod);
+      setIsMember(isActive);
 
       setLoading(false);
     };

@@ -23,19 +23,20 @@ export async function POST(req: NextRequest) {
     if (user) {
       const { data: membership } = await supabase
         .from('memberships')
-        .select('status, current_period_end, ended_at')
+        .select('status, current_period_end')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const now = new Date();
+      // STRICT MEMBERSHIP ACCESS:
+      // Only allow member pricing when:
+      // 1. Subscription is active (NOT past_due)
+      // 2. Current period has not ended
+      const isActive =
+        membership?.status === "active" &&
+        membership?.current_period_end &&
+        new Date(membership.current_period_end) > new Date();
 
-      isMember = !!(
-        membership &&
-        membership.status === 'active' &&
-        membership.current_period_end &&
-        new Date(membership.current_period_end) > now &&
-        !membership.ended_at
-      );
+      isMember = isActive;
     }
 
     const variantIds = cartItems.map((item: any) => item.variantId);
