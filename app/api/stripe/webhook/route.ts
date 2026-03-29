@@ -199,9 +199,25 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "customer.subscription.deleted") {
-    let subscription = event.data.object as any;
-    subscription = await stripe.subscriptions.retrieve(subscription.id);
-    await syncMembership(subscription);
+    console.log("=== SUBSCRIPTION DELETED EVENT ===");
+
+    const subscription = event.data.object as any;
+
+    const { error } = await supabase
+      .from("memberships")
+      .update({
+        status: "canceled",
+        cancel_at_period_end: false,
+        cancel_at: null,
+        ended_at: new Date().toISOString(),
+      })
+      .eq("stripe_subscription_id", subscription.id);
+
+    if (error) {
+      console.error("❌ Failed to mark subscription as canceled:", error);
+    } else {
+      console.log("✅ Subscription marked as canceled");
+    }
   }
 
   //
