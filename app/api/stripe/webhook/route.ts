@@ -151,10 +151,13 @@ export async function POST(req: NextRequest) {
       ? new Date(subscription.cancel_at * 1000).toISOString()
       : null;
 
-    const currentPeriodEnd = subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000).toISOString()
+    const item = subscription.items?.data?.[0];
+
+    const currentPeriodEnd = item?.current_period_end
+      ? new Date(item.current_period_end * 1000).toISOString()
       : null;
 
+    console.log("ITEM current_period_end:", item?.current_period_end);
     console.log("COMPUTED currentPeriodEnd:", currentPeriodEnd);
 
     const status = subscription.status;
