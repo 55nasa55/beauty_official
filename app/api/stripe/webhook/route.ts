@@ -146,10 +146,12 @@ export async function POST(req: NextRequest) {
     console.log("cancel_at_period_end:", subscription.cancel_at_period_end);
 
     // Always sync cancellation fields (handles both cancellation AND reactivation)
-    const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
     const cancelAt = subscription.cancel_at
       ? new Date(subscription.cancel_at * 1000).toISOString()
       : null;
+
+    const cancelAtPeriodEnd =
+      subscription.cancel_at_period_end || !!subscription.cancel_at;
 
     const item = subscription.items?.data?.[0];
 
