@@ -172,25 +172,13 @@ export default function PricingPage() {
                 <div className="flex items-start gap-4">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#E6A6B0] flex-shrink-0 mt-2.5"></div>
                   <span className="text-[#5A4D48] leading-relaxed">
-                    Exclusive member pricing on every product
+                    Exclusive member pricing on products
                   </span>
                 </div>
                 <div className="flex items-start gap-4">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#E6A6B0] flex-shrink-0 mt-2.5"></div>
                   <span className="text-[#5A4D48] leading-relaxed">
                     Automatic savings applied at checkout
-                  </span>
-                </div>
-                <div className="flex items-start gap-4">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#E6A6B0] flex-shrink-0 mt-2.5"></div>
-                  <span className="text-[#5A4D48] leading-relaxed">
-                    Early access to new product launches
-                  </span>
-                </div>
-                <div className="flex items-start gap-4">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#E6A6B0] flex-shrink-0 mt-2.5"></div>
-                  <span className="text-[#5A4D48] leading-relaxed">
-                    Priority customer support
                   </span>
                 </div>
               </div>
