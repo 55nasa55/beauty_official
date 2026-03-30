@@ -16,22 +16,22 @@ export function Footer() {
             <h4 className="text-sm font-medium mb-4">Shop</h4>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>
-                <Link href="/category/korean-beauty" className="hover:text-gray-900 transition-colors">
+                <Link href="/collections/kbeauty" className="hover:text-gray-900 transition-colors">
                   Korean Beauty
                 </Link>
               </li>
               <li>
-                <Link href="/category/suncare" className="hover:text-gray-900 transition-colors">
+                <Link href="/collections/suncare" className="hover:text-gray-900 transition-colors">
                   Suncare
                 </Link>
               </li>
               <li>
-                <Link href="/category/japanese-beauty" className="hover:text-gray-900 transition-colors">
+                <Link href="/collections/jbeauty" className="hover:text-gray-900 transition-colors">
                   Japanese Beauty
                 </Link>
               </li>
               <li>
-                <Link href="/category/haircare" className="hover:text-gray-900 transition-colors">
+                <Link href="/collections/hair" className="hover:text-gray-900 transition-colors">
                   Haircare
                 </Link>
               </li>
