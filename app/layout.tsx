@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: 'Cosmetic Club - Premium Beauty & Skincare',
   description: 'Discover premium beauty and skincare products from top brands. Shop the latest in makeup, skincare, haircare, and wellness.',
   keywords: 'beauty, skincare, makeup, haircare, wellness, cosmetics, premium beauty products',
+  icons: {
+    icon: '/favicon.jpg',
+    shortcut: '/favicon.jpg',
+    apple: '/favicon.jpg',
+  },
 };
 
 export default function RootLayout({
