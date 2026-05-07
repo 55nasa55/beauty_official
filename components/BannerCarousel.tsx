@@ -385,12 +385,12 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const eager = total <= 8; // safe for small sets
 
   return (
-    <div className="relative">
+    <div className="relative bg-[#faf8f6] py-8 md:py-12">
       <div
         ref={containerRef}
         className={[
-          'flex overflow-x-auto snap-x snap-mandatory gap-6 px-[10vw] scroll-px-[10vw] py-8 scrollbar-hide',
-          'transition-opacity duration-200',
+          'flex overflow-x-auto snap-x snap-mandatory gap-5 px-[8vw] scroll-px-[8vw] scrollbar-hide',
+          'transition-opacity duration-300',
           isReady ? 'opacity-100' : 'opacity-0',
         ].join(' ')}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -398,75 +398,78 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         {allSlides.map((banner, idx) => (
           <div
             key={`${banner.id}-${idx}`}
-            className="flex-shrink-0 w-[min(80vw,1200px)] snap-center"
+            className="flex-shrink-0 w-[min(84vw,1160px)] snap-center"
           >
             <div
               onClick={() => handleBannerClick(banner)}
-              className="relative w-full aspect-[16/9] md:aspect-[16/6] rounded-lg overflow-hidden cursor-pointer group"
+              className="relative w-full aspect-[16/9] md:aspect-[21/8] rounded-2xl overflow-hidden cursor-pointer group"
             >
               <Image
                 src={banner.image_url}
                 alt={banner.title}
                 fill
-                sizes="(min-width: 1280px) 1200px, 80vw"
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                sizes="(min-width: 1280px) 1160px, 84vw"
+                className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                 priority={eager}
                 loading={eager ? 'eager' : undefined}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute inset-0 flex items-center p-4 md:p-12 text-white">
-                <div className="max-w-[85%] md:max-w-full">
-                  <h2 className="text-xl sm:text-2xl md:text-5xl font-light mb-3 tracking-wide drop-shadow-md">
-                    {banner.title}
-                  </h2>
-                  <p className="text-sm sm:text-base md:text-xl text-white/90 max-w-2xl drop-shadow-md">
+              {/* Soft editorial overlay — lighter than before */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/10 to-transparent" />
+
+              {/* Text positioned bottom-left with editorial spacing */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2 tracking-wide drop-shadow-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  {banner.title}
+                </h2>
+                {banner.description && (
+                  <p className="text-sm md:text-base text-white/80 max-w-md font-light">
                     {banner.description}
                   </p>
-                </div>
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Edge fades */}
+      {/* Soft edge fades matching background */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-white to-transparent pointer-events-none z-10"
+        className="absolute left-0 top-0 bottom-0 w-16 md:w-24 bg-gradient-to-r from-[#faf8f6] to-transparent pointer-events-none z-10"
         aria-hidden="true"
       />
       <div
-        className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white to-transparent pointer-events-none z-10"
+        className="absolute right-0 top-0 bottom-0 w-16 md:w-24 bg-gradient-to-l from-[#faf8f6] to-transparent pointer-events-none z-10"
         aria-hidden="true"
       />
 
-      {/* Controls under center banner */}
+      {/* Controls */}
       {total > 1 && (
-        <div className="w-[80vw] max-w-[1200px] mx-auto mt-4 flex items-center justify-center gap-4">
+        <div className="w-[84vw] max-w-[1160px] mx-auto mt-5 flex items-center justify-center gap-3">
           <button
             onMouseDown={stopControlPropagation}
             onTouchStart={stopControlPropagation}
             onClick={() => goPrev(true)}
-            className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
+            className="bg-white hover:bg-stone-50 border border-stone-200 p-2 rounded-full transition-all shadow-sm"
             aria-label="Previous banner"
           >
-            <ChevronLeft className="w-4 h-4 text-gray-800" />
+            <ChevronLeft className="w-3.5 h-3.5 text-stone-600" />
           </button>
 
           <button
             onMouseDown={stopControlPropagation}
             onTouchStart={stopControlPropagation}
             onClick={togglePlayPause}
-            className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
+            className="bg-white hover:bg-stone-50 border border-stone-200 p-2 rounded-full transition-all shadow-sm"
             aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
           >
             {isPlaying ? (
-              <Pause className="w-3.5 h-3.5 text-gray-800" />
+              <Pause className="w-3 h-3 text-stone-600" />
             ) : (
-              <Play className="w-3.5 h-3.5 text-gray-800" />
+              <Play className="w-3 h-3 text-stone-600" />
             )}
           </button>
 
-          <div className="text-gray-600 text-sm font-light">
+          <div className="text-stone-400 text-xs font-light tracking-wider">
             {realIndex + 1} / {total}
           </div>
 
@@ -474,10 +477,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
             onMouseDown={stopControlPropagation}
             onTouchStart={stopControlPropagation}
             onClick={() => goNext(true)}
-            className="bg-white/90 hover:bg-white p-2 rounded-full transition-all hover:scale-110 shadow-md"
+            className="bg-white hover:bg-stone-50 border border-stone-200 p-2 rounded-full transition-all shadow-sm"
             aria-label="Next banner"
           >
-            <ChevronRight className="w-4 h-4 text-gray-800" />
+            <ChevronRight className="w-3.5 h-3.5 text-stone-600" />
           </button>
         </div>
       )}

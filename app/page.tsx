@@ -3,10 +3,31 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DynamicBannerCarousel } from '@/components/DynamicBannerCarousel';
 import { ProductCarousel } from '@/components/ProductCarousel';
+import Link from 'next/link';
 import { ProductWithVariants, Category, Brand, Collection, Banner } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const categoryChips = [
+  { label: 'K-Beauty', href: '/collections/korean-beauty' },
+  { label: 'J-Beauty', href: '/collections/japanese-beauty' },
+  { label: 'Skincare', href: '/collections/skincare' },
+  { label: 'Makeup', href: '/collections/makeup' },
+  { label: 'Suncare', href: '/collections/suncare' },
+  { label: 'Hair', href: '/collections/haircare' },
+  { label: 'Face Masks', href: '/collections/face-masks' },
+  { label: 'Bath & Body', href: '/collections/bath-body' },
+  { label: 'Brush & Tools', href: '/collections/brush-tools' },
+];
+
+const eyebrows = [
+  'Community Favorites',
+  'Trending Now',
+  "Editor's Picks",
+  'Members Love',
+  'New Arrivals',
+];
 
 async function getHomePageData() {
   const supabase = supabasePublic;
@@ -29,47 +50,24 @@ async function getHomePageData() {
         supabase.from('reviews').select('product_id, rating'),
       ]);
 
-    if (categoriesResult.error) {
-      console.error('Error fetching categories:', categoriesResult.error);
-    }
-    if (brandsResult.error) {
-      console.error('Error fetching brands:', brandsResult.error);
-    }
-    if (collectionsResult.error) {
-      console.error('Error fetching collections:', collectionsResult.error);
-    }
-    if (bannersResult.error) {
-      console.error('Error fetching banners:', bannersResult.error);
-    }
-    if (productsResult.error) {
-      console.error('Error fetching products:', productsResult.error);
-    }
-
     const categories: Category[] = Array.isArray(categoriesResult.data) ? categoriesResult.data : [];
     const brands: Brand[] = Array.isArray(brandsResult.data) ? brandsResult.data : [];
     const collections: Collection[] = Array.isArray(collectionsResult.data) ? collectionsResult.data : [];
     const banners: Banner[] = Array.isArray(bannersResult.data) ? bannersResult.data : [];
     const allProducts: ProductWithVariants[] = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
 
-    const reviewsByProduct: Record<string, any[]> = {};
-    (reviewsResult.data || []).forEach((review: any) => {
-      if (!reviewsByProduct[review.product_id]) {
-        reviewsByProduct[review.product_id] = [];
-      }
+    const reviewsByProduct: Record<string, { rating: number }[]> = {};
+    (reviewsResult.data || []).forEach((review: { product_id: string; rating: number }) => {
+      if (!reviewsByProduct[review.product_id]) reviewsByProduct[review.product_id] = [];
       reviewsByProduct[review.product_id].push(review);
     });
 
     const productsWithRatings = allProducts.map(product => {
       const reviews = reviewsByProduct[product.id] || [];
-      const average_rating = reviews.length > 0
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-        : undefined;
-      const review_count = reviews.length;
-
       return {
         ...product,
-        average_rating,
-        review_count,
+        average_rating: reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : undefined,
+        review_count: reviews.length,
       };
     });
 
@@ -78,36 +76,22 @@ async function getHomePageData() {
     const collectionProducts = await Promise.all(
       collections.map(async (collection) => {
         let products: ProductWithVariants[] = [];
-
         try {
           if (collection.product_ids && Array.isArray(collection.product_ids) && collection.product_ids.length > 0) {
-            const idProducts = visibleProducts.filter((p) => p && collection.product_ids.includes(p.id));
-            products = [...idProducts];
+            products = [...visibleProducts.filter((p) => p && collection.product_ids.includes(p.id))];
           }
-
           if (collection.product_tags && Array.isArray(collection.product_tags) && collection.product_tags.length > 0) {
             const tagProducts = visibleProducts.filter(
-              (p) =>
-                p &&
-                p.tags &&
-                Array.isArray(p.tags) &&
-                p.tags.some((tag) => collection.product_tags.includes(tag))
+              (p) => p && p.tags && Array.isArray(p.tags) && p.tags.some((tag) => collection.product_tags.includes(tag))
             );
-
             const existingIds = new Set(products.map((p) => p.id));
-            const uniqueTagProducts = tagProducts.filter((p) => p && !existingIds.has(p.id));
-            products = [...products, ...uniqueTagProducts];
+            products = [...products, ...tagProducts.filter((p) => p && !existingIds.has(p.id))];
           }
-
           products = products.filter(p => !p.archived);
         } catch (err) {
           console.error(`Error processing collection ${collection.id}:`, err);
         }
-
-        return {
-          collection,
-          products,
-        };
+        return { collection, products };
       })
     );
 
@@ -120,58 +104,62 @@ async function getHomePageData() {
     };
   } catch (error) {
     console.error('Error in getHomePageData:', error);
-
-    return {
-      categories: [],
-      brands: [],
-      collections: [],
-      banners: [],
-      collectionProducts: [],
-    };
+    return { categories: [], brands: [], collections: [], banners: [], collectionProducts: [] };
   }
 }
 
 export default async function Home() {
-  const {
-    categories,
-    brands,
-    collections,
-    banners,
-    collectionProducts,
-  } = await getHomePageData();
+  const { categories, brands, collections, banners, collectionProducts } = await getHomePageData();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white">
       <Header categories={categories} brands={brands} collections={collections} />
 
       <main className="flex-1">
+        {/* Hero / Banner Carousel */}
         {banners.length > 0 && (
-          <section className="relative w-screen overflow-hidden mb-12">
-            <DynamicBannerCarousel initialBanners={banners} />
-          </section>
+          <DynamicBannerCarousel initialBanners={banners} />
         )}
 
-        <div className="container mx-auto px-4 py-8">
-          <div className="space-y-16">
-            {collectionProducts.map(({ collection, products }) => (
+        {/* Category chips */}
+        <div className="bg-white py-8 border-b border-stone-100">
+          <div className="max-w-[1320px] mx-auto px-6">
+            <div className="flex flex-wrap justify-center gap-2.5">
+              {categoryChips.map((chip) => (
+                <Link
+                  key={chip.href}
+                  href={chip.href}
+                  className="px-4 py-2 bg-white border border-stone-200 rounded-full text-[12px] font-medium text-stone-500 hover:text-stone-800 hover:border-stone-400 hover:bg-stone-50/50 transition-all duration-150 whitespace-nowrap"
+                >
+                  {chip.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Product collection sections */}
+        <div className="max-w-[1320px] mx-auto px-6">
+          <div className="py-16 md:py-20 space-y-20 md:space-y-24">
+            {collectionProducts.map(({ collection, products }, index) => (
               <ProductCarousel
                 key={collection.id}
                 title={collection.name}
                 products={products}
                 viewMoreSlug={collection.slug}
+                eyebrow={eyebrows[index % eyebrows.length]}
               />
             ))}
 
             {collectionProducts.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-xl text-gray-500 font-light">
+              <div className="text-center py-24">
+                <p className="text-base text-stone-400 font-light">
                   No products available at the moment.
                 </p>
               </div>
             )}
           </div>
         </div>
-
       </main>
 
       <Footer />

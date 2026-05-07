@@ -10,21 +10,20 @@ interface ProductCarouselProps {
   title: string;
   products: ProductWithVariants[];
   viewMoreSlug?: string;
+  eyebrow?: string;
 }
 
-export function ProductCarousel({ title, products, viewMoreSlug }: ProductCarouselProps) {
+export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: ProductCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 400;
-      const newScrollLeft =
-        direction === 'left'
-          ? scrollContainerRef.current.scrollLeft - scrollAmount
-          : scrollContainerRef.current.scrollLeft + scrollAmount;
-
+      const scrollAmount = 480;
       scrollContainerRef.current.scrollTo({
-        left: newScrollLeft,
+        left:
+          direction === 'left'
+            ? scrollContainerRef.current.scrollLeft - scrollAmount
+            : scrollContainerRef.current.scrollLeft + scrollAmount,
         behavior: 'smooth',
       });
     }
@@ -33,47 +32,58 @@ export function ProductCarousel({ title, products, viewMoreSlug }: ProductCarous
   if (products.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-light tracking-wide">{title}</h2>
-        <div className="flex gap-2">
+    <section className="space-y-6">
+      {/* Section header */}
+      <div className="flex items-end justify-between">
+        <div>
+          {eyebrow && (
+            <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-rose-300 mb-1.5">
+              {eyebrow}
+            </p>
+          )}
+          <h2 className="text-3xl font-light text-stone-800 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+            {title}
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-3 pb-1">
+          {viewMoreSlug && (
+            <Link
+              href={`/collections/${viewMoreSlug}`}
+              className="text-[12px] font-medium text-rose-300 hover:text-rose-400 transition-colors tracking-wide mr-2"
+            >
+              See All →
+            </Link>
+          )}
           <button
             onClick={() => scroll('left')}
-            className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
+            className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition-colors text-stone-500"
+            aria-label="Scroll left"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => scroll('right')}
-            className="p-2 rounded-full border hover:bg-gray-50 transition-colors"
+            className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition-colors text-stone-500"
+            aria-label="Scroll right"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
+      {/* Scroll container */}
       <div
         ref={scrollContainerRef}
-        className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
+        className="flex gap-5 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {products.map((product) => (
-          <div key={product.id} className="flex-none w-[250px]">
+          <div key={product.id} className="flex-none w-[220px]">
             <ProductCard product={product} />
           </div>
         ))}
       </div>
-
-      {viewMoreSlug && (
-        <div className="flex justify-center mt-6">
-          <Link
-            href={`/collections/${viewMoreSlug}`}
-            className="px-8 py-3 border border-gray-300 rounded-full font-light tracking-wide hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
-          >
-            View More
-          </Link>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
