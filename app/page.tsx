@@ -117,23 +117,7 @@ export default async function Home() {
                 <Link
                   key={chip.href}
                   href={chip.href}
-                  className="group px-5 py-2.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(252,232,238,0.8) 0%, rgba(249,212,222,0.6) 100%)',
-                    color: '#c07888',
-                    border: '1px solid rgba(244,192,204,0.5)',
-                    boxShadow: '0 1px 4px rgba(244,167,185,0.12)',
-                  }}
-                  onMouseOver={e => {
-                    (e.currentTarget as HTMLAnchorElement).style.background = 'linear-gradient(135deg, #fce8ee 0%, #f9d4de 100%)';
-                    (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 3px 10px rgba(244,167,185,0.25)';
-                    (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseOut={e => {
-                    (e.currentTarget as HTMLAnchorElement).style.background = 'linear-gradient(135deg, rgba(252,232,238,0.8) 0%, rgba(249,212,222,0.6) 100%)';
-                    (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 1px 4px rgba(244,167,185,0.12)';
-                    (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
-                  }}
+                  className="category-chip px-5 py-2.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap hover:-translate-y-px"
                 >
                   {chip.label}
                 </Link>

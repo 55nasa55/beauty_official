@@ -145,6 +145,18 @@
   animation: floatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Category chip — CSS-only hover so it works in Server Components */
+.category-chip {
+  background: linear-gradient(135deg, rgba(252,232,238,0.8) 0%, rgba(249,212,222,0.6) 100%);
+  color: #c07888;
+  border: 1px solid rgba(244,192,204,0.5);
+  box-shadow: 0 1px 4px rgba(244,167,185,0.12);
+}
+.category-chip:hover {
+  background: linear-gradient(135deg, #fce8ee 0%, #f9d4de 100%);
+  box-shadow: 0 3px 10px rgba(244,167,185,0.28);
+}
+
 /* Feminine gradient text utility */
 .text-gradient-rose {
   background: linear-gradient(135deg, #e8829a 0%, #d4647c 100%);
