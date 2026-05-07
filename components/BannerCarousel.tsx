@@ -385,7 +385,12 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const eager = total <= 8; // safe for small sets
 
   return (
-    <div className="relative bg-[#faf8f6] py-8 md:py-12">
+    <div className="relative py-8 md:py-12" style={{ background: 'linear-gradient(180deg, #fdf0f4 0%, #fdf8f5 100%)' }}>
+
+      {/* Decorative blush blobs */}
+      <div className="absolute top-0 left-0 w-72 h-72 rounded-full pointer-events-none opacity-30" style={{ background: 'radial-gradient(circle, #f9c0cc 0%, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
+      <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full pointer-events-none opacity-20" style={{ background: 'radial-gradient(circle, #e8c0e0 0%, transparent 70%)', transform: 'translate(30%, 30%)' }} />
+
       <div
         ref={containerRef}
         className={[
@@ -402,27 +407,36 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
           >
             <div
               onClick={() => handleBannerClick(banner)}
-              className="relative w-full aspect-[16/9] md:aspect-[21/8] rounded-2xl overflow-hidden cursor-pointer group"
+              className="relative w-full aspect-[16/9] md:aspect-[21/8] overflow-hidden cursor-pointer group"
+              style={{ borderRadius: '2rem', boxShadow: '0 12px 48px rgba(232,160,176,0.22), 0 4px 12px rgba(232,160,176,0.14)' }}
             >
               <Image
                 src={banner.image_url}
                 alt={banner.title}
                 fill
                 sizes="(min-width: 1280px) 1160px, 84vw"
-                className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                 priority={eager}
                 loading={eager ? 'eager' : undefined}
               />
-              {/* Soft editorial overlay — lighter than before */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/10 to-transparent" />
+              {/* Dreamy feminine overlay — blush-tinted gradient */}
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(232,120,140,0.35) 0%, rgba(0,0,0,0.05) 50%, rgba(180,80,100,0.20) 100%)' }} />
+              {/* Bottom vignette for text legibility */}
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(60,20,30,0.55) 0%, transparent 55%)' }} />
 
-              {/* Text positioned bottom-left with editorial spacing */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2 tracking-wide drop-shadow-sm" style={{ fontFamily: "'Playfair Display', serif" }}>
+              {/* Text */}
+              <div className="absolute bottom-0 left-0 right-0 p-7 md:p-12">
+                <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-rose-200/90 mb-2">
+                  ✦ Featured Collection ✦
+                </p>
+                <h2
+                  className="text-2xl sm:text-3xl md:text-[2.6rem] font-light text-white mb-2 leading-tight"
+                  style={{ fontFamily: "'Playfair Display', serif", textShadow: '0 2px 12px rgba(0,0,0,0.18)' }}
+                >
                   {banner.title}
                 </h2>
                 {banner.description && (
-                  <p className="text-sm md:text-base text-white/80 max-w-md font-light">
+                  <p className="text-sm md:text-base text-white/75 max-w-md font-light">
                     {banner.description}
                   </p>
                 )}
@@ -432,55 +446,65 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         ))}
       </div>
 
-      {/* Soft edge fades matching background */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-16 md:w-24 bg-gradient-to-r from-[#faf8f6] to-transparent pointer-events-none z-10"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute right-0 top-0 bottom-0 w-16 md:w-24 bg-gradient-to-l from-[#faf8f6] to-transparent pointer-events-none z-10"
-        aria-hidden="true"
-      />
+      {/* Edge fades matching bg gradient */}
+      <div className="absolute left-0 top-0 bottom-0 w-16 md:w-20 pointer-events-none z-10" style={{ background: 'linear-gradient(to right, #fdf0f4, transparent)' }} aria-hidden="true" />
+      <div className="absolute right-0 top-0 bottom-0 w-16 md:w-20 pointer-events-none z-10" style={{ background: 'linear-gradient(to left, #fdf8f5, transparent)' }} aria-hidden="true" />
 
       {/* Controls */}
       {total > 1 && (
-        <div className="w-[84vw] max-w-[1160px] mx-auto mt-5 flex items-center justify-center gap-3">
+        <div className="w-[84vw] max-w-[1160px] mx-auto mt-6 flex items-center justify-center gap-4">
           <button
             onMouseDown={stopControlPropagation}
             onTouchStart={stopControlPropagation}
             onClick={() => goPrev(true)}
-            className="bg-white hover:bg-stone-50 border border-stone-200 p-2 rounded-full transition-all shadow-sm"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 shadow-sm hover:shadow-md"
+            style={{ background: 'linear-gradient(135deg,#fce8ee,#f9d4de)', color: '#c07888', border: '1px solid #f4c0cc' }}
             aria-label="Previous banner"
           >
-            <ChevronLeft className="w-3.5 h-3.5 text-stone-600" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <button
-            onMouseDown={stopControlPropagation}
-            onTouchStart={stopControlPropagation}
-            onClick={togglePlayPause}
-            className="bg-white hover:bg-stone-50 border border-stone-200 p-2 rounded-full transition-all shadow-sm"
-            aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
-          >
-            {isPlaying ? (
-              <Pause className="w-3 h-3 text-stone-600" />
-            ) : (
-              <Play className="w-3 h-3 text-stone-600" />
-            )}
-          </button>
-
-          <div className="text-stone-400 text-xs font-light tracking-wider">
-            {realIndex + 1} / {total}
+          {/* Dot indicators */}
+          <div className="flex items-center gap-2">
+            {banners.map((_, i) => (
+              <div
+                key={i}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width: i === realIndex ? '20px' : '6px',
+                  height: '6px',
+                  background: i === realIndex
+                    ? 'linear-gradient(90deg,#f4a7b9,#e07090)'
+                    : '#f4c0cc',
+                }}
+              />
+            ))}
           </div>
 
           <button
             onMouseDown={stopControlPropagation}
             onTouchStart={stopControlPropagation}
+            onClick={togglePlayPause}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 shadow-sm hover:shadow-md"
+            style={{ background: 'linear-gradient(135deg,#fce8ee,#f9d4de)', color: '#c07888', border: '1px solid #f4c0cc' }}
+            aria-label={isPlaying ? 'Pause autoplay' : 'Play autoplay'}
+          >
+            {isPlaying ? (
+              <Pause className="w-3.5 h-3.5" />
+            ) : (
+              <Play className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          <button
+            onMouseDown={stopControlPropagation}
+            onTouchStart={stopControlPropagation}
             onClick={() => goNext(true)}
-            className="bg-white hover:bg-stone-50 border border-stone-200 p-2 rounded-full transition-all shadow-sm"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 shadow-sm hover:shadow-md"
+            style={{ background: 'linear-gradient(135deg,#fce8ee,#f9d4de)', color: '#c07888', border: '1px solid #f4c0cc' }}
             aria-label="Next banner"
           >
-            <ChevronRight className="w-3.5 h-3.5 text-stone-600" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       )}

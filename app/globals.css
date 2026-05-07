@@ -77,7 +77,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#fdf8f5] text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 }
 
@@ -85,10 +86,26 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Custom blush pink scrollbar for product carousels */
+  .scrollbar-blush::-webkit-scrollbar {
+    height: 4px;
+  }
+  .scrollbar-blush::-webkit-scrollbar-track {
+    background: #fce7eb;
+    border-radius: 9999px;
+  }
+  .scrollbar-blush::-webkit-scrollbar-thumb {
+    background: #f4a7b9;
+    border-radius: 9999px;
+  }
+  .scrollbar-blush {
+    scrollbar-width: thin;
+    scrollbar-color: #f4a7b9 #fce7eb;
   }
 }
 
@@ -110,6 +127,41 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-floatUp {
+  animation: floatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Feminine gradient text utility */
+.text-gradient-rose {
+  background: linear-gradient(135deg, #e8829a 0%, #d4647c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Soft blush card base */
+.card-glow {
+  box-shadow:
+    0 2px 12px rgba(244, 167, 185, 0.18),
+    0 1px 3px rgba(244, 167, 185, 0.10);
+}
+
+.card-glow:hover {
+  box-shadow:
+    0 8px 28px rgba(244, 167, 185, 0.28),
+    0 2px 6px rgba(244, 167, 185, 0.14);
 }
