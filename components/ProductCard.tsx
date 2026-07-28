@@ -104,7 +104,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
   return (
     <Link
       href={`/product/${product.slug}`}
-      className="group relative flex flex-col bg-off-white border border-light-gray rounded-card transition-transform duration-200 hover:-translate-y-1 overflow-hidden"
+      className="group relative flex flex-col h-full bg-off-white border border-light-gray rounded-card transition-transform duration-200 hover:-translate-y-1 overflow-hidden"
       style={{ boxShadow: '0 0 0 rgba(0,0,0,0)' }}
       onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 8px 20px rgba(169,201,236,0.25)')}
       onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 0 0 rgba(0,0,0,0)')}
@@ -154,34 +154,39 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
         />
       </button>
 
-      {/* Product image */}
-      <div className={`relative ${imageMargin} overflow-hidden`} style={{ aspectRatio: '1 / 1' }}>
+      {/* Product image — fixed 1:1 container, object-contain so nothing crops */}
+      <div
+        className={`relative ${imageMargin} overflow-hidden flex-shrink-0 bg-[#FAFAFA]`}
+        style={{ aspectRatio: '1 / 1' }}
+      >
         <Image
           src={defaultVariant.images?.[0] || '/placeholder.jpg'}
           alt={product.name}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-contain transition-transform duration-500 group-hover:scale-105 p-2"
         />
       </div>
 
-      {/* Card content */}
-      <div className={cardPadding}>
+      {/* Card content — flex column so pricing + button pin to bottom */}
+      <div className={`${cardPadding} flex flex-col flex-1`}>
         {/* Brand */}
         {product.brand && (
           <div className="text-brand-label mb-0.5">{product.brand.name}</div>
         )}
 
-        {/* Product name */}
-        <h3 className="text-product-name mb-1.5 leading-[1.4]">
+        {/* Product name — reserved 2-line height so cards align */}
+        <h3 className="text-product-name mb-1.5 leading-[1.4] min-h-[34px]">
           {product.name}
         </h3>
 
-        {/* Star rating */}
-        {(product.review_count ?? 0) > 0 && product.average_rating && (
-          <StarRow rating={product.average_rating} count={product.review_count!} />
-        )}
+        {/* Star rating — reserved height even when absent */}
+        <div className="min-h-[16px] mb-2">
+          {(product.review_count ?? 0) > 0 && product.average_rating && (
+            <StarRow rating={product.average_rating} count={product.review_count!} />
+          )}
+        </div>
 
-        {/* Transparent pricing UI */}
+        {/* Transparent pricing UI — mt-auto pins it + button to bottom */}
         <div
           className="flex border-t border-light-gray pt-2 pb-2.5 mt-auto"
         >
