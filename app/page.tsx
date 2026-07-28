@@ -1,25 +1,17 @@
 import { supabasePublic } from '@/lib/supabase/public';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { DynamicBannerCarousel } from '@/components/DynamicBannerCarousel';
 import { ProductCarousel } from '@/components/ProductCarousel';
+import { CategoryRow } from '@/components/CategoryRow';
+import { TrustBar } from '@/components/TrustBar';
+import { HeroGrid } from '@/components/HeroGrid';
+import { SuggestionForm } from '@/components/SuggestionForm';
+import { ProductCard } from '@/components/ProductCard';
 import Link from 'next/link';
-import { ProductWithVariants, Category, Brand, Collection, Banner } from '@/lib/database.types';
+import { ProductWithVariants, Category, Brand, Collection } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const categoryChips = [
-  { label: '🌸 K-Beauty',      href: '/collections/korean-beauty' },
-  { label: '🌿 J-Beauty',      href: '/collections/japanese-beauty' },
-  { label: '✨ Skincare',      href: '/collections/skincare' },
-  { label: '💄 Makeup',        href: '/collections/makeup' },
-  { label: '☀️ Suncare',       href: '/collections/suncare' },
-  { label: '🌺 Hair',          href: '/collections/haircare' },
-  { label: '🍃 Face Masks',    href: '/collections/face-masks' },
-  { label: '🛁 Bath & Body',   href: '/collections/bath-body' },
-  { label: '🖌️ Brush & Tools', href: '/collections/brush-tools' },
-];
 
 const eyebrows = [
   'Community Favorites',
@@ -32,12 +24,11 @@ const eyebrows = [
 async function getHomePageData() {
   const supabase = supabasePublic;
   try {
-    const [categoriesResult, brandsResult, collectionsResult, bannersResult, productsResult, reviewsResult] =
+    const [categoriesResult, brandsResult, collectionsResult, productsResult, reviewsResult] =
       await Promise.all([
         supabase.from('categories').select('*').order('name'),
         supabase.from('brands').select('*').order('name'),
         supabase.from('collections').select('*').eq('display_on_home', true).order('sort_order'),
-        supabase.from('banners').select('*').eq('active', true).order('sort_order'),
         supabase.from('products').select(`*, brand:brands(*), variants:product_variants(*)`),
         supabase.from('reviews').select('product_id, rating'),
       ]);
@@ -45,7 +36,6 @@ async function getHomePageData() {
     const categories: Category[] = Array.isArray(categoriesResult.data) ? categoriesResult.data : [];
     const brands: Brand[] = Array.isArray(brandsResult.data) ? brandsResult.data : [];
     const collections: Collection[] = Array.isArray(collectionsResult.data) ? collectionsResult.data : [];
-    const banners: Banner[] = Array.isArray(bannersResult.data) ? bannersResult.data : [];
     const allProducts: ProductWithVariants[] = Array.isArray(productsResult.data) ? productsResult.data as ProductWithVariants[] : [];
 
     const reviewsByProduct: Record<string, { rating: number }[]> = {};
@@ -84,91 +74,152 @@ async function getHomePageData() {
       })
     );
 
-    return { categories, brands, collections, banners, collectionProducts: collectionProducts.filter(cp => cp?.products?.length > 0) };
+    return { categories, brands, collections, visibleProducts, collectionProducts: collectionProducts.filter(cp => cp?.products?.length > 0) };
   } catch (error) {
     console.error('Error in getHomePageData:', error);
-    return { categories: [], brands: [], collections: [], banners: [], collectionProducts: [] };
+    return { categories: [], brands: [], collections: [], visibleProducts: [], collectionProducts: [] };
   }
 }
 
 export default async function Home() {
-  const { categories, brands, collections, banners, collectionProducts } = await getHomePageData();
+  const { categories, brands, collections, visibleProducts, collectionProducts } = await getHomePageData();
+
+  // Prepare hero products — top 5-10 with member pricing for the rotating hero grid
+  const heroProducts = visibleProducts
+    .filter(p => p.variants?.some(v => v.member_price_cents))
+    .slice(0, 10)
+    .map(p => {
+      const v = p.variants.find(v => v.member_price_cents) || p.variants[0];
+      return {
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        brand: p.brand?.name || '',
+        image: v.images?.[0] || '/placeholder.jpg',
+        retail: v.price,
+        member: v.member_price_cents ? v.member_price_cents / 100 : v.price,
+      };
+    });
+
+  // Best sellers grid — products flagged as best sellers, or first 10 products
+  const bestSellers = visibleProducts
+    .filter(p => p.is_best_seller)
+    .slice(0, 10);
+  const gridProducts = bestSellers.length >= 5 ? bestSellers : visibleProducts.slice(0, 10);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#fdf8f5' }}>
+    <div className="min-h-screen flex flex-col bg-off-white">
       <Header categories={categories} brands={brands} collections={collections} />
 
       <main className="flex-1">
+        {/* Hero Section */}
+        <section
+          className="flex flex-col md:flex-row items-center gap-6 py-15 px-[5%]"
+          style={{
+            background: 'linear-gradient(to right, var(--off-white) 40%, var(--blush-pink))',
+            padding: '60px 5%',
+          }}
+        >
+          {/* Hero text */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-hero-h1 mb-4">
+              Curated beauty,<br />at prices you deserve.
+            </h1>
+            <p className="text-body-muted mb-8">
+              Unlock wholesale pricing on premium Korean and Japanese skincare and makeup.
+            </p>
+            <div className="flex gap-4 flex-wrap">
+              <Link href="/pricing" className="btn-solid">
+                Become a Member
+              </Link>
+              <Link href="/browse" className="btn-ghost">
+                Shop Now
+              </Link>
+            </div>
+          </div>
 
-        {/* Hero / Banner Carousel */}
-        {banners.length > 0 && (
-          <DynamicBannerCarousel initialBanners={banners} />
+          {/* Hero product grid */}
+          {heroProducts.length > 0 && (
+            <div className="flex-shrink-0 hidden md:block" style={{ transform: 'translateX(-75px)' }}>
+              <HeroGrid products={heroProducts} />
+            </div>
+          )}
+        </section>
+
+        {/* Category Row */}
+        <CategoryRow />
+
+        {/* Trust Bar */}
+        <TrustBar />
+
+        {/* Best Sellers Grid */}
+        {gridProducts.length > 0 && (
+          <section className="py-20 px-[5%]">
+            <div className="flex justify-between items-end mb-10">
+              <h2 className="text-section-h2">Best Sellers</h2>
+              <Link href="/browse" className="text-[15px] font-bold text-coral hover:text-coral-hover transition-colors">
+                View All →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {gridProducts.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </section>
         )}
 
-        {/* Category chips */}
-        <div className="py-8 border-b" style={{ background: 'linear-gradient(180deg,#fdf0f4 0%,#fdf8f5 100%)', borderColor: '#f4d0d8' }}>
-          <div className="max-w-[1320px] mx-auto px-6">
-            {/* Eyebrow */}
-            <p className="text-center text-[10px] uppercase tracking-[0.22em] font-bold mb-5" style={{ color: '#d4909e' }}>
-              ✦ Shop By Category ✦
-            </p>
-            <div className="flex flex-wrap justify-center gap-2.5">
-              {categoryChips.map((chip) => (
-                <Link
-                  key={chip.href}
-                  href={chip.href}
-                  className="category-chip px-5 py-2.5 rounded-full text-[12px] font-semibold transition-all duration-200 whitespace-nowrap hover:-translate-y-px"
-                >
-                  {chip.label}
-                </Link>
+        {/* Collection product carousels */}
+        {collectionProducts.length > 0 && (
+          <div className="px-[5%]">
+            <div className="py-16 md:py-20 space-y-20 md:space-y-28">
+              {collectionProducts.map(({ collection, products }, index) => (
+                <ProductCarousel
+                  key={collection.id}
+                  title={collection.name}
+                  products={products}
+                  viewMoreSlug={collection.slug}
+                  eyebrow={eyebrows[index % eyebrows.length]}
+                />
               ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Product collection sections */}
-        <div className="max-w-[1320px] mx-auto px-6">
-          <div className="py-16 md:py-20 space-y-20 md:space-y-28">
-            {collectionProducts.map(({ collection, products }, index) => (
-              <ProductCarousel
-                key={collection.id}
-                title={collection.name}
-                products={products}
-                viewMoreSlug={collection.slug}
-                eyebrow={eyebrows[index % eyebrows.length]}
-              />
-            ))}
-
-            {collectionProducts.length === 0 && (
-              <div className="text-center py-24">
-                <p className="text-base font-light" style={{ color: '#c4a0a8' }}>
-                  No products available at the moment.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom decorative strip */}
-        <div className="py-12 mt-8" style={{ background: 'linear-gradient(135deg,#fce8ee 0%,#fdf0f4 40%,#fde8f4 100%)' }}>
-          <div className="max-w-[1320px] mx-auto px-6 text-center">
-            <p className="text-[10px] uppercase tracking-[0.22em] font-bold mb-3" style={{ color: '#d4909e' }}>✦ Cosmetic Club ✦</p>
-            <p
-              className="text-2xl md:text-3xl font-light"
-              style={{ fontFamily: "'Playfair Display', serif", color: '#3a2a2a' }}
-            >
-              Curated beauty, at prices you deserve.
+        {visibleProducts.length === 0 && (
+          <div className="text-center py-24">
+            <p className="text-base font-light text-gray">
+              No products available at the moment.
             </p>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center h-11 px-8 mt-6 rounded-full text-[12.5px] font-bold tracking-wide text-white transition-all duration-200 shadow hover:shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #f4b8c8 0%, #d4607e 100%)' }}
-            >
-              Become a Member →
-            </Link>
           </div>
-        </div>
+        )}
 
+        {/* Mid-Page Membership CTA Banner */}
+        <section
+          className="text-center py-20 px-5"
+          style={{ background: 'linear-gradient(135deg, var(--soft-rose), var(--blush-pink))' }}
+        >
+          <h2 className="text-banner-h2 mb-4">Your membership pays for itself.</h2>
+          <p className="text-banner-body mb-8">
+            Average members save <strong>$42 a month</strong> on their beauty staples.<br />
+            Buy 1 Serum (Save $15) + 1 Sunscreen (Save $12) + 1 Toner (Save $10) = <strong>$37 Saved!</strong>
+          </p>
+          <Link
+            href="/pricing"
+            className="btn-solid"
+            style={{ fontSize: 18, padding: '18px 36px', borderRadius: 8 }}
+          >
+            Join Now for $6.99/mo
+          </Link>
+        </section>
+
+        {/* Product Suggestion Section */}
+        <section
+          className="bg-off-white py-20 px-[5%]"
+          style={{ borderTop: '1px solid var(--blush-pink)' }}
+        >
+          <SuggestionForm />
+        </section>
       </main>
 
       <Footer />

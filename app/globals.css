@@ -499,6 +499,22 @@
   100% { background-position: 400px 0; }
 }
 
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.7); }
+  70%  { box-shadow: 0 0 0 8px rgba(255, 59, 59, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0); }
+}
+
+.live-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--live-red);
+  flex-shrink: 0;
+  animation: live-pulse 1.8s ease-out infinite;
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.8s ease-out forwards;
 }

@@ -50,46 +50,37 @@ export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: Prod
   if (products.length === 0) return null;
 
   return (
-    <section className="space-y-7">
+    <section className="space-y-10">
       {/* Section header */}
       <div className="flex items-end justify-between">
         <div>
           {eyebrow && (
-            <p className="text-[10px] uppercase tracking-[0.22em] font-bold mb-2"
-              style={{ color: '#d4909e' }}>
+            <p className="text-[10px] uppercase tracking-[0.22em] font-bold mb-2 text-coral">
               ✦ {eyebrow} ✦
             </p>
           )}
-          <h2
-            className="text-[2rem] font-light leading-none tracking-tight"
-            style={{ fontFamily: "'Playfair Display', serif", color: '#3a2a2a' }}
-          >
-            {title}
-          </h2>
+          <h2 className="text-section-h2">{title}</h2>
         </div>
 
         <div className="flex items-center gap-3 pb-1">
           {viewMoreSlug && (
             <Link
               href={`/collections/${viewMoreSlug}`}
-              className="text-[11.5px] font-semibold tracking-wide mr-1 transition-colors"
-              style={{ color: '#d4909e' }}
+              className="text-[15px] font-bold text-coral hover:text-coral-hover transition-colors mr-1"
             >
-              See All →
+              View All →
             </Link>
           )}
           <button
             onClick={() => scroll('left')}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 shadow-sm hover:shadow"
-            style={{ background: 'linear-gradient(135deg,#fce8ee,#f9d4de)', color: '#c07888', border: '1px solid #f4c0cc' }}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 border border-light-gray bg-off-white text-charcoal hover:border-coral hover:text-coral"
             aria-label="Scroll left"
           >
             <ChevLeft />
           </button>
           <button
             onClick={() => scroll('right')}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 shadow-sm hover:shadow"
-            style={{ background: 'linear-gradient(135deg,#fce8ee,#f9d4de)', color: '#c07888', border: '1px solid #f4c0cc' }}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 border border-light-gray bg-off-white text-charcoal hover:border-coral hover:text-coral"
             aria-label="Scroll right"
           >
             <ChevRight />
@@ -100,8 +91,7 @@ export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: Prod
       {/* Cards scroll */}
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-blush scroll-smooth pb-4"
-        style={{ msOverflowStyle: 'auto' }}
+        className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
       >
         {products.map((product) => (
           <div key={product.id} className="flex-none w-[210px]">
@@ -110,13 +100,13 @@ export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: Prod
         ))}
       </div>
 
-      {/* Blush progress bar */}
-      <div className="h-[3px] rounded-full overflow-hidden mx-1" style={{ background: '#fce0e8' }}>
+      {/* Progress bar */}
+      <div className="h-[3px] rounded-full overflow-hidden mx-1 bg-light-gray/60">
         <div
           className="h-full rounded-full transition-all duration-150"
           style={{
             width: `${Math.max(8, progress * 100)}%`,
-            background: 'linear-gradient(90deg, #f4b8c8, #e07090)',
+            background: 'var(--soft-rose)',
           }}
         />
       </div>
