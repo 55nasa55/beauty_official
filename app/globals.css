@@ -2,73 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
+/* ============================================================
+   CosClub Design System — Global Styles
+   Color tokens are the source of truth (hex values per spec).
+   Some token names are inherited from the spec and may not
+   match their actual hue — always rely on the hex value.
+   ============================================================ */
 
 @layer base {
   :root {
+    /* ---- CosClub color tokens (spec hex values) ---- */
+    --blush-pink: #A9C9EC;      /* hero gradient, accents, input focus */
+    --soft-rose: #7AAFD8;       /* nav border, trust bar bg, icon border */
+    --coral: #E8553E;           /* CTA accent, member price, hover */
+    --coral-hover: #D64530;     /* coral hover state */
+    --baby-blue: #F9C8D0;       /* primary button bg (spec name kept) */
+    --baby-blue-hover: #E8A0B0; /* primary button hover */
+    --off-white: #FFFFFF;       /* page background */
+    --charcoal: #2C2C2C;        /* primary text, footer bg, dark button */
+    --gray: #8A8A8A;            /* secondary text, brand labels */
+    --light-gray: #E0E0E0;      /* borders, dividers, card outlines */
+    --amber: #f59e0b;           /* star ratings */
+    --savings-red: #FF3366;     /* savings badge bg */
+    --live-red: #ff3b3b;        /* live indicator dot */
+    --footer-text: #A0A0A0;     /* footer body text */
+
+    /* ---- shadcn/ui semantic mappings (HSL for compatibility) ---- */
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 0 0% 17%;          /* charcoal #2C2C2C */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    --popover-foreground: 0 0% 17%;
+    --primary: 344 92% 77%;          /* baby-blue #F9C8D0 */
+    --primary-foreground: 0 0% 17%;  /* charcoal */
+    --secondary: 210 52% 89%;        /* blush-pink #A9C9EC */
+    --secondary-foreground: 0 0% 17%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 54%;    /* gray #8A8A8A */
+    --accent: 9 79% 57%;             /* coral #E8553E */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
+    --border: 0 0% 88%;              /* light-gray #E0E0E0 */
+    --input: 0 0% 88%;
+    --ring: 210 52% 89%;             /* blush-pink focus */
+    --chart-1: 210 52% 80%;
+    --chart-2: 9 79% 57%;
+    --chart-3: 344 92% 77%;
     --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-5: 210 52% 60%;
+    --radius: 0.375rem;              /* 6px base */
+
+    /* ---- Font families ---- */
+    --font-heading: var(--font-quicksand), 'Quicksand', sans-serif;
+    --font-body: var(--font-manrope), 'Manrope', sans-serif;
+
+    /* ---- Shadows ---- */
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05);
+    --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
   }
 }
 
@@ -76,11 +69,393 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-[#fdf8f5] text-foreground;
-    font-family: 'Inter', sans-serif;
+    background: var(--off-white);
+    color: var(--charcoal);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* Headings use Quicksand */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    color: var(--charcoal);
   }
 }
+
+/* ============================================================
+   Typography utilities
+   ============================================================ */
+
+@layer components {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  /* Heading styles (Quicksand) */
+  .text-hero-h1 {
+    font-family: var(--font-heading);
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--charcoal);
+  }
+  .text-section-h2 {
+    font-family: var(--font-heading);
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--charcoal);
+  }
+  .text-banner-h2 {
+    font-family: var(--font-heading);
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--charcoal);
+  }
+  .text-footer-h3 {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+  }
+
+  /* Body / UI (Manrope) */
+  .text-body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--charcoal);
+  }
+  .text-body-muted {
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--charcoal);
+    opacity: 0.8;
+  }
+  .text-banner-body {
+    font-family: var(--font-body);
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--charcoal);
+  }
+  .text-announcement {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--off-white);
+    letter-spacing: 0.5px;
+  }
+  .text-announcement-highlight {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--blush-pink);
+    letter-spacing: 0.5px;
+  }
+  .text-footer-body {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--footer-text);
+    line-height: 2.2;
+  }
+  .text-form-label {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--charcoal);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .text-form-input {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--charcoal);
+  }
+
+  /* Nav & trust bar */
+  .text-nav-link {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--charcoal);
+  }
+  .text-nav-link:hover {
+    color: var(--coral);
+  }
+  .text-trust-bar {
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--charcoal);
+  }
+  .text-category-label {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--charcoal);
+  }
+
+  /* Product card text styles (Manrope) */
+  .text-brand-label {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .text-product-name {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--charcoal);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .text-star-rating {
+    font-size: 11px;
+    color: var(--amber);
+  }
+  .text-review-count {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--gray);
+  }
+  .text-price-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase;
+  }
+  .text-strike-price {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--gray);
+    text-decoration: line-through;
+  }
+  .text-member-price {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--coral);
+  }
+}
+
+/* ============================================================
+   Button utilities (Manrope)
+   ============================================================ */
+
+@layer components {
+  .btn-solid {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 6px;
+    background: var(--baby-blue);
+    color: var(--charcoal);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    white-space: nowrap;
+  }
+  .btn-solid:hover {
+    background: var(--baby-blue-hover);
+  }
+  .btn-solid:active {
+    transform: scale(0.98);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--charcoal);
+    border: 1px solid var(--charcoal);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
+  }
+  .btn-ghost:hover {
+    background: var(--charcoal);
+    color: #ffffff;
+  }
+
+  .btn-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: 6px;
+    background: var(--baby-blue);
+    color: var(--charcoal);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    white-space: nowrap;
+  }
+  .btn-add:hover {
+    background: var(--baby-blue-hover);
+  }
+  .btn-add:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ============================================================
+   Badge utilities
+   ============================================================ */
+
+@layer components {
+  /* Savings badge — pill shape */
+  .badge-savings {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+    background: var(--savings-red);
+    border-radius: 20px;
+    padding: 2px 10px;
+  }
+
+  /* "New" badge — sharp corners */
+  .badge-new {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--charcoal);
+    background: var(--blush-pink);
+    border-radius: 4px;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Live indicator dot */
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--live-red);
+  }
+}
+
+/* ============================================================
+   Form inputs (Manrope)
+   ============================================================ */
+
+@layer components {
+  .cosclub-input {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--charcoal);
+    border-radius: 8px;
+    border: 1.5px solid var(--light-gray);
+    padding: 10px 14px;
+    background: var(--off-white);
+    transition: border-color 0.2s ease;
+    width: 100%;
+  }
+  .cosclub-input:focus {
+    outline: none;
+    border-color: var(--blush-pink);
+  }
+  .cosclub-input::placeholder {
+    color: var(--gray);
+  }
+}
+
+/* ============================================================
+   Borders & radius utilities
+   ============================================================ */
+
+@layer utilities {
+  .border-cosclub {
+    border: 1px solid var(--light-gray);
+  }
+  .border-nav {
+    border-bottom: 1px solid var(--soft-rose);
+  }
+  .border-icon-circle {
+    border: 1px solid var(--soft-rose);
+    border-radius: 50%;
+  }
+  .radius-card {
+    border-radius: 8px;
+  }
+  .radius-button {
+    border-radius: 6px;
+  }
+  .radius-input {
+    border-radius: 8px;
+  }
+  .radius-savings {
+    border-radius: 20px;
+  }
+  .radius-new {
+    border-radius: 4px;
+  }
+}
+
+/* ============================================================
+   Shadows
+   ============================================================ */
+
+@layer utilities {
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  .shadow-popover {
+    box-shadow: var(--shadow-popover);
+  }
+}
+
+/* ============================================================
+   Scrollbar utilities
+   ============================================================ */
 
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar {
@@ -89,23 +464,6 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
-  }
-
-  /* Custom blush pink scrollbar for product carousels */
-  .scrollbar-blush::-webkit-scrollbar {
-    height: 4px;
-  }
-  .scrollbar-blush::-webkit-scrollbar-track {
-    background: #fce7eb;
-    border-radius: 9999px;
-  }
-  .scrollbar-blush::-webkit-scrollbar-thumb {
-    background: #f4a7b9;
-    border-radius: 9999px;
-  }
-  .scrollbar-blush {
-    scrollbar-width: thin;
-    scrollbar-color: #f4a7b9 #fce7eb;
   }
 }
 
@@ -116,6 +474,10 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ============================================================
+   Animations
+   ============================================================ */
 
 @keyframes slowzoom {
   0%, 100% { transform: scale(1.05); }
@@ -143,37 +505,4 @@
 
 .animate-floatUp {
   animation: floatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Category chip — CSS-only hover so it works in Server Components */
-.category-chip {
-  background: linear-gradient(135deg, rgba(252,232,238,0.8) 0%, rgba(249,212,222,0.6) 100%);
-  color: #c07888;
-  border: 1px solid rgba(244,192,204,0.5);
-  box-shadow: 0 1px 4px rgba(244,167,185,0.12);
-}
-.category-chip:hover {
-  background: linear-gradient(135deg, #fce8ee 0%, #f9d4de 100%);
-  box-shadow: 0 3px 10px rgba(244,167,185,0.28);
-}
-
-/* Feminine gradient text utility */
-.text-gradient-rose {
-  background: linear-gradient(135deg, #e8829a 0%, #d4647c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Soft blush card base */
-.card-glow {
-  box-shadow:
-    0 2px 12px rgba(244, 167, 185, 0.18),
-    0 1px 3px rgba(244, 167, 185, 0.10);
-}
-
-.card-glow:hover {
-  box-shadow:
-    0 8px 28px rgba(244, 167, 185, 0.28),
-    0 2px 6px rgba(244, 167, 185, 0.14);
 }

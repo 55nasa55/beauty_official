@@ -5,19 +5,27 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-button font-body transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        // CosClub design-system variants
+        solid:
+          'bg-baby-blue text-charcoal text-base font-semibold rounded-button hover:bg-baby-blue-hover active:scale-[0.98] transition-all',
+        ghost:
+          'bg-transparent text-charcoal text-base font-semibold rounded-button border border-charcoal hover:bg-charcoal hover:text-white transition-colors',
+        addToCart:
+          'bg-baby-blue text-charcoal text-[15px] font-bold rounded-button hover:bg-baby-blue-hover active:scale-[0.98] transition-all',
+        // shadcn/ui legacy variants (kept for existing component compatibility)
+        default:
+          'bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md text-sm font-medium',
         outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+          'border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md text-sm font-medium',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium',
+        link: 'text-primary underline-offset-4 hover:underline text-sm font-medium',
       },
       size: {
         default: 'h-10 px-4 py-2',
