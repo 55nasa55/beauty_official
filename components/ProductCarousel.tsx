@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
 import Link from 'next/link';
 import { ProductCard } from './ProductCard';
 import { ProductWithVariants } from '@/lib/database.types';
@@ -9,7 +9,6 @@ interface ProductCarouselProps {
   title: string;
   products: ProductWithVariants[];
   viewMoreSlug?: string;
-  eyebrow?: string;
 }
 
 function ChevLeft() {
@@ -28,20 +27,8 @@ function ChevRight() {
   );
 }
 
-export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: ProductCarouselProps) {
+export function ProductCarousel({ title, products, viewMoreSlug }: ProductCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const max = el.scrollWidth - el.clientWidth;
-      setProgress(max > 0 ? el.scrollLeft / max : 0);
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
 
   const scroll = (dir: 'left' | 'right') => {
     scrollRef.current?.scrollBy({ left: dir === 'left' ? -500 : 500, behavior: 'smooth' });
@@ -50,18 +37,10 @@ export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: Prod
   if (products.length === 0) return null;
 
   return (
-    <section className="space-y-10">
-      {/* Section header */}
-      <div className="flex items-end justify-between">
-        <div>
-          {eyebrow && (
-            <p className="text-[10px] uppercase tracking-[0.22em] font-bold mb-2 text-coral">
-              ✦ {eyebrow} ✦
-            </p>
-          )}
-          <h2 className="text-section-h2">{title}</h2>
-        </div>
-
+    <section>
+      {/* Section header — matches prototype: h2 left, View All → right, 40px bottom margin */}
+      <div className="flex items-end justify-between mb-10">
+        <h2 className="text-section-h2">{title}</h2>
         <div className="flex items-center gap-3 pb-1">
           {viewMoreSlug && (
             <Link
@@ -88,27 +67,16 @@ export function ProductCarousel({ title, products, viewMoreSlug, eyebrow }: Prod
         </div>
       </div>
 
-      {/* Cards scroll */}
+      {/* Cards — 14px gap matching prototype .product-grid */}
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
+        className="flex gap-[14px] overflow-x-auto scrollbar-hide scroll-smooth pb-4"
       >
         {products.map((product) => (
           <div key={product.id} className="flex-none w-[210px]">
             <ProductCard product={product} />
           </div>
         ))}
-      </div>
-
-      {/* Progress bar */}
-      <div className="h-[3px] rounded-full overflow-hidden mx-1 bg-light-gray/60">
-        <div
-          className="h-full rounded-full transition-all duration-150"
-          style={{
-            width: `${Math.max(8, progress * 100)}%`,
-            background: 'var(--soft-rose)',
-          }}
-        />
       </div>
     </section>
   );

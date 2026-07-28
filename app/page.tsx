@@ -6,20 +6,11 @@ import { CategoryRow } from '@/components/CategoryRow';
 import { TrustBar } from '@/components/TrustBar';
 import { HeroGrid } from '@/components/HeroGrid';
 import { SuggestionForm } from '@/components/SuggestionForm';
-import { ProductCard } from '@/components/ProductCard';
 import Link from 'next/link';
 import { ProductWithVariants, Category, Brand, Collection } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const eyebrows = [
-  'Community Favorites',
-  'Trending Now',
-  "Editor's Picks",
-  'Members Love',
-  'New Arrivals',
-];
 
 async function getHomePageData() {
   const supabase = supabasePublic;
@@ -101,12 +92,6 @@ export default async function Home() {
       };
     });
 
-  // Best sellers grid — products flagged as best sellers, or first 10 products
-  const bestSellers = visibleProducts
-    .filter(p => p.is_best_seller)
-    .slice(0, 10);
-  const gridProducts = bestSellers.length >= 5 ? bestSellers : visibleProducts.slice(0, 10);
-
   return (
     <div className="min-h-screen flex flex-col bg-off-white">
       <Header categories={categories} brands={brands} collections={collections} />
@@ -152,37 +137,17 @@ export default async function Home() {
         {/* Trust Bar */}
         <TrustBar />
 
-        {/* Best Sellers Grid */}
-        {gridProducts.length > 0 && (
-          <section className="py-20 px-[5%]">
-            <div className="flex justify-between items-end mb-10">
-              <h2 className="text-section-h2">Best Sellers</h2>
-              <Link href="/browse" className="text-[15px] font-bold text-coral hover:text-coral-hover transition-colors">
-                View All →
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {gridProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Collection product carousels */}
+        {/* Dynamic collection carousels — Best Sellers, New, Sale, etc. */}
         {collectionProducts.length > 0 && (
-          <div className="px-[5%]">
-            <div className="py-16 md:py-20 space-y-20 md:space-y-28">
-              {collectionProducts.map(({ collection, products }, index) => (
-                <ProductCarousel
-                  key={collection.id}
-                  title={collection.name}
-                  products={products}
-                  viewMoreSlug={collection.slug}
-                  eyebrow={eyebrows[index % eyebrows.length]}
-                />
-              ))}
-            </div>
+          <div className="space-y-[80px]" style={{ padding: '80px 5%' }}>
+            {collectionProducts.map(({ collection, products }) => (
+              <ProductCarousel
+                key={collection.id}
+                title={collection.name}
+                products={products}
+                viewMoreSlug={collection.slug}
+              />
+            ))}
           </div>
         )}
 
