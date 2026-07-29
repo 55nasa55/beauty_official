@@ -209,55 +209,7 @@
     color: var(--charcoal);
   }
 
-  /* Product card text styles (Manrope) */
-  .text-brand-label {
-    font-family: var(--font-body);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .text-product-name {
-    font-family: var(--font-body);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--charcoal);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .text-star-rating {
-    font-size: 11px;
-    color: var(--amber);
-  }
-  .text-review-count {
-    font-family: var(--font-body);
-    font-size: 10px;
-    font-weight: 400;
-    color: var(--gray);
-  }
-  .text-price-label {
-    font-family: var(--font-body);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--gray);
-    text-transform: uppercase;
-  }
-  .text-strike-price {
-    font-family: var(--font-body);
-    font-size: 11px;
-    font-weight: 400;
-    color: var(--gray);
-    text-decoration: line-through;
-  }
-  .text-member-price {
-    font-family: var(--font-body);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--coral);
-  }
+  /* (text styles moved to .brand / .product-name / .price-label / .strike-price / .member-price-val in the product section below) */
 }
 
 /* ============================================================
@@ -327,6 +279,7 @@
     cursor: pointer;
     transition: background 0.2s ease, transform 0.1s ease;
     white-space: nowrap;
+    width: 100%;
   }
   .btn-add:hover {
     background: var(--baby-blue-hover);
@@ -341,33 +294,7 @@
    ============================================================ */
 
 @layer components {
-  /* Savings badge — pill shape */
-  .badge-savings {
-    display: inline-flex;
-    align-items: center;
-    font-family: var(--font-body);
-    font-size: 12px;
-    font-weight: 700;
-    color: #ffffff;
-    background: var(--savings-red);
-    border-radius: 20px;
-    padding: 2px 10px;
-  }
-
-  /* "New" badge — sharp corners */
-  .badge-new {
-    display: inline-flex;
-    align-items: center;
-    font-family: var(--font-body);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--charcoal);
-    background: var(--blush-pink);
-    border-radius: 4px;
-    padding: 2px 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+  /* (badge styles moved to .badge.savings-badge / .badge.badge-new in the product section below) */
 
   /* Live indicator dot */
   .live-dot {
@@ -476,98 +403,101 @@
 }
 
 /* ============================================================
-   Product card — shared between carousel and grid
+   Product collection section — approved HTML source of truth
+   Class names and CSS values match the approved design exactly.
    ============================================================ */
 
+/* Section wrapper */
+.section {
+  /* Spacing between sections handled by parent container */
+}
+
+/* Section header — h2 left, View All link right */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+.section-header h2 {
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--charcoal);
+}
+.section-header a:hover {
+  color: var(--coral-hover);
+}
+
+/* Product grid — 5 equal columns on desktop, 14px gap */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Product card — exact approved HTML structure */
 .product-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--off-white);
+  background: white;
   border: 1px solid var(--light-gray);
   border-radius: 8px;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform .2s ease, box-shadow .2s ease;
+  text-decoration: none;
+  color: var(--charcoal);
 }
 .product-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-card-hover);
 }
 
-/* Compact variant — ~50% scale for hero mini-cards */
-.product-card-compact {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--off-white);
-  border: 1px solid var(--light-gray);
-  border-radius: 8px;
-  padding: 6px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-.product-card-compact:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(169, 201, 236, 0.25);
-}
-
-/* Image wrapper — bleeds to card edges via negative margin, 1:1 aspect ratio */
-.product-card__image {
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: 1 / 1;
-  margin: -10px -10px 10px -10px;
-  width: calc(100% + 20px);
-}
-.product-card-compact__image {
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: 1 / 1;
-  margin: -6px -6px 6px -6px;
-  width: calc(100% + 12px);
+/* Savings badge — pill, top-left */
+.badge.savings-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--savings-red);
+  border-radius: 20px;
+  padding: 2px 10px;
 }
 
-/* Pricing block — transparent 2-column with divider, pinned to card bottom */
-.product-card__pricing {
-  display: flex;
-  border-top: 1px solid var(--light-gray);
-  padding-top: 8px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  margin-top: auto;
-}
-.product-card-compact__pricing {
-  display: flex;
-  border-top: 1px solid var(--light-gray);
-  padding-top: 4px;
-  margin-top: auto;
-}
-.product-card__pricing-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.product-card__pricing-col--left {
-  padding-right: 12px;
-}
-.product-card__pricing-col--right {
-  padding-left: 12px;
-  border-left: 1px solid var(--light-gray);
-}
-.product-card-compact__pricing-col--left {
-  padding-right: 6px;
-}
-.product-card-compact__pricing-col--right {
-  padding-left: 6px;
-  border-left: 1px solid var(--light-gray);
+/* New badge — square, top-left when no savings */
+.badge.badge-new {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
 }
 
-/* Wishlist button — circular white, top-right of card */
-.product-card__wishlist {
+/* Wishlist button — circular white, top-right */
+.wish-btn {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -584,70 +514,156 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: border-color 0.2s ease;
 }
-.product-card__wishlist:hover {
+.wish-btn:hover {
   border-color: var(--coral);
 }
 
-/* Star row — amber stars + gray review count */
-.product-card__stars {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+/* Product image — bleeds to card edges, 1:1 aspect ratio */
+.product-image {
+  position: relative;
+  border-radius: 6px 6px 0 0;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  margin: -10px -10px 10px -10px;
+  width: calc(100% + 20px);
+}
+
+/* Brand label */
+.brand {
+  font-family: var(--font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gray);
+  letter-spacing: 0.5px;
+}
+
+/* Product name — fixed 2-line height */
+.product-name {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--charcoal);
+  line-height: 1.4;
+  height: 34px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Star rating */
+.stars {
+  font-size: 11px;
+  color: var(--amber);
   margin-bottom: 8px;
   min-height: 16px;
 }
-.product-card__star {
-  font-size: 11px;
+.stars .star-empty {
   color: var(--light-gray);
 }
-.product-card__star--filled {
-  color: var(--amber);
-}
-.product-card__review-count {
+.stars .review-count {
   font-family: var(--font-body);
   font-size: 10px;
   font-weight: 400;
   color: var(--gray);
-  margin-left: 2px;
+  margin-left: 4px;
 }
 
-/* Badge positioning — top-left of card, above image */
-.product-card__badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 20;
+/* Pricing container — 2-column with divider */
+.pricing-container {
+  display: flex;
+  border-top: 1px solid var(--light-gray);
+  padding: 8px 0;
+  margin-top: auto;
+  margin-bottom: 10px;
+}
+.price-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.price-col.retail {
+  padding-right: 12px;
+}
+.price-col.member {
+  padding-left: 12px;
+  border-left: 1px solid var(--light-gray);
+}
+.price-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray);
+  text-transform: uppercase;
+}
+.strike-price {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--gray);
+  text-decoration: line-through;
+}
+.member-price-val {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--coral);
 }
 
-/* Compact badge — smaller scale for hero mini-cards */
+/* ---- Compact variant (hero mini-cards, not part of approved HTML) ---- */
+.product-card-compact {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--off-white);
+  border: 1px solid var(--light-gray);
+  border-radius: 8px;
+  padding: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  text-decoration: none;
+  color: var(--charcoal);
+}
+.product-card-compact:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(169, 201, 236, 0.25);
+}
+.product-card-compact__image {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  margin: -6px -6px 6px -6px;
+  width: calc(100% + 12px);
+}
+.product-card-compact__pricing {
+  display: flex;
+  border-top: 1px solid var(--light-gray);
+  padding-top: 4px;
+  margin-top: auto;
+}
+.product-card-compact__pricing-col--left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 6px;
+}
+.product-card-compact__pricing-col--right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 6px;
+  border-left: 1px solid var(--light-gray);
+}
 .product-card-compact__badge {
   position: absolute;
   top: 8px;
   left: 8px;
   z-index: 20;
-}
-
-/* Carousel track — flex row with 5 equal cards on desktop (matches .product-grid gap:14px) */
-.carousel-track {
-  display: flex;
-  gap: 14px;
-}
-.carousel-card {
-  flex: 1 1 0;
-  min-width: 0;
-}
-@media (max-width: 768px) {
-  .carousel-track {
-    overflow-x: auto;
-  }
-  .carousel-card {
-    flex: 0 0 45%;
-  }
-}
-@media (max-width: 480px) {
-  .carousel-card {
-    flex: 0 0 85%;
-  }
 }
 
 /* ============================================================

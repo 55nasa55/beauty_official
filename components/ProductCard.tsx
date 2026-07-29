@@ -73,88 +73,57 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
     }
   };
 
-  // ---- Compact variant (hero mini-cards) ----
+  // ---- Compact variant (hero mini-cards, not part of approved HTML) ----
   if (variant === 'compact') {
     return (
-      <Link
-        href={`/product/${product.slug}`}
-        className="product-card-compact group"
-      >
+      <Link href={`/product/${product.slug}`} className="product-card-compact group">
         {savings > 0 && (
-          <span
-            className="badge-savings product-card-compact__badge"
-            style={{ fontSize: 9, padding: '3px 8px' }}
-          >
+          <div className="badge savings-badge product-card-compact__badge" style={{ fontSize: 9, padding: '3px 8px' }}>
             Save ${savings.toFixed(0)}
-          </span>
+          </div>
         )}
-
         <div className="product-card-compact__image">
-          <Image
-            src={defaultVariant.images?.[0] || '/placeholder.jpg'}
-            alt={product.name}
-            fill
-            className="object-cover"
-          />
+          <Image src={defaultVariant.images?.[0] || '/placeholder.jpg'} alt={product.name} fill className="object-cover" />
         </div>
-
         {product.brand && (
-          <div className="text-brand-label" style={{ fontSize: 8 }}>
-            {product.brand.name}
-          </div>
+          <div className="brand" style={{ fontSize: 8 }}>{product.brand.name}</div>
         )}
-
-        <p
-          className="text-product-name"
-          style={{ fontSize: 10, lineHeight: '1.3', marginBottom: 4, marginTop: 2 }}
-        >
+        <div className="product-name" style={{ fontSize: 10, height: 'auto', marginBottom: 4, marginTop: 2 }}>
           {product.name}
-        </p>
-
+        </div>
         <div className="product-card-compact__pricing">
-          <div className="product-card__pricing-col product-card-compact__pricing-col--left">
-            <span className="text-price-label" style={{ fontSize: 8, marginBottom: 2 }}>Retail</span>
-            <span className="text-strike-price" style={{ fontSize: 9 }}>
-              ${retailPrice.toFixed(2)}
-            </span>
+          <div className="product-card-compact__pricing-col--left">
+            <span className="price-label" style={{ fontSize: 8, marginBottom: 2 }}>Retail</span>
+            <span className="strike-price" style={{ fontSize: 9 }}>${retailPrice.toFixed(2)}</span>
           </div>
-          <div className="product-card__pricing-col product-card-compact__pricing-col--right">
-            <span className="text-price-label" style={{ fontSize: 8, marginBottom: 2 }}>Member</span>
-            <span className="text-member-price" style={{ fontSize: 12 }}>
-              {memberPrice ? `$${memberPrice.toFixed(2)}` : `$${retailPrice.toFixed(2)}`}
-            </span>
+          <div className="product-card-compact__pricing-col--right">
+            <span className="price-label" style={{ fontSize: 8, marginBottom: 2 }}>Member</span>
+            <div className="member-price-val" style={{ fontSize: 12 }}>
+              {memberPrice ? `${memberPrice.toFixed(2)}` : `${retailPrice.toFixed(2)}`}
+            </div>
           </div>
         </div>
       </Link>
     );
   }
 
-  // ---- Default variant ----
+  // ---- Default variant — direct conversion of approved HTML ----
   return (
-    <Link
-      href={`/product/${product.slug}`}
-      className="product-card group"
-    >
-      {/* Savings badge — pink pill, top-left */}
+    <Link href={`/product/${product.slug}`} className="product-card group">
+      {/* badge savings-badge */}
       {savings > 0 && (
-        <span className="badge-savings product-card__badge">
-          Save ${savings.toFixed(2)}
-        </span>
+        <div className="badge savings-badge">Save ${savings.toFixed(2)}</div>
       )}
 
-      {/* New badge — blush-pink square, top-left when no savings */}
+      {/* badge badge-new — shown when no savings badge */}
       {product.is_new && savings === 0 && (
-        <span className="badge-new product-card__badge">NEW</span>
+        <div className="badge badge-new">NEW</div>
       )}
 
-      {/* Wishlist button — circular white, top-right */}
+      {/* wish-btn */}
       <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setWished(!wished);
-        }}
-        className="product-card__wishlist"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWished(!wished); }}
+        className="wish-btn"
         aria-label="Add to wishlist"
       >
         <Heart
@@ -166,8 +135,8 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
         />
       </button>
 
-      {/* Product image — bleeds to card edges, 1:1 aspect ratio */}
-      <div className="product-card__image">
+      {/* product-image */}
+      <div className="product-image">
         <Image
           src={defaultVariant.images?.[0] || '/placeholder.jpg'}
           alt={product.name}
@@ -176,48 +145,42 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
         />
       </div>
 
-      {/* Brand */}
+      {/* brand */}
       {product.brand && (
-        <div className="text-brand-label">{product.brand.name}</div>
+        <div className="brand">{product.brand.name}</div>
       )}
 
-      {/* Product name — 2-line reserved height */}
-      <div className="text-product-name">{product.name}</div>
+      {/* product-name */}
+      <div className="product-name">{product.name}</div>
 
-      {/* Star rating — reserved height even when absent */}
-      <div className="product-card__stars">
-        {hasReviews && (
+      {/* stars */}
+      <div className="stars">
+        {hasReviews ? (
           <>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <span
-                key={i}
-                className={`product-card__star ${i <= ratingRounded ? 'product-card__star--filled' : ''}`}
-              >
-                ★
-              </span>
-            ))}
-            <span className="product-card__review-count">
-              ({product.review_count!.toLocaleString()})
-            </span>
+            {'★'.repeat(ratingRounded)}
+            <span className="star-empty">{'★'.repeat(5 - ratingRounded)}</span>
+            <span className="review-count">({product.review_count!.toLocaleString()})</span>
           </>
+        ) : (
+          <span className="star-empty">★★★★★</span>
         )}
       </div>
 
-      {/* Transparent pricing — 2-column with divider */}
-      <div className="product-card__pricing">
-        <div className="product-card__pricing-col product-card__pricing-col--left">
-          <span className="text-price-label">Retail</span>
-          <span className="text-strike-price">${retailPrice.toFixed(2)}</span>
+      {/* pricing-container */}
+      <div className="pricing-container">
+        <div className="price-col retail">
+          <span className="price-label">Retail</span>
+          <span className="strike-price">${retailPrice.toFixed(2)}</span>
         </div>
-        <div className="product-card__pricing-col product-card__pricing-col--right">
-          <span className="text-price-label">Member Price</span>
-          <span className="text-member-price">
+        <div className="price-col member">
+          <span className="price-label">Member Price</span>
+          <div className="member-price-val">
             {memberPrice ? `$${memberPrice.toFixed(2)}` : `$${retailPrice.toFixed(2)}`}
-          </span>
+          </div>
         </div>
       </div>
 
-      {/* Add to Bag button */}
+      {/* btn-add */}
       <button
         onClick={handleAddToCart}
         disabled={isOutOfStock || isAdding}
