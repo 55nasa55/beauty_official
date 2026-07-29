@@ -322,7 +322,7 @@ export default function AboutPage() {
 
         {/* How It Works */}
         <div className="how-section" style={{ padding: "100px 5%", maxWidth: "1100px", margin: "0 auto" }}>
-          <div className="section-header text-center" style={{ marginBottom: "64px" }}>
+          <div className="section-header text-center" style={{ marginBottom: "64px", display: 'block', textAlign: 'center' }}>
             <p
               className="label"
               style={{
@@ -463,7 +463,7 @@ export default function AboutPage() {
           }}
         >
           <div className="values-inner" style={{ maxWidth: "1100px", margin: "0 auto" }}>
-            <div className="section-header text-center">
+            <div className="section-header text-center" style={{ display: 'block', textAlign: 'center' }}>
               <p
                 className="label"
                 style={{
