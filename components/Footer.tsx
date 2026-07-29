@@ -2,17 +2,43 @@ import Link from 'next/link';
 import { Instagram, Twitter, Music2 } from 'lucide-react';
 import { CosClubLogo } from './CosClubLogo';
 
+const shopLinks = [
+  { label: 'Skincare', href: '/collections/skincare' },
+  { label: 'Makeup', href: '/collections/makeup' },
+  { label: 'K-Beauty', href: '/collections/korean-beauty' },
+  { label: 'J-Beauty', href: '/collections/japanese-beauty' },
+  { label: 'Sale', href: '/collections/sale', sale: true },
+  { label: 'Shop All', href: '/browse' },
+];
+
+const helpLinks = [
+  { label: 'FAQ', href: '/faq' },
+  { label: 'Shipping & Returns', href: '/shipping-policy' },
+  { label: 'Contact Us', href: '/contact' },
+];
+
+const companyLinks = [
+  { label: 'About Us', href: '/about' },
+  { label: 'Membership Terms', href: '/terms-of-service' },
+  { label: 'Privacy Policy', href: '/privacy-policy' },
+];
+
 export function Footer() {
   return (
     <footer className="bg-charcoal text-off-white" style={{ padding: '80px 5%' }}>
-      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr] gap-[60px] max-w-[1400px] mx-auto">
-        {/* Brand column */}
-        <div>
+      <div
+        className="grid grid-cols-2 md:grid-cols-4 max-w-[1400px] mx-auto"
+        style={{ gap: '40px 80px' }}
+      >
+        {/* CosClub column */}
+        <div className="col-span-2 md:col-span-1 flex flex-col">
           <div className="mb-6">
             <CosClubLogo height={40} />
           </div>
-          <p className="text-footer-body">Curated beauty, at prices you deserve.</p>
-          <div className="flex gap-4 mt-5">
+          <p className="text-footer-body" style={{ lineHeight: 1.6, marginBottom: 24 }}>
+            Curated beauty, at prices you deserve.
+          </p>
+          <div className="flex gap-4">
             <a
               href="#"
               aria-label="Instagram"
@@ -38,33 +64,52 @@ export function Footer() {
         </div>
 
         {/* Shop column */}
-        <div>
+        <div className="flex flex-col">
           <h3 className="text-footer-h3 mb-6">Shop</h3>
-          <Link href="/collections/skincare" className="text-footer-body hover:text-blush-pink transition-colors">Skincare</Link>
-          <Link href="/collections/makeup" className="text-footer-body hover:text-blush-pink transition-colors">Makeup</Link>
-          <Link href="/collections/korean-beauty" className="text-footer-body hover:text-blush-pink transition-colors">K-Beauty</Link>
-          <Link href="/collections/japanese-beauty" className="text-footer-body hover:text-blush-pink transition-colors">J-Beauty</Link>
-          <Link href="/collections/sale" className="text-footer-body hover:text-blush-pink transition-colors" style={{ color: 'var(--coral)' }}>Sale</Link>
-          <Link href="/browse" className="text-footer-body hover:text-blush-pink transition-colors">Shop All</Link>
+          <nav className="flex flex-col gap-4">
+            {shopLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-footer-body hover:text-blush-pink transition-colors"
+                style={item.sale ? { color: 'var(--coral)' } : undefined}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
         {/* Help column */}
-        <div>
+        <div className="flex flex-col">
           <h3 className="text-footer-h3 mb-6">Help</h3>
-          <Link href="/faq" className="text-footer-body hover:text-blush-pink transition-colors">FAQ</Link>
-          <Link href="/shipping-policy" className="text-footer-body hover:text-blush-pink transition-colors">Shipping &amp; Returns</Link>
-          <Link href="/return-policy" className="text-footer-body hover:text-blush-pink transition-colors">Return Policy</Link>
-          <Link href="/why-prices-are-lower" className="text-footer-body hover:text-blush-pink transition-colors">How Pricing Works</Link>
-          <Link href="/contact" className="text-footer-body hover:text-blush-pink transition-colors">Contact Us</Link>
+          <nav className="flex flex-col gap-4">
+            {helpLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-footer-body hover:text-blush-pink transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
         {/* Company column */}
-        <div>
+        <div className="flex flex-col">
           <h3 className="text-footer-h3 mb-6">Company</h3>
-          <Link href="/about" className="text-footer-body hover:text-blush-pink transition-colors">About Us</Link>
-          <Link href="/terms-of-service" className="text-footer-body hover:text-blush-pink transition-colors">Terms of Service</Link>
-          <Link href="/privacy-policy" className="text-footer-body hover:text-blush-pink transition-colors">Privacy Policy</Link>
-          <Link href="/admin/login" className="text-footer-body hover:text-blush-pink transition-colors">Admin</Link>
+          <nav className="flex flex-col gap-4">
+            {companyLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-footer-body hover:text-blush-pink transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

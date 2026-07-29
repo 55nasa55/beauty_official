@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
-import { Menu, X, Search, Heart, ShoppingBag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, X, Search, Heart } from 'lucide-react';
 import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
@@ -28,40 +28,17 @@ export function Header({ categories, brands, collections }: HeaderProps) {
   const { user } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showMegaMenu, setShowMegaMenu] = useState(false);
-  const megaMenuRef = useRef<HTMLDivElement>(null);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleMegaMenuEnter = () => {
-    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-    setShowMegaMenu(true);
-  };
-
-  const handleMegaMenuLeave = () => {
-    closeTimeoutRef.current = setTimeout(() => setShowMegaMenu(false), 150);
-  };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (megaMenuRef.current && !megaMenuRef.current.contains(event.target as Node)) {
-        setShowMegaMenu(false);
-      }
-    };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setShowMegaMenu(false);
         setShowSearch(false);
+        setShowMobileMenu(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
+    return () => document.removeEventListener('keydown', handleEscape);
   }, []);
-
-  useEffect(() => () => { if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current); }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-off-white">
@@ -93,33 +70,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
 
             {/* Center nav — desktop */}
             <nav className="hidden md:flex items-center gap-7 flex-1 justify-center">
-              <div
-                ref={megaMenuRef}
-                onMouseEnter={handleMegaMenuEnter}
-                onMouseLeave={handleMegaMenuLeave}
-                className="relative"
-              >
-                <button className="text-nav-link transition-colors">
-                  Skincare
-                </button>
-                {showMegaMenu && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-[520px] rounded-card border border-light-gray shadow-popover p-6 z-50 bg-off-white">
-                    <div className="grid grid-cols-2 gap-3">
-                      {categories.map((category) => (
-                        <Link
-                          key={category.id}
-                          href={`/collections/${category.slug}`}
-                          className="text-[13px] text-charcoal hover:text-coral transition-colors py-1.5 px-2 rounded-card hover:bg-blush-pink/10"
-                          onClick={() => setShowMegaMenu(false)}
-                        >
-                          {category.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              {primaryNavItems.filter((_, i) => i !== 0).map((item) => (
+              {primaryNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
