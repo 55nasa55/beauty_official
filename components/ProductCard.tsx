@@ -16,29 +16,6 @@ interface ProductCardProps {
   variant?: 'default' | 'compact';
 }
 
-function StarRow({ rating, count }: { rating: number; count: number }) {
-  return (
-    <div className="flex items-center gap-0.5 mb-2">
-      {[1, 2, 3, 4, 5].map((i) => {
-        const filled = i <= Math.floor(rating);
-        const half = !filled && rating >= i - 0.5;
-        return (
-          <span
-            key={i}
-            className="text-[11px]"
-            style={{ color: filled || half ? '#f59e0b' : '#E0E0E0' }}
-          >
-            ★
-          </span>
-        );
-      })}
-      {count > 0 && (
-        <span className="text-[10px] text-gray ml-0.5">({count.toLocaleString()})</span>
-      )}
-    </div>
-  );
-}
-
 export function ProductCard({ product, variant = 'default' }: ProductCardProps) {
   const { user } = useAuth();
   const { isMember, loading } = useMembership();
@@ -56,6 +33,8 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
   const retailPrice = defaultVariant.price;
   const savings = memberPrice ? retailPrice - memberPrice : 0;
   const isOutOfStock = defaultVariant.stock <= 0;
+  const hasReviews = (product.review_count ?? 0) > 0 && product.average_rating;
+  const ratingRounded = hasReviews ? Math.round(product.average_rating!) : 0;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -94,21 +73,23 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
     }
   };
 
-  // ---- Compact variant (hero mini-cards): ~50% scale of the default card ----
+  // ---- Compact variant (hero mini-cards) ----
   if (variant === 'compact') {
     return (
       <Link
         href={`/product/${product.slug}`}
-        className="group relative flex flex-col bg-white border border-light-gray rounded-card overflow-hidden cursor-pointer transition-transform duration-200 hover:-translate-y-[3px]"
-        style={{ padding: '6px' }}
-        onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 6px 16px rgba(169,201,236,0.25)')}
-        onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
+        className="product-card-compact group"
       >
-        {/* Image — negative margin to bleed to card edges, 1:1 aspect ratio */}
-        <div
-          className="relative overflow-hidden"
-          style={{ aspectRatio: '1 / 1', margin: '-6px -6px 6px -6px', width: 'calc(100% + 12px)' }}
-        >
+        {savings > 0 && (
+          <span
+            className="badge-savings product-card-compact__badge"
+            style={{ fontSize: 9, padding: '3px 8px' }}
+          >
+            Save ${savings.toFixed(0)}
+          </span>
+        )}
+
+        <div className="product-card-compact__image">
           <Image
             src={defaultVariant.images?.[0] || '/placeholder.jpg'}
             alt={product.name}
@@ -117,27 +98,29 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
           />
         </div>
 
-        {/* Brand */}
         {product.brand && (
-          <div className="text-[8px] text-gray font-bold uppercase tracking-wide mb-0.5">
+          <div className="text-brand-label" style={{ fontSize: 8 }}>
             {product.brand.name}
           </div>
         )}
 
-        {/* Product name */}
-        <p className="m-0 mb-1 font-semibold text-[10px] leading-[1.3]">
+        <p
+          className="text-product-name"
+          style={{ fontSize: 10, lineHeight: '1.3', marginBottom: 4, marginTop: 2 }}
+        >
           {product.name}
         </p>
 
-        {/* Pricing — transparent 2-column layout */}
-        <div className="flex border-t border-light-gray pt-1 mb-0 mt-auto">
-          <div className="flex-1 flex flex-col justify-center pr-1.5">
-            <span className="text-[8px] uppercase text-gray font-bold mb-1 tracking-wide">Retail</span>
-            <span className="text-[9px] text-gray line-through">${retailPrice.toFixed(2)}</span>
+        <div className="product-card-compact__pricing">
+          <div className="product-card__pricing-col product-card-compact__pricing-col--left">
+            <span className="text-price-label" style={{ fontSize: 8, marginBottom: 2 }}>Retail</span>
+            <span className="text-strike-price" style={{ fontSize: 9 }}>
+              ${retailPrice.toFixed(2)}
+            </span>
           </div>
-          <div className="flex-1 flex flex-col justify-center pl-1.5 border-l border-light-gray">
-            <span className="text-[8px] uppercase text-gray font-bold mb-1 tracking-wide">Member</span>
-            <span className="text-[12px] text-coral font-bold">
+          <div className="product-card__pricing-col product-card-compact__pricing-col--right">
+            <span className="text-price-label" style={{ fontSize: 8, marginBottom: 2 }}>Member</span>
+            <span className="text-member-price" style={{ fontSize: 12 }}>
               {memberPrice ? `$${memberPrice.toFixed(2)}` : `$${retailPrice.toFixed(2)}`}
             </span>
           </div>
@@ -146,49 +129,32 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
     );
   }
 
-  // ---- Default variant — faithful recreation of .product-card from the HTML ----
+  // ---- Default variant ----
   return (
     <Link
       href={`/product/${product.slug}`}
-      className="group relative flex flex-col bg-white border border-light-gray rounded-card overflow-hidden cursor-pointer transition-transform duration-200 hover:-translate-y-1"
-      style={{ padding: '10px' }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 8px 20px rgba(169,201,236,0.25)')}
-      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
+      className="product-card group"
     >
-      {/* Savings badge — top-left, pink pill */}
+      {/* Savings badge — pink pill, top-left */}
       {savings > 0 && (
-        <div
-          className="absolute z-20 text-[12px] font-bold px-3 py-1.5 rounded-savings text-white"
-          style={{
-            background: '#FF3366',
-            top: '12px',
-            left: '12px',
-            boxShadow: '0 4px 10px rgba(255,51,102,0.3)',
-          }}
-        >
+        <span className="badge-savings product-card__badge">
           Save ${savings.toFixed(2)}
-        </div>
+        </span>
       )}
 
-      {/* New badge — charcoal, square corner, top-left when no savings */}
+      {/* New badge — blush-pink square, top-left when no savings */}
       {product.is_new && savings === 0 && (
-        <div
-          className="absolute z-20 text-[12px] font-bold px-3 py-1.5 rounded-new-badge text-white"
-          style={{ background: 'var(--charcoal)', top: '12px', left: '12px' }}
-        >
-          NEW
-        </div>
+        <span className="badge-new product-card__badge">NEW</span>
       )}
 
-      {/* Wishlist button — top-right, circular white */}
+      {/* Wishlist button — circular white, top-right */}
       <button
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setWished(!wished);
         }}
-        className="absolute z-20 w-[34px] h-[34px] rounded-full bg-white border-[1.5px] border-light-gray flex items-center justify-center transition-all hover:border-coral"
-        style={{ top: '12px', right: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+        className="product-card__wishlist"
         aria-label="Add to wishlist"
       >
         <Heart
@@ -200,15 +166,8 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
         />
       </button>
 
-      {/* Product image — bleeds to card edges via negative margin, 1:1 aspect ratio */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          aspectRatio: '1 / 1',
-          margin: '-10px -10px 10px -10px',
-          width: 'calc(100% + 20px)',
-        }}
-      >
+      {/* Product image — bleeds to card edges, 1:1 aspect ratio */}
+      <div className="product-card__image">
         <Image
           src={defaultVariant.images?.[0] || '/placeholder.jpg'}
           alt={product.name}
@@ -219,42 +178,50 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
 
       {/* Brand */}
       {product.brand && (
-        <div className="text-[10px] text-gray uppercase tracking-wide font-bold">
-          {product.brand.name}
-        </div>
+        <div className="text-brand-label">{product.brand.name}</div>
       )}
 
-      {/* Product name — 2-line reserved height for alignment */}
-      <div className="font-semibold my-[3px] text-[12px] leading-[1.4] h-[34px] overflow-hidden">
-        {product.name}
-      </div>
+      {/* Product name — 2-line reserved height */}
+      <div className="text-product-name">{product.name}</div>
 
       {/* Star rating — reserved height even when absent */}
-      <div className="min-h-[16px] mb-2">
-        {(product.review_count ?? 0) > 0 && product.average_rating && (
-          <StarRow rating={product.average_rating} count={product.review_count!} />
+      <div className="product-card__stars">
+        {hasReviews && (
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <span
+                key={i}
+                className={`product-card__star ${i <= ratingRounded ? 'product-card__star--filled' : ''}`}
+              >
+                ★
+              </span>
+            ))}
+            <span className="product-card__review-count">
+              ({product.review_count!.toLocaleString()})
+            </span>
+          </>
         )}
       </div>
 
-      {/* Transparent pricing UI — 2-column with divider, pinned to bottom via mt-auto */}
-      <div className="flex border-t border-light-gray py-2 mb-2.5 mt-auto">
-        <div className="flex-1 flex flex-col justify-center pr-3">
-          <span className="text-[11px] uppercase text-gray font-bold mb-1 tracking-wide">Retail</span>
-          <span className="text-[11px] text-gray line-through">${retailPrice.toFixed(2)}</span>
+      {/* Transparent pricing — 2-column with divider */}
+      <div className="product-card__pricing">
+        <div className="product-card__pricing-col product-card__pricing-col--left">
+          <span className="text-price-label">Retail</span>
+          <span className="text-strike-price">${retailPrice.toFixed(2)}</span>
         </div>
-        <div className="flex-1 flex flex-col justify-center pl-3 border-l border-light-gray">
-          <span className="text-[11px] uppercase text-gray font-bold mb-1 tracking-wide">Member Price</span>
-          <div className="text-[14px] text-coral font-bold">
+        <div className="product-card__pricing-col product-card__pricing-col--right">
+          <span className="text-price-label">Member Price</span>
+          <span className="text-member-price">
             {memberPrice ? `$${memberPrice.toFixed(2)}` : `$${retailPrice.toFixed(2)}`}
-          </div>
+          </span>
         </div>
       </div>
 
-      {/* Add to Bag button — full width, baby-blue */}
+      {/* Add to Bag button */}
       <button
         onClick={handleAddToCart}
         disabled={isOutOfStock || isAdding}
-        className="w-full py-3.5 rounded-button font-body font-bold text-[15px] bg-baby-blue text-charcoal hover:bg-baby-blue-hover transition-colors disabled:opacity-50"
+        className="btn-add"
       >
         {isOutOfStock ? 'Sold Out' : isAdding ? 'Adding…' : 'Add to Bag'}
       </button>
