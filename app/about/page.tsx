@@ -1,12 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { Category, Brand, Collection } from "@/lib/database.types";
-import { ShoppingBag, Tag, Monitor, Shield, Check } from "lucide-react";
+import {
+  Tag,
+  Package,
+  Truck,
+  Heart,
+  UserPlus,
+  ShoppingBag,
+  ShieldCheck,
+  Eye,
+  Users,
+  RefreshCw,
+} from "lucide-react";
 
 export default function AboutPage() {
   const router = useRouter();
@@ -35,215 +47,594 @@ export default function AboutPage() {
       <Header categories={categories} brands={brands} collections={collections} />
 
       <main className="flex-1">
+        {/* Hero */}
+        <div
+          className="hero text-center"
+          style={{
+            background: "linear-gradient(135deg, var(--blush-pink) 0%, var(--soft-rose) 100%)",
+            padding: "100px 5% 80px",
+          }}
+        >
+          <p
+            className="hero-eyebrow"
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              letterSpacing: "2px",
+              textTransform: "uppercase",
+              color: "var(--charcoal)",
+              opacity: 0.6,
+              marginBottom: "20px",
+            }}
+          >
+            About CosClub
+          </p>
+          <h1
+            className="font-heading"
+            style={{
+              fontSize: "52px",
+              fontWeight: 700,
+              lineHeight: 1.15,
+              color: "var(--charcoal)",
+              marginBottom: "24px",
+            }}
+          >
+            Health &amp; beauty products
+            <br />
+            shouldn&apos;t cost this much.
+          </h1>
+          <p
+            style={{
+              fontSize: "18px",
+              color: "var(--charcoal)",
+              opacity: 0.75,
+              maxWidth: "560px",
+              margin: "0 auto",
+              lineHeight: 1.7,
+            }}
+          >
+            We built CosClub because great skincare deserves to be accessible — not a luxury. A
+            membership built on fair prices, not markups.
+          </p>
+        </div>
 
-        {/* SECTION 1 - HERO */}
-        <section className="w-full py-24">
-          <div className="max-w-[1200px] mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Beauty Shopping, Reimagined.
-              </h1>
-              <p className="text-xl md:text-2xl text-gray-700 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                CosClub is a membership-based beauty shopping destination focused on better prices, trusted products, and a smoother online shopping experience.
-              </p>
-            </div>
-
-            <div className="relative h-[400px] lg:h-[500px] rounded-2xl overflow-hidden">
-              <img
-                src="https://images.pexels.com/photos/3762879/pexels-photo-3762879.jpeg?auto=compress&cs=tinysrgb&w=1200"
-                alt="Beauty shopping"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION 2 - STORY & GOAL */}
-        <section className="w-full py-24">
-          <div className="max-w-[1200px] mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            
-            <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-                We created CosClub…
-              </h2>
-              <p className="text-lg text-gray-700 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                We created CosClub for shoppers who love beauty and skincare but are tired of overpaying. Our goal is to make it easier to shop quality products at prices that feel fair.
-              </p>
-            </div>
-
-<div className="w-full flex justify-center py-12 overflow-hidden">
-              <img
-                src="https://www.shutterstock.com/image-vector/illustration-id-card-gift-ribbon-260nw-2693886509.jpg"
-                alt="Pricing Illustration"
-                className="w-full max-w-[360px] object-contain"
+        {/* Story */}
+        <div
+          className="story-section grid grid-cols-1 md:grid-cols-2"
+          style={{
+            gap: "80px",
+            alignItems: "center",
+            maxWidth: "1100px",
+            margin: "0 auto",
+            padding: "100px 5%",
+          }}
+        >
+          {/* Story Visual (left in HTML) */}
+          <div
+            className="story-visual flex flex-col"
+            style={{
+              background: "linear-gradient(135deg, #f5f9fe, var(--blush-pink))",
+              borderRadius: "20px",
+              padding: "48px 40px",
+              gap: "28px",
+            }}
+          >
+            <div className="stat-item flex items-center" style={{ gap: "20px" }}>
+              <div
+                className="stat-icon flex items-center justify-center"
                 style={{
-                  clipPath: "inset(0 0 50px 0)",
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "12px",
+                  background: "white",
+                  color: "var(--soft-rose)",
+                  flexShrink: 0,
+                  boxShadow: "0 4px 12px rgba(169,201,236,0.25)",
                 }}
-              />
+              >
+                <Tag size={22} />
+              </div>
+              <div className="stat-text">
+                <div
+                  className="stat-num font-heading"
+                  style={{ fontSize: "26px", fontWeight: 700, color: "var(--charcoal)" }}
+                >
+                  Up to 40%
+                </div>
+                <div className="stat-desc" style={{ fontSize: "13px", color: "var(--gray)", marginTop: "2px" }}>
+                  Off retail price, every day
+                </div>
+              </div>
             </div>
 
-          </div>
-        </section>
-
-        {/* SECTION 3 - WHAT MAKES US DIFFERENT */}
-        <section className="w-full py-24" style={{ backgroundColor: "#F4F9FF" }}>
-          <div className="max-w-[1200px] mx-auto px-4">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-16" style={{ fontFamily: "'Playfair Display', serif" }}>
-              What Makes Us Different
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  <ShoppingBag size={48} style={{ color: "#9DCBF3" }} strokeWidth={1.5} />
-                </div>
-                <h4 className="text-xl font-bold mb-3" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Curated beauty-focused catalog
-                </h4>
-                <p className="text-gray-600 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  We focus on products that our customers actually want, not everything under the sun.
-                </p>
+            <div className="stat-item flex items-center" style={{ gap: "20px" }}>
+              <div
+                className="stat-icon flex items-center justify-center"
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "12px",
+                  background: "white",
+                  color: "var(--soft-rose)",
+                  flexShrink: 0,
+                  boxShadow: "0 4px 12px rgba(169,201,236,0.25)",
+                }}
+              >
+                <Package size={22} />
               </div>
-
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  <Tag size={48} style={{ color: "#9DCBF3" }} strokeWidth={1.5} />
+              <div className="stat-text">
+                <div
+                  className="stat-num font-heading"
+                  style={{ fontSize: "26px", fontWeight: 700, color: "var(--charcoal)" }}
+                >
+                  $6.99 / mo
                 </div>
-                <h4 className="text-xl font-bold mb-3" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Member pricing for better value
-                </h4>
-                <p className="text-gray-600 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Our membership model allows us to offer better prices to our loyal customers.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  <Monitor size={48} style={{ color: "#9DCBF3" }} strokeWidth={1.5} />
+                <div className="stat-desc" style={{ fontSize: "13px", color: "var(--gray)", marginTop: "2px" }}>
+                  Membership — cancel anytime
                 </div>
-                <h4 className="text-xl font-bold mb-3" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  A clean, easy-to-shop experience
-                </h4>
-                <p className="text-gray-600 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  We designed our site to be intuitive, fast, and enjoyable to use.
-                </p>
               </div>
-
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  <Shield size={48} style={{ color: "#9DCBF3" }} strokeWidth={1.5} />
-                </div>
-                <h4 className="text-xl font-bold mb-3" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Transparent savings throughout the site
-                </h4>
-                <p className="text-gray-600 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  We show you exactly what you save as a member, with no hidden tricks.
-                </p>
-              </div>
-
             </div>
 
-            <p className="text-lg text-center text-gray-700 max-w-[900px] mx-auto leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
-              We are building a store designed for both everyday customers and frequent buyers who want consistency, value, and convenience.
-            </p>
-          </div>
-        </section>
-
-        {/* SECTION 4 - MISSION */}
-        <section className="w-full py-24">
-          <div className="max-w-[1000px] mx-auto px-4 text-center">
-            <h2 className="text-4xl md:text-5xl font-bold mb-8" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Our Mission
-            </h2>
-            <p className="text-2xl md:text-3xl text-gray-800 leading-relaxed font-light" style={{ fontFamily: "'Playfair Display', serif" }}>
-              To make beauty shopping more affordable and more enjoyable through smart pricing, curated products, and a membership model that puts value first.
-            </p>
-          </div>
-        </section>
-
-        {/* SECTION 5 - OUR APPROACH */}
-        <section className="w-full py-24" style={{ backgroundColor: "#FAFAFA" }}>
-          <div className="max-w-[1000px] mx-auto px-4">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Our Approach
-            </h2>
-            <p className="text-xl text-center text-gray-700 mb-12" style={{ fontFamily: "'Inter', sans-serif" }}>
-              We believe great shopping comes from:
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-[800px] mx-auto">
-
-              <div className="flex items-start gap-4">
-                <Check size={24} style={{ color: "#9DCBF3" }} strokeWidth={2.5} />
-                <span className="text-lg text-gray-800" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Clear pricing
-                </span>
+            <div className="stat-item flex items-center" style={{ gap: "20px" }}>
+              <div
+                className="stat-icon flex items-center justify-center"
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "12px",
+                  background: "white",
+                  color: "var(--soft-rose)",
+                  flexShrink: 0,
+                  boxShadow: "0 4px 12px rgba(169,201,236,0.25)",
+                }}
+              >
+                <Truck size={22} />
               </div>
-
-              <div className="flex items-start gap-4">
-                <Check size={24} style={{ color: "#9DCBF3" }} strokeWidth={2.5} />
-                <span className="text-lg text-gray-800" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Easy navigation
-                </span>
+              <div className="stat-text">
+                <div
+                  className="stat-num font-heading"
+                  style={{ fontSize: "26px", fontWeight: 700, color: "var(--charcoal)" }}
+                >
+                  Free shipping
+                </div>
+                <div className="stat-desc" style={{ fontSize: "13px", color: "var(--gray)", marginTop: "2px" }}>
+                  On member orders over $55
+                </div>
               </div>
+            </div>
 
-              <div className="flex items-start gap-4">
-                <Check size={24} style={{ color: "#9DCBF3" }} strokeWidth={2.5} />
-                <span className="text-lg text-gray-800" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Reliable fulfillment
-                </span>
+            <div className="stat-item flex items-center" style={{ gap: "20px" }}>
+              <div
+                className="stat-icon flex items-center justify-center"
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "12px",
+                  background: "white",
+                  color: "var(--soft-rose)",
+                  flexShrink: 0,
+                  boxShadow: "0 4px 12px rgba(169,201,236,0.25)",
+                }}
+              >
+                <Heart size={22} />
               </div>
-
-              <div className="flex items-start gap-4">
-                <Check size={24} style={{ color: "#9DCBF3" }} strokeWidth={2.5} />
-                <span className="text-lg text-gray-800" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Products people actually want
-                </span>
+              <div className="stat-text">
+                <div
+                  className="stat-num font-heading"
+                  style={{ fontSize: "26px", fontWeight: 700, color: "var(--charcoal)" }}
+                >
+                  Hand-picked
+                </div>
+                <div className="stat-desc" style={{ fontSize: "13px", color: "var(--gray)", marginTop: "2px" }}>
+                  Every product earns its place
+                </div>
               </div>
-
-              <div className="flex items-start gap-4 md:col-span-2 md:justify-center">
-                <Check size={24} style={{ color: "#9DCBF3" }} strokeWidth={2.5} />
-                <span className="text-lg text-gray-800" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  A customer-first experience
-                </span>
-              </div>
-
             </div>
           </div>
-        </section>
 
-        {/* SECTION 6 - CTA */}
-        <section className="w-full py-24">
-          <div className="max-w-[1000px] mx-auto px-4 text-center">
-            <h2 className="text-4xl md:text-5xl font-bold mb-8" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Growing With Our Customers
-            </h2>
-            <p className="text-lg text-gray-700 max-w-[800px] mx-auto leading-relaxed mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
-              CosClub is built to grow with our community. As we expand, we will continue improving our product selection, member benefits, and overall shopping experience while staying focused on what matters most: value and trust.
-            </p>
-            <p className="text-xl text-gray-800 mb-10" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Thanks for shopping with us.
-            </p>
-
-            <button
-              onClick={() => router.push("/browse")}
-              className="px-10 py-4 rounded-lg font-semibold text-white text-lg transition-all"
-              style={{ backgroundColor: "#9DCBF3", fontFamily: "'Inter', sans-serif" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#8BBDEB";
-                e.currentTarget.style.transform = "scale(1.02)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#9DCBF3";
-                e.currentTarget.style.transform = "scale(1)";
+          {/* Story Text (right in HTML) */}
+          <div className="story-text">
+            <p
+              className="story-label"
+              style={{
+                fontSize: "12px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                color: "var(--soft-rose)",
+                marginBottom: "16px",
               }}
             >
-              Explore the Collection
-            </button>
+              Our Story
+            </p>
+            <h2
+              className="font-heading"
+              style={{ fontSize: "36px", fontWeight: 700, lineHeight: 1.25, marginBottom: "24px" }}
+            >
+              We got tired of paying retail.
+            </h2>
+            <p style={{ fontSize: "15px", color: "var(--gray)", lineHeight: 1.85, marginBottom: "18px" }}>
+              K-beauty and J-beauty products had a problem — by the time they reached Western shelves,
+              the prices had doubled, sometimes tripled. Brands we loved were sitting behind markups that
+              had nothing to do with quality and everything to do with distribution.
+            </p>
+            <p style={{ fontSize: "15px", color: "var(--gray)", lineHeight: 1.85, marginBottom: "18px" }}>
+              So we built a different kind of store.{" "}
+              <strong style={{ color: "var(--charcoal)" }}>
+                CosClub is a members-only beauty shop
+              </strong>{" "}
+              that sources directly and passes the savings straight to you. No inflated retail prices.
+              No mystery markups. Just the products you love, at prices that actually make sense.
+            </p>
+            <p style={{ fontSize: "15px", color: "var(--gray)", lineHeight: 1.85, marginBottom: 0 }}>
+              Our catalogue is deliberately curated — every product earns its place based on ingredients,
+              reviews, and community feedback. We&apos;d rather carry 200 exceptional products than 2,000
+              average ones.
+            </p>
           </div>
-        </section>
+        </div>
 
+        {/* Mission */}
+        <div
+          className="mission-section text-center"
+          style={{ background: "var(--charcoal)", padding: "100px 5%" }}
+        >
+          <p
+            className="label"
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "2px",
+              color: "var(--blush-pink)",
+              marginBottom: "20px",
+            }}
+          >
+            Our Mission
+          </p>
+          <h2
+            className="font-heading"
+            style={{
+              fontSize: "42px",
+              fontWeight: 700,
+              color: "white",
+              maxWidth: "700px",
+              margin: "0 auto 24px",
+              lineHeight: 1.2,
+            }}
+          >
+            Make world-class beauty accessible to everyone.
+          </h2>
+          <p
+            style={{
+              fontSize: "16px",
+              color: "#A0A0A0",
+              maxWidth: "580px",
+              margin: "0 auto",
+              lineHeight: 1.8,
+            }}
+          >
+            The best skincare routines shouldn&apos;t require a luxury budget. CosClub exists to close
+            the gap between what K-beauty and J-beauty products actually cost and what consumers are
+            asked to pay for them.
+          </p>
+        </div>
+
+        {/* How It Works */}
+        <div className="how-section" style={{ padding: "100px 5%", maxWidth: "1100px", margin: "0 auto" }}>
+          <div className="section-header text-center" style={{ marginBottom: "64px" }}>
+            <p
+              className="label"
+              style={{
+                fontSize: "12px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                color: "var(--soft-rose)",
+                marginBottom: "16px",
+              }}
+            >
+              How It Works
+            </p>
+            <h2 className="font-heading" style={{ fontSize: "38px", fontWeight: 700 }}>
+              Simple by design.
+            </h2>
+            <p
+              style={{
+                fontSize: "15px",
+                color: "var(--gray)",
+                marginTop: "14px",
+                maxWidth: "480px",
+                marginLeft: "auto",
+                marginRight: "auto",
+                lineHeight: 1.7,
+              }}
+            >
+              CosClub runs on a straightforward membership model — no points systems, no tiers, no
+              confusion.
+            </p>
+          </div>
+
+          <div className="steps grid grid-cols-1 md:grid-cols-3" style={{ gap: "40px" }}>
+            <div className="step text-center">
+              <div
+                className="step-number flex items-center justify-center font-heading"
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--blush-pink), var(--soft-rose))",
+                  color: "var(--charcoal)",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  margin: "0 auto 20px",
+                }}
+              >
+                1
+              </div>
+              <div
+                className="step-icon flex justify-center"
+                style={{ color: "var(--soft-rose)", marginBottom: "16px" }}
+              >
+                <UserPlus size={32} />
+              </div>
+              <h3 className="font-heading" style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                Join for $6.99/mo
+              </h3>
+              <p style={{ fontSize: "14px", color: "var(--gray)", lineHeight: 1.75 }}>
+                Sign up and get instant access to member pricing across our entire catalogue. Cancel
+                anytime — no commitment required.
+              </p>
+            </div>
+
+            <div className="step text-center">
+              <div
+                className="step-number flex items-center justify-center font-heading"
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--blush-pink), var(--soft-rose))",
+                  color: "var(--charcoal)",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  margin: "0 auto 20px",
+                }}
+              >
+                2
+              </div>
+              <div
+                className="step-icon flex justify-center"
+                style={{ color: "var(--soft-rose)", marginBottom: "16px" }}
+              >
+                <ShoppingBag size={32} />
+              </div>
+              <h3 className="font-heading" style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                Shop at member prices
+              </h3>
+              <p style={{ fontSize: "14px", color: "var(--gray)", lineHeight: 1.75 }}>
+                Every product in our store shows both the retail price and your member price side by
+                side. Savings are immediate and automatic — no codes needed.
+              </p>
+            </div>
+
+            <div className="step text-center">
+              <div
+                className="step-number flex items-center justify-center font-heading"
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--blush-pink), var(--soft-rose))",
+                  color: "var(--charcoal)",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  margin: "0 auto 20px",
+                }}
+              >
+                3
+              </div>
+              <div
+                className="step-icon flex justify-center"
+                style={{ color: "var(--soft-rose)", marginBottom: "16px" }}
+              >
+                <Package size={32} />
+              </div>
+              <h3 className="font-heading" style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                Get free shipping at $55+
+              </h3>
+              <p style={{ fontSize: "14px", color: "var(--gray)", lineHeight: 1.75 }}>
+                Members qualify for free shipping on orders over $55. We operate on razor-thin margins
+                to keep prices low — $55 is the minimum we need to absorb shipping without passing the
+                cost on to you. Most orders ship within 1–3 business days.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Values */}
+        <div
+          className="values-section"
+          style={{
+            background: "#fafcff",
+            borderTop: "1px solid var(--light-gray)",
+            borderBottom: "1px solid var(--light-gray)",
+            padding: "80px 5%",
+          }}
+        >
+          <div className="values-inner" style={{ maxWidth: "1100px", margin: "0 auto" }}>
+            <div className="section-header text-center">
+              <p
+                className="label"
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "2px",
+                  color: "var(--soft-rose)",
+                  marginBottom: "16px",
+                }}
+              >
+                What We Stand For
+              </p>
+              <h2 className="font-heading" style={{ fontSize: "38px", fontWeight: 700 }}>
+                The CosClub standards.
+              </h2>
+            </div>
+
+            <div
+              className="values-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+              style={{ gap: "32px", marginTop: "56px" }}
+            >
+              <div
+                className="value-card"
+                style={{
+                  padding: "28px 24px",
+                  background: "white",
+                  borderRadius: "14px",
+                  border: "1px solid var(--light-gray)",
+                }}
+              >
+                <ShieldCheck size={24} style={{ color: "var(--soft-rose)", marginBottom: "16px", display: "block" }} />
+                <h4
+                  className="font-heading"
+                  style={{ fontSize: "16px", fontWeight: 700, marginBottom: "10px" }}
+                >
+                  Ingredient Integrity
+                </h4>
+                <p style={{ fontSize: "13px", color: "var(--gray)", lineHeight: 1.7 }}>
+                  We only carry products we&apos;d use ourselves. Every product is reviewed for
+                  ingredient quality before it makes our catalogue.
+                </p>
+              </div>
+
+              <div
+                className="value-card"
+                style={{
+                  padding: "28px 24px",
+                  background: "white",
+                  borderRadius: "14px",
+                  border: "1px solid var(--light-gray)",
+                }}
+              >
+                <Eye size={24} style={{ color: "var(--soft-rose)", marginBottom: "16px", display: "block" }} />
+                <h4
+                  className="font-heading"
+                  style={{ fontSize: "16px", fontWeight: 700, marginBottom: "10px" }}
+                >
+                  Price Transparency
+                </h4>
+                <p style={{ fontSize: "13px", color: "var(--gray)", lineHeight: 1.7 }}>
+                  We show you the retail price alongside the member price on every product. You always
+                  know exactly what you&apos;re saving.
+                </p>
+              </div>
+
+              <div
+                className="value-card"
+                style={{
+                  padding: "28px 24px",
+                  background: "white",
+                  borderRadius: "14px",
+                  border: "1px solid var(--light-gray)",
+                }}
+              >
+                <Users size={24} style={{ color: "var(--soft-rose)", marginBottom: "16px", display: "block" }} />
+                <h4
+                  className="font-heading"
+                  style={{ fontSize: "16px", fontWeight: 700, marginBottom: "10px" }}
+                >
+                  Community-Driven
+                </h4>
+                <p style={{ fontSize: "13px", color: "var(--gray)", lineHeight: 1.7 }}>
+                  Members help shape our catalogue. Products are added based on community votes and
+                  feedback — not just what&apos;s trending.
+                </p>
+              </div>
+
+              <div
+                className="value-card"
+                style={{
+                  padding: "28px 24px",
+                  background: "white",
+                  borderRadius: "14px",
+                  border: "1px solid var(--light-gray)",
+                }}
+              >
+                <RefreshCw size={24} style={{ color: "var(--soft-rose)", marginBottom: "16px", display: "block" }} />
+                <h4
+                  className="font-heading"
+                  style={{ fontSize: "16px", fontWeight: 700, marginBottom: "10px" }}
+                >
+                  No Strings Attached
+                </h4>
+                <p style={{ fontSize: "13px", color: "var(--gray)", lineHeight: 1.7 }}>
+                  Cancel anytime from your dashboard. No cancellation fees, no hoops to jump through, no
+                  guilt-trip emails.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="cta-section text-center" style={{ padding: "100px 5%" }}>
+          <h2 className="font-heading" style={{ fontSize: "40px", fontWeight: 700, marginBottom: "16px" }}>
+            Ready to pay less for the
+            <br />
+            products you love?
+          </h2>
+          <p
+            style={{
+              fontSize: "16px",
+              color: "var(--gray)",
+              marginBottom: "36px",
+              maxWidth: "440px",
+              marginLeft: "auto",
+              marginRight: "auto",
+              lineHeight: 1.7,
+            }}
+          >
+            Join thousands of members already saving up to 40% on their favourite K-beauty and J-beauty
+            products.
+          </p>
+          <div className="cta-buttons flex flex-wrap justify-center" style={{ gap: "14px" }}>
+            <Link
+              href="/pricing"
+              className="btn-primary inline-block"
+              style={{
+                background: "var(--baby-blue)",
+                color: "var(--charcoal)",
+                padding: "16px 36px",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: "16px",
+                fontFamily: "var(--font-manrope), var(--body-font)",
+                border: "none",
+                transition: "background 0.2s",
+              }}
+            >
+              Join CosClub — $6.99/mo
+            </Link>
+            <Link
+              href="/browse"
+              className="btn-ghost inline-block"
+              style={{
+                background: "transparent",
+                color: "var(--charcoal)",
+                padding: "16px 36px",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: "16px",
+                fontFamily: "var(--font-manrope), var(--body-font)",
+                border: "2px solid var(--light-gray)",
+                transition: "all 0.2s",
+              }}
+            >
+              Browse the shop
+            </Link>
+          </div>
+        </div>
       </main>
 
       <Footer />
