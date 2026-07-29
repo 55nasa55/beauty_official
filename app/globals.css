@@ -475,6 +475,29 @@
   scrollbar-width: none;
 }
 
+/* Carousel track — flex row with 5 equal cards on desktop (matches .product-grid gap:14px) */
+.carousel-track {
+  display: flex;
+  gap: 14px;
+}
+.carousel-card {
+  flex: 1 1 0;
+  min-width: 0;
+}
+@media (max-width: 768px) {
+  .carousel-track {
+    overflow-x: auto;
+  }
+  .carousel-card {
+    flex: 0 0 45%;
+  }
+}
+@media (max-width: 480px) {
+  .carousel-card {
+    flex: 0 0 85%;
+  }
+}
+
 /* ============================================================
    Animations
    ============================================================ */
