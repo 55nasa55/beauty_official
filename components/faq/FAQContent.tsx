@@ -1,20 +1,23 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
+  BadgeCheck,
   Tag,
+  Package,
   Truck,
-  RotateCcw,
+  RefreshCw,
   Sparkles,
   ChevronDown,
 } from "lucide-react";
 
 interface FAQItem {
   question: string;
-  answer: string | React.ReactNode;
+  answer: React.ReactNode;
 }
 
-interface FAQCategory {
+interface FAQSection {
   id: string;
   title: string;
   icon: React.ReactNode;
@@ -22,204 +25,383 @@ interface FAQCategory {
 }
 
 export function FAQContent() {
-  const categories: FAQCategory[] = [
+  const sections: FAQSection[] = [
     {
       id: "membership",
-      title: "Membership & Pricing",
-      icon: <Tag className="w-6 h-6 text-blue-500" />,
+      title: "Membership",
+      icon: <BadgeCheck size={20} style={{ color: "var(--coral)" }} />,
       items: [
         {
-          question: "Do I need a membership to shop?",
+          question: "How does CosClub membership work?",
           answer:
-            "No. You can browse and purchase as a guest at standard pricing.",
+            "CosClub is a membership-based beauty store. You pay a low monthly or annual fee, and in return you unlock wholesale pricing on every product we carry. No gimmicks, no point systems — just consistently lower prices on products you already buy.",
         },
         {
-          question: "What is the difference between guest pricing and member pricing?",
-          answer:
-            "Guest pricing is available to everyone. Member pricing offers lower prices on eligible products for customers with an active membership.",
+          question: "How much does membership cost?",
+          answer: (
+            <>
+              Membership is <strong>$6.99/month</strong> or{" "}
+              <strong>$59.99/year</strong> (billed annually). The annual plan
+              works out to about $5.00/mo and saves you $23.89 compared to
+              paying monthly. Both plans include the same member pricing on all
+              products.
+            </>
+          ),
         },
         {
-          question: "How do I become a member?",
+          question: "Can I cancel my membership?",
           answer:
-            "You can create an account and join through the membership prompts shown on the site, including product pages and your cart.",
+            "Yes. Monthly members can cancel at any time and retain access through the end of their billing period. Annual plans are non-refundable — if you cancel, your membership remains active through the end of the paid year and will not auto-renew.",
         },
         {
-          question: "Can I see member savings before joining?",
+          question: "Can I switch between Monthly and Annual?",
           answer:
-            "Yes. We show pricing and savings clearly on eligible products so you can compare guest and member pricing before you decide.",
+            "You can upgrade from Monthly to Annual at any time from your account page — the switch takes effect immediately. Annual plans are non-refundable; if you switch from Annual to Monthly, your monthly plan will begin at your next renewal date after the paid year ends.",
+        },
+        {
+          question: "Is there a free trial?",
+          answer:
+            "We don't offer a free trial, but at $6.99/mo the membership pays for itself on your first order. Most members save more in their first purchase than the cost of an entire year.",
+        },
+        {
+          question: "Can I share my membership with someone else?",
+          answer:
+            "Memberships are tied to a single account and are not shareable. Purchasing through a CosClub account for purposes of resale is also prohibited under our membership terms.",
+        },
+      ],
+    },
+    {
+      id: "pricing",
+      title: "Pricing & Savings",
+      icon: <Tag size={20} style={{ color: "var(--coral)" }} />,
+      items: [
+        {
+          question: "How is member pricing determined?",
+          answer:
+            "We source products directly from distributors and pass the savings on to members. We always show both the standard retail price and the member price so you can see exactly how much you're saving on every product.",
+        },
+        {
+          question: "Can non-members still shop?",
+          answer:
+            "Yes — anyone can shop on CosClub. Non-members pay the standard retail price. Members unlock wholesale pricing on every product, which is where the real savings come in. All prices are shown transparently on every product page so you can see exactly what you'd save with a membership.",
+        },
+        {
+          question: "Do you run additional sales or promotions?",
+          answer: (
+            <>
+              Member pricing is already our best price. We occasionally run
+              limited-time promotions on specific products — check the{" "}
+              <Link
+                href="/browse?category=Sale"
+                style={{ color: "var(--coral)", fontWeight: 600 }}
+              >
+                Sale
+              </Link>{" "}
+              section and keep an eye on your email for member-only offers.
+            </>
+          ),
         },
       ],
     },
     {
       id: "orders",
-      title: "Orders & Shipping",
-      icon: <Truck className="w-6 h-6 text-blue-500" />,
+      title: "Orders",
+      icon: <Package size={20} style={{ color: "var(--coral)" }} />,
       items: [
         {
-          question: "How long does order processing take?",
-          answer:
-            "Most orders are processed within 1–3 business days after payment is confirmed.",
+          question: "How do I track my order?",
+          answer: (
+            <>
+              Once your order ships, you'll receive a confirmation email with a
+              tracking number. You can also view all order history and tracking
+              links from your{" "}
+              <Link
+                href="/account"
+                style={{ color: "var(--coral)", fontWeight: 600 }}
+              >
+                account page
+              </Link>{" "}
+              under the Orders tab.
+            </>
+          ),
         },
         {
-          question: "How much is shipping?",
-          answer:
-            "Shipping costs are calculated at checkout based on your delivery address, package size/weight, and the shipping method you select.",
+          question: "Can I change or cancel an order after placing it?",
+          answer: (
+            <>
+              We process orders quickly, so changes may not always be possible.
+              Contact us as soon as possible at{" "}
+              <a
+                href="mailto:support@cosclub.com"
+                style={{ color: "var(--coral)", fontWeight: 600 }}
+              >
+                support@cosclub.com
+              </a>{" "}
+              and we'll do our best to help before the order ships.
+            </>
+          ),
         },
         {
-          question: "Do you provide tracking?",
+          question: "What if my order arrives damaged or incorrect?",
+          answer: (
+            <>
+              We're sorry to hear that. Please{" "}
+              <Link
+                href="/contact"
+                style={{ color: "var(--coral)", fontWeight: 600 }}
+              >
+                contact us
+              </Link>{" "}
+              within 7 days of delivery with a photo of the issue and your order
+              number. We'll make it right with a replacement or refund.
+            </>
+          ),
+        },
+      ],
+    },
+    {
+      id: "shipping",
+      title: "Shipping",
+      icon: <Truck size={20} style={{ color: "var(--coral)" }} />,
+      items: [
+        {
+          question: "How long does shipping take?",
           answer:
-            "Yes, tracking is provided when available. You will receive a shipping confirmation email once your order ships.",
+            "We ship via USPS Ground Advantage (2–5 business days) or UPS Ground (1–5 business days). We do not offer expedited or overnight shipping. Processing time is 1–2 business days before your order ships.",
         },
         {
-          question: "What if my package is delayed?",
+          question: "Do you offer free shipping?",
           answer:
-            "Carrier delays can happen due to weather or peak seasons. If your order is significantly delayed, please Contact Us and we'll help review the shipment status.",
+            "Yes. Members get free shipping on orders over $55. Non-members get free shipping on orders over $75. Everyone pays a flat $8.95 S&H on orders below their threshold. One more reason the membership pays for itself fast.",
+        },
+        {
+          question: "Do you ship internationally?",
+          answer:
+            "Currently we ship within the United States only. International shipping is something we're actively working toward — follow us on social or subscribe to our emails to be notified when it launches.",
         },
       ],
     },
     {
       id: "returns",
-      title: "Returns & Support",
-      icon: <RotateCcw className="w-6 h-6 text-blue-500" />,
+      title: "Returns & Refunds",
+      icon: <RefreshCw size={20} style={{ color: "var(--coral)" }} />,
       items: [
         {
-          question: "What is your return window?",
-          answer: "Eligible items may be returned within 14 days of delivery.",
+          question: "What is your return policy?",
+          answer:
+            "We accept returns on unopened, unused products within 30 days of delivery. The following are not eligible for return: opened beauty products (hygiene), skincare and serums, and sale/clearance items. All sales on ineligible items are final. We do not offer exchanges.",
         },
         {
-          question: "Can I return opened beauty products?",
+          question: "How do I start a return?",
           answer: (
-            <span>
-              <strong>
-                For hygiene and safety reasons, opened or used beauty, skincare,
-                and personal care products are not eligible for return.
-              </strong>
-            </span>
+            <>
+              Email us at{" "}
+              <a
+                href="mailto:support@cosclub.com"
+                style={{ color: "var(--coral)", fontWeight: 600 }}
+              >
+                support@cosclub.com
+              </a>{" "}
+              with your order number and reason for return. We'll send you a
+              prepaid return label. Once we receive and inspect the item, your
+              refund will be processed within 5–7 business days.
+            </>
           ),
-        },
-        {
-          question: "What if I received the wrong or damaged item?",
-          answer:
-            "Please contact us within 7 days of delivery with your order number and photos of the item. We'll help resolve it quickly.",
-        },
-        {
-          question: "How do I contact support?",
-          answer:
-            "Please use our Contact Page and include your order number for faster support.",
         },
       ],
     },
     {
       id: "products",
       title: "Products",
-      icon: <Sparkles className="w-6 h-6 text-blue-500" />,
+      icon: <Sparkles size={20} style={{ color: "var(--coral)" }} />,
       items: [
         {
-          question: "Are all products eligible for member pricing?",
+          question: "Are your products authentic?",
           answer:
-            "Member pricing applies to most items in our catalog. Eligibility and pricing are clearly displayed on each individual product page.",
+            "100%. We source directly from authorized distributors. Every product we carry is genuine — never counterfeit, grey market, or tampered with.",
         },
         {
-          question: "Will products go out of stock?",
-          answer:
-            "Some items may sell out. If inventory changes while an item is in your cart, the cart will automatically update and notify you.",
+          question: "What if a product I want isn't in the catalogue?",
+          answer: (
+            <>
+              Submit a request on our{" "}
+              <Link
+                href="/#suggest"
+                style={{ color: "var(--coral)", fontWeight: 600 }}
+              >
+                homepage
+              </Link>
+              . We take every suggestion seriously — we don't decide what goes
+              on our shelves, our members do. If enough members request the same
+              product, we'll source it.
+            </>
+          ),
         },
         {
-          question: "Can I leave a review?",
+          question: "Are your products cruelty-free?",
           answer:
-            "Yes! We love hearing from our community. Customers who are logged in and have purchased the product are encouraged to leave reviews.",
+            "Many of the brands we carry are cruelty-free. We're working on adding cruelty-free and vegan filter tags to make it easier to shop by your values. In the meantime, you can check each brand's individual policy on their website.",
         },
       ],
     },
   ];
 
-  const [openQuestion, setOpenQuestion] = useState<string | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   const toggle = (key: string) => {
-    setOpenQuestion((prev) => (prev === key ? null : key));
-  };
-
-  const scrollToCategory = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setOpenKey((prev) => (prev === key ? null : key));
   };
 
   return (
-    <div className="w-full">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold text-center mb-10">
+    <>
+      {/* Page Hero */}
+      <div
+        className="text-center"
+        style={{ background: "var(--blush-pink)", padding: "64px 5%" }}
+      >
+        <h1
+          className="font-heading"
+          style={{ fontSize: "42px", fontWeight: 700, marginBottom: "12px" }}
+        >
           Frequently Asked Questions
         </h1>
+        <p
+          style={{
+            fontSize: "16px",
+            color: "var(--charcoal)",
+            opacity: 0.75,
+            maxWidth: "500px",
+            margin: "0 auto",
+          }}
+        >
+          Everything you need to know about CosClub. Can&apos;t find your
+          answer?{" "}
+          <Link
+            href="/contact"
+            style={{ color: "var(--coral)", fontWeight: 700 }}
+          >
+            Contact us.
+          </Link>
+        </p>
+      </div>
 
-        {/* Category Nav */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 text-center">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => scrollToCategory(cat.id)}
-              className="flex flex-col items-center gap-2 py-3 hover:text-blue-500 transition"
+      {/* FAQ Body */}
+      <div style={{ maxWidth: "780px", margin: "0 auto", padding: "64px 5%" }}>
+        {sections.map((section) => (
+          <div key={section.id} style={{ marginBottom: "48px" }}>
+            <div
+              className="font-heading flex items-center"
+              style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "var(--charcoal)",
+                marginBottom: "16px",
+                paddingBottom: "10px",
+                borderBottom: "2px solid var(--blush-pink)",
+                gap: "10px",
+              }}
             >
-              {cat.icon}
-              <span className="font-medium">{cat.title}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Category Sections */}
-        {categories.map((cat) => (
-          <div key={cat.id} id={cat.id} className="mb-14">
-            <h2 className="text-2xl font-semibold mb-6">{cat.title}</h2>
-
-            <div className="flex flex-col gap-4">
-              {cat.items.map((item, idx) => {
-                const key = `${cat.id}-${idx}`;
-                const isOpen = openQuestion === key;
-
-                return (
-                  <div
-                    key={key}
-                    className="border rounded-lg bg-white shadow-sm overflow-hidden"
-                  >
-                    {/* Question */}
-                    <button
-                      onClick={() => toggle(key)}
-                      className="w-full flex justify-between items-center px-4 py-4 font-medium text-left hover:text-blue-500 transition"
-                    >
-                      {item.question}
-                      <ChevronDown
-                        className={`w-5 h-5 transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    {/* Answer */}
-                    {isOpen && (
-                      <div className="px-4 pb-4 text-gray-700">
-                        {item.answer}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {section.icon} {section.title}
             </div>
+
+            {section.items.map((item, idx) => {
+              const key = `${section.id}-${idx}`;
+              const isOpen = openKey === key;
+
+              return (
+                <div
+                  key={key}
+                  style={{ borderBottom: "1px solid var(--light-gray)" }}
+                >
+                  <button
+                    onClick={() => toggle(key)}
+                    aria-expanded={isOpen}
+                    className="flex justify-between items-center w-full"
+                    style={{
+                      padding: "20px 0",
+                      fontWeight: 600,
+                      fontSize: "15px",
+                      cursor: "pointer",
+                      transition: "color 0.2s",
+                      color: isOpen ? "var(--coral)" : "var(--charcoal)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--coral)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isOpen
+                        ? "var(--coral)"
+                        : "var(--charcoal)";
+                    }}
+                  >
+                    {item.question}
+                    <ChevronDown
+                      size={18}
+                      style={{
+                        flexShrink: 0,
+                        transition: "transform 0.3s",
+                        transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        color: isOpen ? "var(--coral)" : "var(--gray)",
+                      }}
+                    />
+                  </button>
+                  <div
+                    style={{
+                      maxHeight: isOpen ? "400px" : "0",
+                      overflow: "hidden",
+                      fontSize: "14px",
+                      color: "var(--gray)",
+                      lineHeight: 1.8,
+                      transition: "max-height 0.35s ease, padding 0.3s",
+                      paddingBottom: isOpen ? "20px" : "0",
+                    }}
+                  >
+                    {item.answer}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
-
-        {/* Still Need Help */}
-        <div className="mt-20 bg-[#F4F9FF] rounded-lg py-12 text-center">
-          <h2 className="text-2xl font-semibold mb-2">Still Need Help?</h2>
-          <p className="mb-6">
-            Can't find what you're looking for? Our team is here to help.
-          </p>
-          <a
-            href="/contact"
-            className="inline-block bg-[#9DCBF3] text-white px-6 py-3 rounded-md hover:bg-blue-400 transition"
-          >
-            Contact Customer Support
-          </a>
-        </div>
       </div>
-    </div>
+
+      {/* Still have questions CTA */}
+      <div
+        style={{
+          background: "var(--charcoal)",
+          color: "white",
+          borderRadius: "16px",
+          padding: "48px",
+          textAlign: "center",
+          margin: "0 auto 80px",
+          maxWidth: "780px",
+        }}
+      >
+        <h2
+          className="font-heading"
+          style={{ fontSize: "28px", marginBottom: "12px" }}
+        >
+          Still have questions?
+        </h2>
+        <p style={{ color: "#A0A0A0", marginBottom: "28px", fontSize: "15px" }}>
+          Our team typically responds within 24 hours.
+        </p>
+        <Link
+          href="/contact"
+          className="btn-cta inline-block"
+          style={{
+            background: "var(--blush-pink)",
+            color: "var(--charcoal)",
+            padding: "14px 32px",
+            fontWeight: 700,
+            borderRadius: "8px",
+            fontSize: "15px",
+            transition: "background 0.2s",
+          }}
+        >
+          Contact Us
+        </Link>
+      </div>
+    </>
   );
 }
