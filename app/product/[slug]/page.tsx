@@ -22,12 +22,10 @@ import {
   Collection,
   ProductVariant,
 } from '@/lib/database.types';
-import { ShoppingCart, Tag, Truck, CheckCircle2, RefreshCw, Heart, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Tag, Truck, CircleCheck as CheckCircle2, RefreshCw, Heart, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { formatCents, calculateSavingsFromCents } from '@/lib/pricing';
-import { ProductInfoAccordion } from '@/components/product/ProductInfoAccordion';
-import { ProductInfoImages } from '@/components/product/ProductInfoImages';
 import { ReviewSummary } from '@/components/reviews/ReviewSummary';
 import { ReviewList } from '@/components/reviews/ReviewList';
 import { WriteReviewButton } from '@/components/reviews/WriteReviewButton';
@@ -53,7 +51,6 @@ export default function ProductPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [productInfoSections, setProductInfoSections] = useState<any[]>([]);
-  const [productInfoImages, setProductInfoImages] = useState<any[]>([]);
   const [openReview, setOpenReview] = useState(false);
   const [suggestedProducts, setSuggestedProducts] = useState<ProductWithVariants[]>([]);
   const [alsoBoughtProducts, setAlsoBoughtProducts] = useState<ProductWithVariants[]>([]);
@@ -112,14 +109,9 @@ export default function ProductPage() {
       }
 
       if (productData) {
-        const [sectionsResult, imagesResult, suggestedResult] = await Promise.all([
+        const [sectionsResult, suggestedResult] = await Promise.all([
           supabase
             .from('product_info_sections')
-            .select('*')
-            .eq('product_id', productData.id)
-            .order('order_index'),
-          supabase
-            .from('product_info_images')
             .select('*')
             .eq('product_id', productData.id)
             .order('order_index'),
@@ -136,7 +128,6 @@ export default function ProductPage() {
         ]);
 
         setProductInfoSections(sectionsResult.data || []);
-        setProductInfoImages(imagesResult.data || []);
         setSuggestedProducts(suggestedResult.data || []);
 
         const res = await fetch(`/api/products/also-bought/${productData.id}`);
@@ -807,49 +798,21 @@ export default function ProductPage() {
                 padding: '40px 5%',
                 maxWidth: '1200px',
                 margin: '0 auto',
-                display: activeTab === 'description' ? 'block' : 'none',
               }}
             >
-              <div style={{ fontSize: '15px', lineHeight: 1.9, color: 'var(--charcoal)', whiteSpace: 'pre-wrap' }}>
-                {tabs.find(t => t.key === 'description')?.content}
-              </div>
-            </div>
-
-            <div
-              className="tab-content"
-              style={{
-                padding: '40px 5%',
-                maxWidth: '1200px',
-                margin: '0 auto',
-                display: activeTab === 'ingredients' ? 'block' : 'none',
-              }}
-            >
-              <div style={{ fontSize: '13px', lineHeight: 2, color: 'var(--gray)', whiteSpace: 'pre-wrap' }}>
-                {tabs.find(t => t.key === 'ingredients')?.content}
-              </div>
-            </div>
-
-            <div
-              className="tab-content"
-              style={{
-                padding: '40px 5%',
-                maxWidth: '1200px',
-                margin: '0 auto',
-                display: activeTab === 'howto' ? 'block' : 'none',
-              }}
-            >
-              <div style={{ fontSize: '15px', lineHeight: 1.9, color: 'var(--charcoal)', whiteSpace: 'pre-wrap' }}>
-                {tabs.find(t => t.key === 'howto')?.content}
+              <div
+                style={{
+                  fontSize: '15px',
+                  lineHeight: 1.9,
+                  color: 'var(--charcoal)',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {tabs.find(t => t.key === activeTab)?.content}
               </div>
             </div>
           </>
         )}
-
-        {/* Product Info Accordion (existing) */}
-        <ProductInfoAccordion sections={productInfoSections} />
-
-        {/* Product Info Images (existing) */}
-        <ProductInfoImages images={productInfoImages} />
 
         {/* Reviews Section */}
         <div id="reviews" style={{ padding: '40px 5%', maxWidth: '1200px', margin: '0 auto' }}>
