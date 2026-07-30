@@ -102,7 +102,7 @@ export default async function Home() {
           className="flex flex-col md:flex-row items-center gap-6 py-15 px-[5%]"
           style={{
             background: 'linear-gradient(to right, var(--off-white) 40%, var(--blush-pink))',
-            padding: '60px 5%',
+            padding: '52px 5%',
           }}
         >
           {/* Hero text */}
@@ -139,7 +139,7 @@ export default async function Home() {
 
         {/* Dynamic collection carousels — Best Sellers, New, Sale, etc. */}
         {collectionProducts.length > 0 && (
-          <div className="space-y-[80px]" style={{ padding: '80px 5%' }}>
+          <div className="space-y-[80px]" style={{ padding: '68px 5%' }}>
             {collectionProducts.map(({ collection, products }) => (
               <ProductCarousel
                 key={collection.id}

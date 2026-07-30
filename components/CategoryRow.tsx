@@ -16,18 +16,18 @@ const categories = [
 
 export function CategoryRow() {
   return (
-    <div className="flex justify-center gap-10 py-10 px-[5%] bg-off-white overflow-x-auto scrollbar-hide">
+    <div className="flex justify-center gap-10 py-8 px-[5%] bg-off-white overflow-x-auto scrollbar-hide">
       {categories.map(({ label, href, icon: Icon, emoji }) => (
         <Link
           key={label}
           href={href}
-          className="flex flex-col items-center gap-3 cursor-pointer min-w-[70px] flex-shrink-0 group"
+          className="flex flex-col items-center gap-2 cursor-pointer min-w-[70px] flex-shrink-0 group"
         >
           <div
             className="w-[70px] h-[70px] rounded-full bg-white border border-soft-rose flex items-center justify-center text-coral transition-all duration-200 group-hover:shadow-card-hover"
             style={{ boxShadow: '0 4px 12px rgba(169,201,236,0.15)' }}
           >
-            <Icon className="w-[26px] h-[26px]" strokeWidth={2} />
+            <Icon className="w-[28px] h-[28px]" strokeWidth={2} />
           </div>
           <span className="text-category-label whitespace-nowrap">
             {label} {emoji}

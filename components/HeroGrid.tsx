@@ -53,7 +53,7 @@ export function HeroGrid({ products }: HeroGridProps) {
     <div
       className="grid gap-5 transition-opacity duration-500"
       style={{
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 222px)',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 232px)',
       }}
     >
       {visible.map((p, i) => {
@@ -62,7 +62,7 @@ export function HeroGrid({ products }: HeroGridProps) {
           <Link
             key={`${p.id}-${offset}-${i}`}
             href={`/product/${p.slug}`}
-            className="block bg-white border border-light-gray rounded-card p-1.5 relative overflow-hidden flex flex-col transition-transform duration-200 hover:-translate-y-1"
+            className="block bg-white border border-light-gray rounded-card p-1 relative overflow-hidden flex flex-col transition-transform duration-200 hover:-translate-y-1"
             style={{ boxShadow: '0 0 0 rgba(0,0,0,0)' }}
             onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 6px 16px rgba(169,201,236,0.25)')}
             onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 0 0 rgba(0,0,0,0)')}
@@ -79,8 +79,8 @@ export function HeroGrid({ products }: HeroGridProps) {
 
             {/* Image */}
             <div
-              className="relative overflow-hidden rounded-[4px] -m-1.5 mb-1.5"
-              style={{ aspectRatio: '1 / 1', width: 'calc(100% + 12px)' }}
+              className="relative overflow-hidden rounded-[4px] -m-1 mb-1"
+              style={{ aspectRatio: '1 / 1', width: 'calc(100% + 8px)' }}
             >
               {mounted ? (
                 <Image

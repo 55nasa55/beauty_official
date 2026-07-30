@@ -24,7 +24,7 @@ export function TrustBar() {
   }, []);
 
   return (
-    <div className="bg-soft-rose py-4 px-[5%] flex flex-col md:flex-row justify-between items-center gap-3 text-trust-bar">
+    <div className="bg-soft-rose py-3 px-[5%] flex flex-col md:flex-row justify-between items-center gap-3 text-trust-bar">
       <span className="flex items-center gap-2">
         <span className="live-dot" />
         <span>{memberCount.toLocaleString()}</span> members
