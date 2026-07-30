@@ -19,7 +19,8 @@ const helpLinks = [
 
 const companyLinks = [
   { label: 'About Us', href: '/about' },
-  { label: 'Membership Terms', href: '/terms-of-service' },
+  { label: 'Membership Terms', href: '/membership-terms' },
+  { label: 'Terms of Service', href: '/terms-of-service' },
   { label: 'Privacy Policy', href: '/privacy-policy' },
 ];
 
