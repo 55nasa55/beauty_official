@@ -8,7 +8,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductListItem } from "@/components/ProductListItem";
 import { Category, Brand, Collection } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, LayoutGrid, List, Loader2, X, Home } from "lucide-react";
+import { ChevronRight, LayoutGrid, List, Loader as Loader2, X, Chrome as Home } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -84,80 +84,119 @@ export default function BrowseAllPage() {
     return { categories: cats };
   }
 
-  function buildQueryFilters(query: any) {
-    if (selectedBrands.size > 0) {
-      query = query.in("brand_id", Array.from(selectedBrands));
-    }
-    if (selectedCategories.size > 0) {
-      query = query.in("category_id", Array.from(selectedCategories));
-    }
-    return query;
-  }
-
   async function fetchProducts(newOffset: number, append: boolean) {
     if (append) setLoadingMore(true);
 
-    let query = supabase
-      .from("products")
-      .select(
-        `
-        *,
-        brand:brands(*),
-        variants:product_variants(*),
-        reviews:reviews(rating)
-      `,
-        { count: "exact" }
-      )
-      .eq("archived", false);
+    try {
+      let query = supabase
+        .from("products")
+        .select(
+          `
+          *,
+          brand:brands(*),
+          variants:product_variants(*)
+        `,
+          { count: "exact" }
+        )
+        .or("archived.is.null,archived.eq.false");
 
-    query = buildQueryFilters(query);
+      if (selectedBrands.size > 0) {
+        query = query.in("brand_id", Array.from(selectedBrands));
+      }
+      if (selectedCategories.size > 0) {
+        query = query.in("category_id", Array.from(selectedCategories));
+      }
 
-    switch (sort) {
-      case "low":
-        query = query.order("price", { ascending: true, referencedTable: "product_variants" });
-        break;
-      case "high":
-        query = query.order("price", { ascending: false, referencedTable: "product_variants" });
-        break;
-      case "rating":
-        break;
-      default:
-        query = query.order("created_at", { ascending: false });
-    }
+      switch (sort) {
+        case "low":
+          query = query.order("created_at", { ascending: false });
+          break;
+        case "high":
+          query = query.order("created_at", { ascending: false });
+          break;
+        case "rating":
+          query = query.order("created_at", { ascending: false });
+          break;
+        default:
+          query = query.order("created_at", { ascending: false });
+      }
 
-    const { data, error, count } = await query.range(newOffset, newOffset + limit - 1);
+      const { data, error, count } = await query.range(newOffset, newOffset + limit - 1);
 
-    if (!error && data) {
-      const processed = data.map((p) => {
-        const ratings = p.reviews?.map((r: any) => r.rating) || [];
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        if (append) {
+          setProducts((prev) => [...prev]);
+        } else {
+          setProducts([]);
+        }
+        setTotal(count || 0);
+        setHasMore(false);
+        setOffset(newOffset);
+        return;
+      }
+
+      const productIds = data.map((p: any) => p.id);
+
+      const reviewsResult = await supabase
+        .from("reviews")
+        .select("product_id, rating")
+        .in("product_id", productIds);
+
+      const reviewsByProduct: Record<string, any[]> = {};
+      (reviewsResult.data || []).forEach((review: any) => {
+        if (!reviewsByProduct[review.product_id]) {
+          reviewsByProduct[review.product_id] = [];
+        }
+        reviewsByProduct[review.product_id].push(review);
+      });
+
+      let processed = data.map((p: any) => {
+        const reviews = reviewsByProduct[p.id] || [];
         const average_rating =
-          ratings.length > 0 ? ratings.reduce((a: number, b: number) => a + b) / ratings.length : undefined;
+          reviews.length > 0
+            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+            : undefined;
 
         return {
           ...p,
           average_rating,
-          review_count: ratings.length,
+          review_count: reviews.length,
         };
       });
 
-      let finalData = processed;
-
-      if (sort === "rating") {
-        finalData = processed.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+      // Client-side sorting for price and rating (requires variant/review data)
+      if (sort === "low") {
+        processed.sort((a: any, b: any) => {
+          const aPrice = a.variants?.[0]?.price ?? Infinity;
+          const bPrice = b.variants?.[0]?.price ?? Infinity;
+          return aPrice - bPrice;
+        });
+      } else if (sort === "high") {
+        processed.sort((a: any, b: any) => {
+          const aPrice = a.variants?.[0]?.price ?? 0;
+          const bPrice = b.variants?.[0]?.price ?? 0;
+          return bPrice - aPrice;
+        });
+      } else if (sort === "rating") {
+        processed.sort((a: any, b: any) => (b.average_rating || 0) - (a.average_rating || 0));
       }
 
       if (append) {
-        setProducts((prev) => [...prev, ...finalData]);
+        setProducts((prev) => [...prev, ...processed]);
       } else {
-        setProducts(finalData);
+        setProducts(processed);
       }
 
       setTotal(count || 0);
       setHasMore(newOffset + limit < (count || 0));
       setOffset(newOffset);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      if (append) setLoadingMore(false);
     }
-
-    if (append) setLoadingMore(false);
   }
 
   function toggleSet(value: string, setFunc: any) {
