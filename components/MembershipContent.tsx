@@ -626,9 +626,7 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
               ? 'Redirecting to checkout...'
               : !membershipLoading && isMember
               ? 'Current Plan'
-              : user
-              ? 'Get Started'
-              : 'Log in to Join'}
+              : 'Get Started'}
           </button>
           {isMember && (
             <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--light-gray)', textAlign: 'center' }}>
