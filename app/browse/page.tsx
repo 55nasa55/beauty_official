@@ -43,46 +43,48 @@ export default function BrowseAllPage() {
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // Apply category from URL param on initial load
+  // Tracks whether header data (categories/brands) has finished loading
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Load header data once, then apply any category from the URL param
   useEffect(() => {
-    if (categoryParam) {
-      // Try to match a category
-      loadInitialData().then(({ categories: cats }) => {
+    async function init() {
+      setLoading(true);
+
+      const [categoriesResult, brandsResult, collectionsResult] = await Promise.all([
+        supabase.from("categories").select("*").order("name"),
+        supabase.from("brands").select("*").order("name"),
+        supabase.from("collections").select("*").order("sort_order"),
+      ]);
+
+      const cats = categoriesResult.data || [];
+      setCategories(cats);
+      setBrands(brandsResult.data || []);
+      setCollections(collectionsResult.data || []);
+
+      // Apply category from URL param (e.g. /browse?category=Skincare)
+      if (categoryParam) {
         const matched = cats.find(
-          (c) => c.name.toLowerCase() === categoryParam.toLowerCase() || c.slug === categoryParam
+          (c) =>
+            c.name.toLowerCase() === categoryParam.toLowerCase() || c.slug === categoryParam
         );
-        if (matched) {
-          setSelectedCategories(new Set([matched.id]));
-        }
-      });
-    } else {
-      loadInitialData();
+        setSelectedCategories(matched ? new Set([matched.id]) : new Set());
+      } else {
+        setSelectedCategories(new Set());
+      }
+
+      setDataLoaded(true);
+      setLoading(false);
     }
+
+    init();
   }, [categoryParam]);
 
+  // Fetch products whenever data has loaded or filters/sort change
   useEffect(() => {
-    if (categories.length > 0 || brands.length > 0) {
-      fetchProducts(0, false);
-    }
-  }, [selectedBrands, selectedCategories, sort]);
-
-  async function loadInitialData(): Promise<{ categories: Category[] }> {
-    setLoading(true);
-
-    const [categoriesResult, brandsResult, collectionsResult] = await Promise.all([
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("brands").select("*").order("name"),
-      supabase.from("collections").select("*").order("sort_order"),
-    ]);
-
-    const cats = categoriesResult.data || [];
-    setCategories(cats);
-    setBrands(brandsResult.data || []);
-    setCollections(collectionsResult.data || []);
-
-    setLoading(false);
-    return { categories: cats };
-  }
+    if (!dataLoaded) return;
+    fetchProducts(0, false);
+  }, [dataLoaded, selectedBrands, selectedCategories, sort]);
 
   async function fetchProducts(newOffset: number, append: boolean) {
     if (append) setLoadingMore(true);
