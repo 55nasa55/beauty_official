@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabasePublic } from '@/lib/supabase/public';
 import { useMembership } from '@/lib/membership-context';
+import { getFreeShippingThreshold, qualifiesForFreeShipping } from '@/lib/pricing';
 
 interface StockInfo {
   variantId: string;
@@ -329,9 +330,9 @@ export function MiniCart() {
               )}
 
               {(() => {
-                const FREE_SHIPPING_THRESHOLD = 50;
+                const FREE_SHIPPING_THRESHOLD = getFreeShippingThreshold(isMember);
                 const remaining = FREE_SHIPPING_THRESHOLD - adjustedTotal;
-                const hasFreeShipping = adjustedTotal >= FREE_SHIPPING_THRESHOLD;
+                const hasFreeShipping = qualifiesForFreeShipping(adjustedTotal, isMember);
 
                 return hasFreeShipping ? (
                   <div className="p-3 rounded-md bg-green-100 text-sm text-green-700 font-medium">

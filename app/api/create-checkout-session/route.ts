@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { qualifiesForFreeShipping, SHIPPING_COST_CENTS } from '@/lib/pricing';
 
 export async function POST(req: NextRequest) {
   try {
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
     // Determine shipping options based on cart total
     let shippingOptions;
 
-    if (cartTotal >= 50) {
+    if (qualifiesForFreeShipping(cartTotal, isMember)) {
       shippingOptions = [
         {
           shipping_rate_data: {
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: {
-              amount: 695,
+              amount: SHIPPING_COST_CENTS,
               currency: 'usd',
             },
             display_name: 'Standard Shipping',

@@ -1,3 +1,15 @@
+export const MEMBER_FREE_SHIPPING_THRESHOLD = 55;
+export const NON_MEMBER_FREE_SHIPPING_THRESHOLD = 75;
+export const SHIPPING_COST_CENTS = 695;
+
+export function getFreeShippingThreshold(isMember: boolean): number {
+  return isMember ? MEMBER_FREE_SHIPPING_THRESHOLD : NON_MEMBER_FREE_SHIPPING_THRESHOLD;
+}
+
+export function qualifiesForFreeShipping(cartTotal: number, isMember: boolean): boolean {
+  return cartTotal >= getFreeShippingThreshold(isMember);
+}
+
 export function formatCents(cents: number | null | undefined): string {
   if (cents === null || cents === undefined) return '$0.00';
   return `$${(cents / 100).toFixed(2)}`;
