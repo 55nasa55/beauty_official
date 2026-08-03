@@ -379,7 +379,7 @@ export function FAQContent() {
       >
         <h2
           className="font-heading"
-          style={{ fontSize: "28px", marginBottom: "12px" }}
+          style={{ fontSize: "28px", marginBottom: "12px", color: "#FFFFFF" }}
         >
           Still have questions?
         </h2>
