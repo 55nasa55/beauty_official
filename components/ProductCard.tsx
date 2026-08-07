@@ -189,16 +189,27 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
 
       {/* pricing-container */}
       <div className="pricing-container">
-        <div className="price-col retail">
-          <span className="price-label">Retail</span>
-          <span className="strike-price">${retailPrice.toFixed(2)}</span>
-        </div>
-        <div className="price-col member">
-          <span className="price-label">Member Price</span>
-          <div className="member-price-val">
-            {memberPrice ? `$${memberPrice.toFixed(2)}` : `$${retailPrice.toFixed(2)}`}
+        {isMember ? (
+          <div className="price-col member" style={{ gridColumn: '1 / -1' }}>
+            <span className="price-label">Your Price</span>
+            <div className="member-price-val">
+              {memberPrice ? `${memberPrice.toFixed(2)}` : `${retailPrice.toFixed(2)}`}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="price-col retail">
+              <span className="price-label">Retail</span>
+              <span className="strike-price">${retailPrice.toFixed(2)}</span>
+            </div>
+            <div className="price-col member">
+              <span className="price-label">Member Price</span>
+              <div className="member-price-val">
+                {memberPrice ? `${memberPrice.toFixed(2)}` : `${retailPrice.toFixed(2)}`}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* btn-add */}
