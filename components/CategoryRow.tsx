@@ -4,14 +4,14 @@ import {
 } from 'lucide-react';
 
 const categories = [
-  { label: 'K-Beauty', href: '/collections/korean-beauty', icon: Sparkles, emoji: '✨' },
-  { label: 'J-Beauty', href: '/collections/japanese-beauty', icon: Flower, emoji: '🌸' },
-  { label: 'Skincare', href: '/collections/skincare', icon: Droplets, emoji: '💧' },
-  { label: 'Makeup', href: '/collections/makeup', icon: Brush, emoji: '💄' },
-  { label: 'Hair', href: '/collections/haircare', icon: Wind, emoji: '💇' },
-  { label: 'Face Masks', href: '/collections/face-masks', icon: Smile, emoji: '🫧' },
-  { label: 'Bath & Body', href: '/collections/bath-body', icon: Bath, emoji: '🛁' },
-  { label: 'Tools', href: '/collections/brush-tools', icon: Wand, emoji: '🪄' },
+  { label: 'K-Beauty', href: '/browse?category=korean-beauty', icon: Sparkles, emoji: '✨' },
+  { label: 'J-Beauty', href: '/browse?category=japanese-beauty', icon: Flower, emoji: '🌸' },
+  { label: 'Skincare', href: '/browse?category=skincare', icon: Droplets, emoji: '💧' },
+  { label: 'Makeup', href: '/browse?category=makeup', icon: Brush, emoji: '💄' },
+  { label: 'Hair', href: '/browse?category=hair', icon: Wind, emoji: '💇' },
+  { label: 'Face Masks', href: '/browse?category=face-masks', icon: Smile, emoji: '🫧' },
+  { label: 'Bath & Body', href: '/browse?category=bath-body', icon: Bath, emoji: '🛁' },
+  { label: 'Tools', href: '/browse?category=makeup-brush-tools', icon: Wand, emoji: '🪄' },
 ];
 
 export function CategoryRow() {
