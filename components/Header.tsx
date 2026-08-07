@@ -16,10 +16,10 @@ interface HeaderProps {
 }
 
 const primaryNavItems = [
-  { label: 'Skincare', href: '/collections/skincare' },
-  { label: 'Makeup', href: '/collections/makeup' },
-  { label: 'K-Beauty', href: '/collections/korean-beauty' },
-  { label: 'J-Beauty', href: '/collections/japanese-beauty' },
+  { label: 'Skincare', href: '/browse?category=skincare' },
+  { label: 'Makeup', href: '/browse?category=makeup' },
+  { label: 'K-Beauty', href: '/browse?category=korean-beauty' },
+  { label: 'J-Beauty', href: '/browse?category=japanese-beauty' },
   { label: 'Sale', href: '/collections/sale', sale: true },
   { label: 'Shop All', href: '/browse' },
 ];
@@ -150,7 +150,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
             {categories.map((c) => (
               <Link
                 key={c.id}
-                href={`/collections/${c.slug}`}
+                href={`/browse?category=${c.slug}`}
                 className="py-2 text-[14px] font-semibold text-charcoal hover:text-coral transition-colors"
                 onClick={() => setShowMobileMenu(false)}
               >
