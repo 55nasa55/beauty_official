@@ -7,6 +7,7 @@ import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
 import { useAuth } from '@/lib/auth-context';
+import { useMembership } from '@/lib/membership-context';
 import { CosClubLogo } from './CosClubLogo';
 
 interface HeaderProps {
@@ -26,6 +27,7 @@ const primaryNavItems = [
 
 export function Header({ categories, brands, collections }: HeaderProps) {
   const { user } = useAuth();
+  const { isMember } = useMembership();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -103,13 +105,15 @@ export function Header({ categories, brands, collections }: HeaderProps) {
               {/* Cart */}
               <MiniCart />
 
-              <Link
-                href="/pricing"
-                className="hidden md:inline-flex btn-solid"
-                style={{ padding: '8px 16px', fontSize: 14, marginLeft: 8 }}
-              >
-                Join
-              </Link>
+              {!isMember && (
+                <Link
+                  href="/pricing"
+                  className="hidden md:inline-flex btn-solid"
+                  style={{ padding: '8px 16px', fontSize: 14, marginLeft: 8 }}
+                >
+                  Join
+                </Link>
+              )}
             </div>
           </div>
         </div>
