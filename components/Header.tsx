@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Menu, X, Search, Heart } from 'lucide-react';
+import { Menu, X, Search, Heart, UserCircle } from 'lucide-react';
 import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
@@ -100,6 +100,14 @@ export function Header({ categories, brands, collections }: HeaderProps) {
                 aria-label="Wishlist"
               >
                 <Heart className="w-5 h-5" />
+              </Link>
+
+              <Link
+                href={user ? '/account' : '/login'}
+                className="text-charcoal hover:text-coral transition-colors"
+                aria-label="Account"
+              >
+                <UserCircle className="w-5 h-5" />
               </Link>
 
               {/* Cart */}
