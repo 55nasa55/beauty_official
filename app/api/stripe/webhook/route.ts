@@ -249,15 +249,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // Get price ID from line items (reliable)
-      const retrievedSession = await stripe.checkout.sessions.retrieve(session.id, {
-        expand: ['line_items.data.price']
-      });
+      // Retrieve the actual subscription to get the real current_period_end
+      // (works correctly for both monthly and annual billing cycles)
+      const subscription: any = await stripe.subscriptions.retrieve(subscriptionId as string);
 
-      const priceId = retrievedSession.line_items?.data?.[0]?.price?.id;
+      const priceId = subscription.items?.data?.[0]?.price?.id;
 
       if (!priceId) {
-        console.error("❌ Missing price ID from session");
+        console.error("❌ Missing price ID from subscription");
         return NextResponse.json({ received: true });
       }
 
@@ -273,10 +272,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // Create membership directly
-      const now = new Date();
-      const oneYearLater = new Date();
-      oneYearLater.setFullYear(now.getFullYear() + 1);
+      const currentPeriodEnd = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
+
+      if (!currentPeriodEnd) {
+        console.error("❌ Missing current_period_end from subscription");
+        return NextResponse.json({ received: true });
+      }
 
       const { error } = await supabase
         .from("memberships")
@@ -287,8 +290,8 @@ export async function POST(req: NextRequest) {
           stripe_subscription_id: subscriptionId,
           stripe_customer_id: session.customer,
           stripe_price_id: priceId,
-          current_period_end: oneYearLater.toISOString(),
-          cancel_at_period_end: false,
+          current_period_end: currentPeriodEnd,
+          cancel_at_period_end: subscription.cancel_at_period_end || false,
           ended_at: null,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
@@ -296,7 +299,7 @@ export async function POST(req: NextRequest) {
       if (error) {
         console.error("❌ Failed to insert membership:", error);
       } else {
-        console.log("✅ Membership created successfully");
+        console.log("✅ Membership created successfully with period end:", currentPeriodEnd);
       }
 
       return NextResponse.json({ received: true });

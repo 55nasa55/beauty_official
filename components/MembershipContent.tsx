@@ -27,6 +27,7 @@ interface Membership {
 
 interface MembershipContentProps {
   annualPlan: MembershipPlan | null;
+  monthlyPlan: MembershipPlan | null;
 }
 
 const faqs = [
@@ -56,13 +57,13 @@ const faqs = [
   },
 ];
 
-export function MembershipContent({ annualPlan }: MembershipContentProps) {
+export function MembershipContent({ annualPlan, monthlyPlan }: MembershipContentProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { isMember, loading: membershipLoading } = useMembership();
   const [billingMode, setBillingMode] = useState<'monthly' | 'annual'>('annual');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkingOut, setCheckingOut] = useState<'monthly' | 'annual' | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
     }
   };
 
-  const handleJoinAnnual = async () => {
+  const startCheckout = async (plan: MembershipPlan | null, mode: 'monthly' | 'annual') => {
     if (!user) {
       router.push('/login?redirect=/pricing');
       return;
@@ -100,25 +101,28 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
       router.push('/account');
       return;
     }
-    if (!annualPlan) return;
+    if (!plan) return;
 
-    setCheckingOut(true);
+    setCheckingOut(mode);
     try {
       const response = await fetch('/api/membership/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId: annualPlan.stripe_price_id }),
+        body: JSON.stringify({ priceId: plan.stripe_price_id }),
       });
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setCheckingOut(false);
+        setCheckingOut(null);
       }
     } catch {
-      setCheckingOut(false);
+      setCheckingOut(null);
     }
   };
+
+  const handleJoinMonthly = () => startCheckout(monthlyPlan, 'monthly');
+  const handleJoinAnnual = () => startCheckout(annualPlan, 'annual');
 
   const handleManageBilling = async () => {
     try {
@@ -439,7 +443,8 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
             ))}
           </ul>
           <button
-            onClick={() => router.push('/account')}
+            onClick={handleJoinMonthly}
+            disabled={checkingOut !== null || (!membershipLoading && isMember)}
             className="btn-join-plan"
             style={{
               width: '100%',
@@ -453,9 +458,14 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
               border: 'none',
               background: 'var(--baby-blue)',
               color: 'var(--charcoal)',
+              opacity: checkingOut !== null || (!membershipLoading && isMember) ? 0.5 : 1,
             }}
           >
-            Get Started
+            {checkingOut === 'monthly'
+              ? 'Redirecting to checkout...'
+              : !membershipLoading && isMember
+              ? 'Current Plan'
+              : 'Get Started'}
           </button>
           {isMember && (
             <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--light-gray)', textAlign: 'center' }}>
@@ -605,7 +615,7 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
           </ul>
           <button
             onClick={handleJoinAnnual}
-            disabled={checkingOut || (!membershipLoading && isMember)}
+            disabled={checkingOut !== null || (!membershipLoading && isMember)}
             className="btn-join-plan featured-btn"
             style={{
               width: '100%',
@@ -619,10 +629,10 @@ export function MembershipContent({ annualPlan }: MembershipContentProps) {
               border: 'none',
               background: 'var(--soft-rose)',
               color: 'white',
-              opacity: checkingOut || (!membershipLoading && isMember) ? 0.5 : 1,
+              opacity: checkingOut !== null || (!membershipLoading && isMember) ? 0.5 : 1,
             }}
           >
-            {checkingOut
+            {checkingOut === 'annual'
               ? 'Redirecting to checkout...'
               : !membershipLoading && isMember
               ? 'Current Plan'

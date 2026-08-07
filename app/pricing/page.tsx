@@ -23,12 +23,12 @@ export default async function PricingPage() {
       .from('membership_plans')
       .select('*')
       .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .limit(1)
-      .maybeSingle(),
+      .order('sort_order', { ascending: true }),
   ]);
 
-  const annualPlan = (planRes.data as MembershipPlan | null) ?? null;
+  const plans = (planRes.data as MembershipPlan[] | null) ?? [];
+  const monthlyPlan = plans.find(p => p.billing_interval === 'month') ?? null;
+  const annualPlan = plans.find(p => p.billing_interval === 'year') ?? null;
 
   return (
     <>
@@ -38,7 +38,7 @@ export default async function PricingPage() {
         collections={collRes.data ?? []}
       />
       <main>
-        <MembershipContent annualPlan={annualPlan} />
+        <MembershipContent annualPlan={annualPlan} monthlyPlan={monthlyPlan} />
       </main>
       <Footer />
     </>
