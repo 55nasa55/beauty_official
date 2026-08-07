@@ -4,20 +4,20 @@ import {
 } from 'lucide-react';
 
 const categories = [
-  { label: 'K-Beauty', href: '/browse?category=korean-beauty', icon: Sparkles, emoji: '✨' },
-  { label: 'J-Beauty', href: '/browse?category=japanese-beauty', icon: Flower, emoji: '🌸' },
-  { label: 'Skincare', href: '/browse?category=skincare', icon: Droplets, emoji: '💧' },
-  { label: 'Makeup', href: '/browse?category=makeup', icon: Brush, emoji: '💄' },
-  { label: 'Hair', href: '/browse?category=hair', icon: Wind, emoji: '💇' },
-  { label: 'Face Masks', href: '/browse?category=face-masks', icon: Smile, emoji: '🫧' },
-  { label: 'Bath & Body', href: '/browse?category=bath-body', icon: Bath, emoji: '🛁' },
-  { label: 'Tools', href: '/browse?category=makeup-brush-tools', icon: Wand, emoji: '🪄' },
+  { label: 'K-Beauty', href: '/browse?category=korean-beauty', icon: Sparkles },
+  { label: 'J-Beauty', href: '/browse?category=japanese-beauty', icon: Flower },
+  { label: 'Skincare', href: '/browse?category=skincare', icon: Droplets },
+  { label: 'Makeup', href: '/browse?category=makeup', icon: Brush },
+  { label: 'Hair', href: '/browse?category=hair', icon: Wind },
+  { label: 'Face Masks', href: '/browse?category=face-masks', icon: Smile },
+  { label: 'Bath & Body', href: '/browse?category=bath-body', icon: Bath },
+  { label: 'Tools', href: '/browse?category=makeup-brush-tools', icon: Wand },
 ];
 
 export function CategoryRow() {
   return (
     <div className="flex justify-center gap-10 py-8 px-[5%] bg-off-white overflow-x-auto scrollbar-hide">
-      {categories.map(({ label, href, icon: Icon, emoji }) => (
+      {categories.map(({ label, href, icon: Icon }) => (
         <Link
           key={label}
           href={href}
@@ -30,7 +30,7 @@ export function CategoryRow() {
             <Icon className="w-[28px] h-[28px]" strokeWidth={2} />
           </div>
           <span className="text-category-label whitespace-nowrap">
-            {label} {emoji}
+            {label}
           </span>
         </Link>
       ))}
