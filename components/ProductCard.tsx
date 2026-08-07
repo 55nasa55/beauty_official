@@ -6,9 +6,11 @@ import { ProductWithVariants } from '@/lib/database.types';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
+import { useWishlist } from '@/lib/wishlist-context';
 import { supabasePublic } from '@/lib/supabase/public';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Heart } from 'lucide-react';
 
 interface ProductCardProps {
@@ -20,9 +22,12 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
   const { user } = useAuth();
   const { isMember, loading } = useMembership();
   const { addItem } = useCart();
+  const { isWished, toggleWishlist } = useWishlist();
   const { toast } = useToast();
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
-  const [wished, setWished] = useState(false);
+  const [isTogglingWish, setIsTogglingWish] = useState(false);
+  const wished = isWished(product.id);
 
   const defaultVariant = product.variants?.[0];
   if (!defaultVariant) return null;
@@ -122,7 +127,23 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
 
       {/* wish-btn */}
       <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWished(!wished); }}
+        onClick={async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!user) {
+            router.push('/login');
+            return;
+          }
+          if (isTogglingWish) return;
+          setIsTogglingWish(true);
+          const { error } = await toggleWishlist(product.id);
+          setIsTogglingWish(false);
+          if (error === 'not-authenticated') {
+            router.push('/login');
+          } else if (error) {
+            toast({ title: 'Error', description: error, variant: 'destructive' });
+          }
+        }}
         className="wish-btn"
         aria-label="Add to wishlist"
       >

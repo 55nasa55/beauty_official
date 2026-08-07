@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Category, Brand, Collection } from '@/lib/database.types';
+import { Heart } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -274,6 +275,25 @@ export default function AccountPage() {
               </Link>
             </div>
           )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full" style={{ background: 'var(--blush-pink)' }}>
+                <Heart className="w-5 h-5" style={{ color: 'var(--coral)' }} />
+              </div>
+              <div>
+                <h2 className="text-xl font-light tracking-wide">Wishlist</h2>
+                <p className="text-sm text-gray-600">View and manage your saved products</p>
+              </div>
+            </div>
+            <Link href="/wishlist">
+              <Button variant="outline" size="sm" className="whitespace-nowrap">
+                View Wishlist
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

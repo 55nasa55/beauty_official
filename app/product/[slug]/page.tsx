@@ -11,6 +11,7 @@ import { supabasePublic } from '@/lib/supabase/public';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { useMembership } from '@/lib/membership-context';
+import { useWishlist } from '@/lib/wishlist-context';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { VariantSelector } from '@/components/VariantSelector';
@@ -23,6 +24,7 @@ import {
   ProductVariant,
 } from '@/lib/database.types';
 import { ShoppingCart, Tag, Truck, CircleCheck as CheckCircle2, RefreshCw, Heart, ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { formatCents, calculateSavingsFromCents } from '@/lib/pricing';
@@ -42,6 +44,8 @@ export default function ProductPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isMember, loading: membershipLoading } = useMembership();
+  const { isWished, toggleWishlist } = useWishlist();
+  const router = useRouter();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -60,7 +64,7 @@ export default function ProductPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabKey>('description');
-  const [wished, setWished] = useState(false);
+  const [isTogglingWish, setIsTogglingWish] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -140,6 +144,8 @@ export default function ProductPage() {
 
     fetchData();
   }, [slug]);
+
+  const wished = product ? isWished(product.id) : false;
 
   function getStockStatus(qty: number) {
     if (qty === 0) return { label: "Out of stock", color: "#dc2626" };
@@ -670,7 +676,22 @@ export default function ProductPage() {
 
               <button
                 className={`btn-wish ${wished ? 'active' : ''}`}
-                onClick={() => setWished(!wished)}
+                onClick={async () => {
+                  if (!product) return;
+                  if (!user) {
+                    router.push('/login');
+                    return;
+                  }
+                  if (isTogglingWish) return;
+                  setIsTogglingWish(true);
+                  const { error } = await toggleWishlist(product.id);
+                  setIsTogglingWish(false);
+                  if (error === 'not-authenticated') {
+                    router.push('/login');
+                  } else if (error) {
+                    toast({ title: 'Error', description: error, variant: 'destructive' });
+                  }
+                }}
                 aria-label="Add to wishlist"
                 style={{
                   width: '52px',

@@ -93,7 +93,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
               </button>
 
               <Link
-                href={user ? '/account' : '/login'}
+                href={user ? '/wishlist' : '/login'}
                 className="text-charcoal hover:text-coral transition-colors"
                 aria-label="Wishlist"
               >
