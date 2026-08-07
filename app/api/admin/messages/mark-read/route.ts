@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,11 +34,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message ID is required' }, { status: 400 });
     }
 
-    // Update message as read
-    const { error: updateError } = await supabase
+    // Update message as read using service-role client to bypass RLS
+    const serviceRole = createSupabaseServiceRoleClient();
+    const { error: updateError } = await serviceRole
       .from('contact_messages')
       .update({ read: true })
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
     if (updateError) {
       throw updateError;
