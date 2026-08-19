@@ -31,7 +31,7 @@ export function TrustBar() {
       </span>
       <span className="flex items-center gap-1.5">
         <Truck className="w-4 h-4" />
-        Free shipping at $55 for members, $75 for all
+        Free shipping at $55 for members
       </span>
       <span className="flex items-center gap-1.5">
         <CalendarPlus className="w-4 h-4" />
