@@ -17,6 +17,8 @@ import { ProductInfoImagesEditor } from '@/components/admin/products/info/Produc
 import { ProductReviewsAdmin } from '@/components/admin/ProductReviewsAdmin';
 import { ProductSubratingsEditor } from '@/components/admin/ProductSubratingsEditor';
 import SyncVeeqoSellablesButton from '@/components/admin/SyncVeeqoSellablesButton';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 interface Product {
   id: string;
@@ -76,6 +78,7 @@ interface FacetOption {
 }
 
 export default function ProductsManagementPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -964,6 +967,10 @@ export default function ProductsManagementPage() {
   const totalPages = Math.ceil(total / pageSize);
   const startItem = page * pageSize + 1;
   const endItem = Math.min((page + 1) * pageSize, total);
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (isLoading && products.length === 0) {
     return (

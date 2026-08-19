@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ShoppingBag, Package, CreditCard, MapPin, Eye, Truck, Loader2, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Package, CreditCard, MapPin, Eye, Truck, Loader as Loader2, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import {
   Select,
@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 interface Order {
   id: string;
@@ -64,6 +66,7 @@ interface OrderWithItems extends Order {
 }
 
 export default function OrdersManagementPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState<string | null>(null);
@@ -461,6 +464,10 @@ export default function OrdersManagementPage() {
   const totalPages = Math.ceil(total / pageSize);
   const showingFrom = total === 0 ? 0 : page * pageSize + 1;
   const showingTo = Math.min((page + 1) * pageSize, total);
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   return (
     <div className="space-y-6">

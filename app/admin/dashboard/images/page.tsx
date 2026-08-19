@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Trash2, Copy, Image as ImageIcon, X, CircleCheck as CheckCircle, Search, ChevronLeft, ChevronRight, CircleAlert as AlertCircle } from 'lucide-react';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 interface AdminImage {
   id: string;
@@ -22,6 +24,7 @@ interface AdminImage {
 }
 
 export default function ImageManagerPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [images, setImages] = useState<AdminImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -353,6 +356,10 @@ export default function ImageManagerPage() {
   const totalPages = Math.ceil(total / pageSize);
   const startIndex = page * pageSize + 1;
   const endIndex = Math.min((page + 1) * pageSize, total);
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (isLoading && images.length === 0) {
     return (

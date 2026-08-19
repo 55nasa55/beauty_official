@@ -10,8 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Tags, Settings, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Tags, Settings, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 interface Category {
   id: string;
@@ -37,6 +39,7 @@ interface FacetOption {
 }
 
 export default function CategoriesManagementPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -458,6 +461,10 @@ export default function CategoriesManagementPage() {
       });
     }
   };
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (isLoading) {
     return (

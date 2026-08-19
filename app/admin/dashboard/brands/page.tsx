@@ -9,9 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Star, Upload } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Star, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { uploadImage } from '@/lib/uploadImage';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 interface Brand {
   id: string;
@@ -22,6 +24,7 @@ interface Brand {
 }
 
 export default function BrandsManagementPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -179,6 +182,10 @@ export default function BrandsManagementPage() {
       }
     }
   };
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (isLoading) {
     return (

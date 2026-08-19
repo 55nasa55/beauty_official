@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Grid } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Grid2x2 as Grid } from 'lucide-react';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 interface Collection {
   id: string;
@@ -21,6 +23,7 @@ interface Collection {
 }
 
 export default function CollectionsManagementPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -144,6 +147,10 @@ export default function CollectionsManagementPage() {
     });
     setEditingCollection(null);
   };
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (isLoading) {
     return (

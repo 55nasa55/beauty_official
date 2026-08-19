@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, ShoppingBag, Star, Tags } from 'lucide-react';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 export default function AdminDashboardPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [stats, setStats] = useState({
     products: 0,
     orders: 0,
@@ -43,6 +46,10 @@ export default function AdminDashboardPage() {
     { title: 'Brands', value: stats.brands, icon: Star, color: 'text-purple-600' },
     { title: 'Categories', value: stats.categories, icon: Tags, color: 'text-orange-600' },
   ];
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (isLoading) {
     return (

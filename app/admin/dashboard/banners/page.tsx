@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Plus, Edit2, Trash2, Eye, X, Upload } from 'lucide-react';
+import { Plus, CreditCard as Edit2, Trash2, Eye, X, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { uploadImage } from '@/lib/uploadImage';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { AdminAuthLoader } from '@/components/admin/AdminAuthLoader';
 
 type Banner = {
   id: string;
@@ -30,6 +32,7 @@ type BannerFormData = {
 };
 
 export default function BannersPage() {
+  const { authChecked, isLoading: isAuthLoading } = useAdminAuth();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -167,6 +170,10 @@ export default function BannersPage() {
       }
     }
   };
+
+  if (isAuthLoading || !authChecked) {
+    return <AdminAuthLoader />;
+  }
 
   if (loading) {
     return (
