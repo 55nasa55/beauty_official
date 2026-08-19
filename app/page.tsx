@@ -125,7 +125,7 @@ export default async function Home() {
 
           {/* Hero product grid */}
           {heroProducts.length > 0 && (
-            <div className="flex-shrink-0 hidden md:block" style={{ transform: 'translateX(-40px)' }}>
+            <div className="flex-1 min-w-0 hidden md:flex justify-end">
               <HeroGrid products={heroProducts} />
             </div>
           )}

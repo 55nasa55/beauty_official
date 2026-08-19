@@ -53,7 +53,8 @@ export function HeroGrid({ products }: HeroGridProps) {
     <div
       className="grid gap-5 transition-opacity duration-500"
       style={{
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 232px)',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, minmax(180px, 240px))',
+        maxWidth: isMobile ? undefined : '1200px',
       }}
     >
       {visible.map((p, i) => {
