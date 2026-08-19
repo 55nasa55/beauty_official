@@ -106,7 +106,7 @@ export default async function Home() {
           }}
         >
           {/* Hero text */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 max-w-[480px] pr-4">
             <h1 className="text-hero-h1 mb-4">
               Curated beauty,<br />at prices you deserve.
             </h1>
