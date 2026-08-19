@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Instagram, Twitter, Music2 } from 'lucide-react';
-import { CosClubLogo } from './CosClubLogo';
 
 const shopLinks = [
   { label: 'Skincare', href: '/collections/skincare' },
@@ -34,7 +33,7 @@ export function Footer() {
         {/* CosClub column */}
         <div className="col-span-2 md:col-span-1 flex flex-col">
           <div className="mb-4">
-            <CosClubLogo height={32} />
+            <span style={{ fontSize: 32, fontWeight: 600, color: '#FFFFFF', lineHeight: 1 }}>CosClub</span>
           </div>
           <p className="text-footer-body" style={{ lineHeight: 1.5, marginBottom: 16, fontSize: 13 }}>
             Curated beauty, at prices you deserve.
