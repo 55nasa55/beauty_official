@@ -99,14 +99,14 @@ export default async function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         <section
-          className="flex flex-col md:flex-row items-center gap-6 py-15 px-[5%]"
+          className="flex flex-col md:flex-row items-center gap-6 md:gap-12 py-15 px-[5%] overflow-hidden"
           style={{
             background: 'linear-gradient(to right, var(--off-white) 40%, var(--blush-pink))',
             padding: '52px 5%',
           }}
         >
           {/* Hero text */}
-          <div className="flex-1 min-w-0 max-w-[480px] pr-4">
+          <div className="flex-1 min-w-0 md:flex-none md:w-[440px] md:shrink-0 md:z-10">
             <h1 className="text-hero-h1 mb-4">
               Curated beauty,<br />at prices you deserve.
             </h1>
@@ -125,7 +125,7 @@ export default async function Home() {
 
           {/* Hero product grid */}
           {heroProducts.length > 0 && (
-            <div className="flex-shrink-0 hidden md:block" style={{ transform: 'translateX(-75px)' }}>
+            <div className="flex-shrink-0 hidden md:block" style={{ transform: 'translateX(-40px)' }}>
               <HeroGrid products={heroProducts} />
             </div>
           )}
