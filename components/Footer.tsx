@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Instagram, Twitter, Music2 } from 'lucide-react';
+import { Instagram } from 'lucide-react';
 
 const shopLinks = [
   { label: 'Skincare', href: '/collections/skincare' },
@@ -38,29 +38,15 @@ export function Footer() {
           <p className="text-footer-body" style={{ lineHeight: 1.5, marginBottom: 16, fontSize: 13 }}>
             Curated beauty, at prices you deserve.
           </p>
-          <div className="flex gap-3">
-            <a
-              href="#"
-              aria-label="Instagram"
-              className="text-white hover:text-coral transition-colors"
-            >
-              <Instagram className="w-4 h-4" />
-            </a>
-            <a
-              href="#"
-              aria-label="TikTok"
-              className="text-white hover:text-coral transition-colors"
-            >
-              <Music2 className="w-4 h-4" />
-            </a>
-            <a
-              href="#"
-              aria-label="Twitter"
-              className="text-white hover:text-coral transition-colors"
-            >
-              <Twitter className="w-4 h-4" />
-            </a>
-          </div>
+          <a
+            href="https://www.instagram.com/cosclubusa"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+            className="text-white hover:text-coral transition-colors"
+          >
+            <Instagram className="w-4 h-4" />
+          </a>
         </div>
 
         {/* Shop column */}
