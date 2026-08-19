@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Menu, X, Search, Heart, UserCircle } from 'lucide-react';
+import { Menu, X, Search, Heart, CircleUser as UserCircle } from 'lucide-react';
 import { Category, Brand, Collection } from '@/lib/database.types';
 import { MiniCart } from './MiniCart';
 import { SearchBar } from './SearchBar';
@@ -67,7 +67,7 @@ export function Header({ categories, brands, collections }: HeaderProps) {
 
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
-              <CosClubLogo height={48} />
+              <CosClubLogo height={64} />
             </Link>
 
             {/* Center nav — desktop */}
