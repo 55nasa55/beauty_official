@@ -109,7 +109,7 @@ export function HeroGrid({ products }: HeroGridProps) {
             <div className="flex border-t border-light-gray pt-1 mt-auto">
               <div className="flex-1 pr-1.5">
                 <span className="block text-[8px] uppercase font-bold text-gray tracking-[0.5px]">Retail</span>
-                <span className="text-[9px] text-gray line-through">${p.retail.toFixed(2)}</span>
+                <span className="text-[9px] text-gray">${p.retail.toFixed(2)}</span>
               </div>
               <div className="flex-1 pl-1.5 border-l border-light-gray">
                 <span className="block text-[8px] uppercase font-bold text-gray tracking-[0.5px]">Member</span>

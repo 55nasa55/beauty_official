@@ -191,7 +191,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
       <div className="pricing-container">
         <div className="price-col retail">
           <span className="price-label">Retail</span>
-          <span className={isMember ? "price-no-strike" : "strike-price"}>
+          <span className="strike-price">
             ${retailPrice.toFixed(2)}
           </span>
         </div>

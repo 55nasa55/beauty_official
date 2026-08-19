@@ -603,7 +603,7 @@
   font-size: 11px;
   font-weight: 400;
   color: var(--gray);
-  text-decoration: line-through;
+  text-decoration: none;
 }
 .price-no-strike {
   font-family: var(--font-body);
@@ -749,7 +749,6 @@
   margin-bottom: 3px;
 }
 .list-retail {
-  text-decoration: line-through;
   color: var(--gray);
   font-family: var(--font-body);
   font-size: 14px;
