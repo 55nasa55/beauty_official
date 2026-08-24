@@ -1,15 +1,53 @@
 import Link from 'next/link';
 
+const KoreaFlag = () => (
+  <svg width="36" height="26" viewBox="0 0 36 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="36" height="26" rx="3" fill="white" stroke="#E8E8E8" strokeWidth="0.5" />
+    {/* Taegeuk */}
+    <circle cx="18" cy="13" r="5" fill="#EE324E" />
+    <path d="M18 8 A5 5 0 0 1 18 18 A2.5 2.5 0 0 0 18 13 A2.5 2.5 0 0 1 18 8Z" fill="#007088" />
+    {/* Trigrams - top left (heaven) */}
+    <g transform="translate(6.5, 4.5) rotate(-34)" stroke="#1A1A1A" strokeWidth="1" strokeLinecap="round">
+      <line x1="-3" y1="-3" x2="3" y2="-3" />
+      <line x1="-3" y1="0" x2="3" y2="0" />
+      <line x1="-3" y1="3" x2="3" y2="3" />
+    </g>
+    {/* Trigrams - bottom right (heaven) */}
+    <g transform="translate(29.5, 21.5) rotate(-34)" stroke="#1A1A1A" strokeWidth="1" strokeLinecap="round">
+      <line x1="-3" y1="-3" x2="3" y2="-3" />
+      <line x1="-3" y1="0" x2="3" y2="0" />
+      <line x1="-3" y1="3" x2="3" y2="3" />
+    </g>
+    {/* Trigrams - top right (water) */}
+    <g transform="translate(29.5, 4.5) rotate(34)" stroke="#1A1A1A" strokeWidth="1" strokeLinecap="round">
+      <line x1="-3" y1="-3" x2="3" y2="-3" />
+      <line x1="-3" y1="3" x2="3" y2="3" />
+    </g>
+    {/* Trigrams - bottom left (water) */}
+    <g transform="translate(6.5, 21.5) rotate(34)" stroke="#1A1A1A" strokeWidth="1" strokeLinecap="round">
+      <line x1="-3" y1="-3" x2="3" y2="-3" />
+      <line x1="-3" y1="3" x2="3" y2="3" />
+    </g>
+  </svg>
+);
+
+const JapanFlag = () => (
+  <svg width="36" height="26" viewBox="0 0 36 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="36" height="26" rx="3" fill="white" stroke="#E8E8E8" strokeWidth="0.5" />
+    <circle cx="18" cy="13" r="5" fill="#EE324E" />
+  </svg>
+);
+
 const categories = [
   {
     label: 'K-Beauty',
     href: '/browse?category=korean-beauty',
-    icon: <span style={{ fontSize: 32 }}>🇰🇷</span>,
+    icon: <KoreaFlag />,
   },
   {
     label: 'J-Beauty',
     href: '/browse?category=japanese-beauty',
-    icon: <span style={{ fontSize: 32 }}>🇯🇵</span>,
+    icon: <JapanFlag />,
   },
   {
     label: 'Skincare',
