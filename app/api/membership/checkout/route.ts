@@ -43,15 +43,36 @@ export async function POST(req: NextRequest) {
 
       const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: existingMembership.stripe_customer_id,
-        return_url: `${origin}/account`,
-      });
+      try {
+        const portalSession = await stripe.billingPortal.sessions.create({
+          customer: existingMembership.stripe_customer_id,
+          return_url: `${origin}/account`,
+        });
 
-      return NextResponse.json({ url: portalSession.url });
+        return NextResponse.json({ url: portalSession.url });
+      } catch (portalErr: any) {
+        if (portalErr.type === 'StripeInvalidRequestError' && /no such customer/i.test(portalErr.message)) {
+          console.warn(`Stale stripe_customer_id for user ${user.id} in active membership, falling through to new checkout.`);
+        } else {
+          throw portalErr;
+        }
+      }
     }
 
     let customerId = existingMembership?.stripe_customer_id;
+
+    if (customerId) {
+      try {
+        await stripe.customers.retrieve(customerId);
+      } catch (err: any) {
+        if (err.type === 'StripeInvalidRequestError' && /no such customer/i.test(err.message)) {
+          console.warn(`Stale stripe_customer_id for user ${user.id}, creating new customer.`);
+          customerId = null;
+        } else {
+          throw err;
+        }
+      }
+    }
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -61,6 +82,15 @@ export async function POST(req: NextRequest) {
         },
       });
       customerId = customer.id;
+
+      const { error: updateError } = await supabase
+        .from('memberships')
+        .update({ stripe_customer_id: customerId })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Failed to update stale stripe_customer_id:', updateError);
+      }
     }
 
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
